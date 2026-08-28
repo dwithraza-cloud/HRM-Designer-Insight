@@ -142,17 +142,15 @@ export const Header: React.FC<HeaderProps> = ({
           )}
         </div>
 
-        {/* Settings Button: Only for Admin */}
-        {roleType === 'admin' && (
-          <button
-            id="btn-header-settings"
-            onClick={() => onNavigate('settings')}
-            className="w-9 h-9 rounded-xl flex items-center justify-center bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-slate-300 transition-all cursor-pointer"
-            aria-label="Settings"
-          >
-            <Settings className="w-4 h-4" />
-          </button>
-        )}
+        {/* Settings Button: Available for all users */}
+        <button
+          id="btn-header-settings"
+          onClick={() => onNavigate('settings')}
+          className="w-9 h-9 rounded-xl flex items-center justify-center bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-slate-300 transition-all cursor-pointer"
+          aria-label="Settings"
+        >
+          <Settings className="w-4 h-4" />
+        </button>
 
         {/* User Profile */}
         <div className="relative">
@@ -204,19 +202,17 @@ export const Header: React.FC<HeaderProps> = ({
                 <span>My Profile</span>
               </button>
 
-              {roleType === 'admin' && (
-                <button
-                  id="menu-item-admin-settings"
-                  onClick={() => {
-                    setShowUserDropdown(false);
-                    onNavigate('settings');
-                  }}
-                  className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-slate-300 hover:text-white hover:bg-white/[0.05] rounded-xl transition-all cursor-pointer"
-                >
-                  <Settings className="w-3.5 h-3.5 text-purple-400" />
-                  <span>System Settings</span>
-                </button>
-              )}
+              <button
+                id="menu-item-settings"
+                onClick={() => {
+                  setShowUserDropdown(false);
+                  onNavigate('settings');
+                }}
+                className="w-full flex items-center gap-2.5 px-3 py-2 text-xs text-slate-300 hover:text-white hover:bg-white/[0.05] rounded-xl transition-all cursor-pointer"
+              >
+                <Settings className="w-3.5 h-3.5 text-purple-400" />
+                <span>Account & Security Settings</span>
+              </button>
 
               <div className="border-t border-white/5 my-1" />
 

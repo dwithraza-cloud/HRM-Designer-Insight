@@ -55,7 +55,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     { id: 'assets', label: 'Asset Management', icon: Laptop, roles: ['admin'] },
     { id: 'documents', label: 'Document Management', icon: FolderKanban, roles: ['admin', 'manager', 'employee'] },
     { id: 'reports', label: roleType === 'admin' ? 'Reports & Analytics' : 'Department Analytics', icon: BarChart3, roles: ['admin', 'manager'] },
-    { id: 'settings', label: 'Settings', icon: Settings, roles: ['admin'] },
+    { id: 'settings', label: roleType === 'admin' ? 'Settings & Security' : 'Account Settings', icon: Settings, roles: ['admin', 'manager', 'employee'] },
   ];
 
   // Strictly filter out any module that the current role is not authorized to see

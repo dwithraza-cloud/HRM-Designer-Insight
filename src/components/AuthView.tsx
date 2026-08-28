@@ -9,8 +9,6 @@ import {
   EyeOff, 
   ArrowRight, 
   ShieldCheck, 
-  Shield, 
-  UserCheck, 
   AlertCircle 
 } from 'lucide-react';
 import { UserProfile, UserRole } from '../types';
@@ -27,8 +25,8 @@ export const AuthView: React.FC<AuthViewProps> = ({
   onLoginSuccess,
   onSwitchMode
 }) => {
-  const [email, setEmail] = useState('admin@aurahrms.io');
-  const [password, setPassword] = useState('password');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [name, setName] = useState('');
   const [company, setCompany] = useState('');
   const [roleTitle, setRoleTitle] = useState('Product Specialist');
@@ -77,12 +75,6 @@ export const AuthView: React.FC<AuthViewProps> = ({
     }
   };
 
-  const handleQuickFill = (demoEmail: string, demoPass: string) => {
-    setEmail(demoEmail);
-    setPassword(demoPass);
-    setErrorMsg(null);
-  };
-
   return (
     <div id="auth-container" className="min-h-screen w-full flex items-center justify-center p-4 sm:p-6 relative overflow-hidden bg-[#0b1326]">
       {/* Ambient background glows */}
@@ -104,89 +96,6 @@ export const AuthView: React.FC<AuthViewProps> = ({
               : 'Setup enterprise workforce management and administrator account'}
           </p>
         </div>
-
-        {/* Demo Credentials Quick-Fill Cards (Only on login screen for convenience) */}
-        {mode === 'login' && (
-          <div className="mb-6 space-y-2">
-            <div className="flex items-center justify-between px-1">
-              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                Select Pre-Configured Account:
-              </span>
-              <span className="text-[10px] text-purple-300 font-medium">Click to fill credentials</span>
-            </div>
-            
-            <div className="grid grid-cols-3 gap-2">
-              {/* Admin Card */}
-              <button
-                type="button"
-                id="btn-quick-fill-admin"
-                onClick={() => handleQuickFill('admin@aurahrms.io', 'password')}
-                className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer group ${
-                  email === 'admin@aurahrms.io'
-                    ? 'bg-purple-600/20 border-purple-500/50 shadow-md shadow-purple-950/40'
-                    : 'bg-white/[0.03] border-white/10 hover:bg-white/[0.06]'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <div className="w-6 h-6 rounded-lg bg-purple-500/20 text-purple-300 flex items-center justify-center">
-                    <Shield className="w-3.5 h-3.5" />
-                  </div>
-                  <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-purple-500/30 text-purple-200">
-                    Admin
-                  </span>
-                </div>
-                <p className="text-xs font-bold text-white group-hover:text-purple-200 transition-colors">Ayon Ahmed</p>
-                <p className="text-[10px] text-slate-400 truncate">admin@aurahrms.io</p>
-              </button>
-
-              {/* Manager Card */}
-              <button
-                type="button"
-                id="btn-quick-fill-manager"
-                onClick={() => handleQuickFill('manager@aurahrms.io', 'password')}
-                className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer group ${
-                  email === 'manager@aurahrms.io'
-                    ? 'bg-blue-600/20 border-blue-500/50 shadow-md shadow-blue-950/40'
-                    : 'bg-white/[0.03] border-white/10 hover:bg-white/[0.06]'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <div className="w-6 h-6 rounded-lg bg-blue-500/20 text-blue-300 flex items-center justify-center">
-                    <UserCheck className="w-3.5 h-3.5" />
-                  </div>
-                  <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-blue-500/30 text-blue-200">
-                    Manager
-                  </span>
-                </div>
-                <p className="text-xs font-bold text-white group-hover:text-blue-200 transition-colors">Sarah Jenkins</p>
-                <p className="text-[10px] text-slate-400 truncate">manager@aurahrms.io</p>
-              </button>
-
-              {/* Employee Card */}
-              <button
-                type="button"
-                id="btn-quick-fill-employee"
-                onClick={() => handleQuickFill('employee@aurahrms.io', 'password')}
-                className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer group ${
-                  email === 'employee@aurahrms.io'
-                    ? 'bg-emerald-600/20 border-emerald-500/50 shadow-md shadow-emerald-950/40'
-                    : 'bg-white/[0.03] border-white/10 hover:bg-white/[0.06]'
-                }`}
-              >
-                <div className="flex items-center justify-between mb-1">
-                  <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center">
-                    <User className="w-3.5 h-3.5" />
-                  </div>
-                  <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-emerald-500/30 text-emerald-200">
-                    Staff
-                  </span>
-                </div>
-                <p className="text-xs font-bold text-white group-hover:text-emerald-200 transition-colors">Rahim Uddin</p>
-                <p className="text-[10px] text-slate-400 truncate">employee@aurahrms.io</p>
-              </button>
-            </div>
-          </div>
-        )}
 
         {/* Error Notification */}
         {errorMsg && (

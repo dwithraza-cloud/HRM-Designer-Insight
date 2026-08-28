@@ -12,6 +12,7 @@ import { LeaveManagementView } from './components/LeaveManagementView';
 import { PerformanceView } from './components/PerformanceView';
 import { PayrollView } from './components/PayrollView';
 import { TaskManagementView } from './components/TaskManagementView';
+import { SettingsView } from './components/SettingsView';
 import { OtherViews } from './components/OtherViews';
 import { AuthView } from './components/AuthView';
 import { AccessDeniedView } from './components/AccessDeniedView';
@@ -292,6 +293,15 @@ export function App() {
     setIsSupportOpen(true);
   };
 
+  const handleUpdateEmployeeEmail = (oldEmail: string, newEmail: string) => {
+    setEmployees(prev => prev.map(emp => {
+      if (emp.email.toLowerCase() === oldEmail.toLowerCase()) {
+        return { ...emp, email: newEmail };
+      }
+      return emp;
+    }));
+  };
+
   const handleLoginSuccess = (userOrEmail: UserProfile | string, roleParam?: UserRole) => {
     setIsAuthenticated(true);
     let activeUser: UserProfile;
@@ -322,8 +332,8 @@ export function App() {
   const renderCurrentView = () => {
     const roleType = currentUser.roleType || 'admin';
 
-    // 1. Admin-Only Views
-    if (['payroll', 'add-employee', 'reports', 'settings', 'admin'].includes(currentView)) {
+    // 1. Admin-Only Views (Settings is accessible to all roles)
+    if (['payroll', 'add-employee', 'reports', 'admin'].includes(currentView)) {
       if (roleType !== 'admin') {
         return (
           <AccessDeniedView
@@ -377,6 +387,8 @@ export function App() {
             onNavigate={setCurrentView}
             onDeleteEmployee={handleDeleteEmployee}
             onExportEmployees={() => setIsDownloadReportOpen(true)}
+            onUpdateEmployeeEmail={handleUpdateEmployeeEmail}
+            showToast={showToast}
           />
         );
 
@@ -450,11 +462,22 @@ export function App() {
           />
         );
 
+      case 'settings':
+      case 'admin':
+        return (
+          <SettingsView
+            currentUser={currentUser}
+            employees={employees}
+            onUpdateCurrentUser={setCurrentUser}
+            onUpdateEmployeeEmail={handleUpdateEmployeeEmail}
+            onNavigate={setCurrentView}
+            showToast={showToast}
+          />
+        );
+
       case 'assets':
       case 'documents':
       case 'reports':
-      case 'settings':
-      case 'admin':
         return <OtherViews view={currentView} onNavigate={setCurrentView} />;
 
       default:
