@@ -160,7 +160,7 @@ class AuthService {
     } catch {
       // Fallback
     }
-    return ADMIN_USER;
+    return null;
   }
 
   /**

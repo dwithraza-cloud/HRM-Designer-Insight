@@ -38,10 +38,11 @@ import { ViewMode, Employee, LeaveRequest, JobOpening, UserRole, TaskItem, UserP
 import { authService } from './services/authService';
 
 export function App() {
-  // Navigation & Authentication
-  const [currentView, setCurrentView] = useState<ViewMode>('dashboard');
-  const [currentUser, setCurrentUser] = useState<UserProfile>(ADMIN_USER);
-  const [isAuthenticated, setIsAuthenticated] = useState(true);
+  // Navigation & Authentication - strictly require login on app launch
+  const initialSession = authService.getActiveSession();
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => !!initialSession);
+  const [currentUser, setCurrentUser] = useState<UserProfile>(() => initialSession || ADMIN_USER);
+  const [currentView, setCurrentView] = useState<ViewMode>(() => initialSession ? 'dashboard' : 'auth-login');
 
   // Core Data State
   const [employees, setEmployees] = useState<Employee[]>(INITIAL_EMPLOYEES);
