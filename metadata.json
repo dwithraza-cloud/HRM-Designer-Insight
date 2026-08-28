@@ -1,0 +1,6 @@
+{
+  "name": "Aura HR",
+  "description": "Smart HRMS enterprise dashboard for employee management, recruitment, attendance tracking, leave requests, payroll, and performance reviews.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
