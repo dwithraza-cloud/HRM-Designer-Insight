@@ -14,58 +14,100 @@ import {
   Settings, 
   ShieldCheck,
   Sparkles,
-  HeadphonesIcon
+  HeadphonesIcon,
+  Shield,
+  UserCheck,
+  User
 } from 'lucide-react';
-import { ViewMode } from '../types';
+import { ViewMode, UserProfile } from '../types';
 
 interface SidebarProps {
   currentView: ViewMode;
+  currentUser: UserProfile;
   onNavigate: (view: ViewMode) => void;
   onOpenSupport: () => void;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ 
   currentView, 
+  currentUser,
   onNavigate,
   onOpenSupport 
 }) => {
-  const menuItems: { id: ViewMode; label: string; icon: React.ElementType; badge?: string }[] = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'employees', label: 'Employee Management', icon: Users },
-    { id: 'recruitment', label: 'Recruitment', icon: Briefcase, badge: '24' },
-    { id: 'attendance', label: 'Attendance', icon: Clock },
-    { id: 'leave', label: 'Leave Management', icon: CalendarDays, badge: '3' },
-    { id: 'payroll', label: 'Payroll', icon: CreditCard },
-    { id: 'performance', label: 'Performance', icon: Award },
-    { id: 'tasks', label: 'Task Management', icon: CheckSquare },
-    { id: 'assets', label: 'Asset Management', icon: Laptop },
-    { id: 'documents', label: 'Document Management', icon: FolderKanban },
-    { id: 'reports', label: 'Reports & Analytics', icon: BarChart3 },
-    { id: 'settings', label: 'Settings', icon: Settings },
+  const roleType = currentUser.roleType || 'admin';
+
+  // Base list of all items
+  const allMenuItems: { 
+    id: ViewMode; 
+    label: string; 
+    icon: React.ElementType; 
+    badge?: string;
+    roles: ('admin' | 'manager' | 'employee')[];
+  }[] = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: ['admin', 'manager', 'employee'] },
+    { id: 'employees', label: roleType === 'admin' ? 'Employee Management' : (roleType === 'manager' ? 'Team Directory' : 'Company Directory'), icon: Users, roles: ['admin', 'manager', 'employee'] },
+    { id: 'recruitment', label: roleType === 'admin' ? 'Recruitment' : (roleType === 'manager' ? 'Hiring & Interviews' : 'Internal Openings'), icon: Briefcase, badge: roleType === 'admin' ? '24' : undefined, roles: ['admin', 'manager', 'employee'] },
+    { id: 'attendance', label: roleType === 'admin' ? 'Attendance' : (roleType === 'manager' ? 'Team Attendance' : 'My Attendance'), icon: Clock, roles: ['admin', 'manager', 'employee'] },
+    { id: 'leave', label: roleType === 'admin' ? 'Leave Management' : (roleType === 'manager' ? 'Leave Approvals' : 'My Leaves'), icon: CalendarDays, badge: roleType === 'employee' ? undefined : '3', roles: ['admin', 'manager', 'employee'] },
+    { id: 'payroll', label: roleType === 'admin' ? 'Payroll' : 'My Payslips', icon: CreditCard, roles: roleType === 'admin' ? ['admin'] : ['employee'] },
+    { id: 'performance', label: roleType === 'admin' ? 'Performance' : (roleType === 'manager' ? 'Team Reviews' : 'My Performance'), icon: Award, roles: ['admin', 'manager', 'employee'] },
+    { id: 'tasks', label: roleType === 'admin' ? 'Task Management' : (roleType === 'manager' ? 'Team Tasks' : 'My Tasks'), icon: CheckSquare, roles: ['admin', 'manager', 'employee'] },
+    { id: 'assets', label: 'Asset Management', icon: Laptop, roles: ['admin'] },
+    { id: 'documents', label: 'Document Management', icon: FolderKanban, roles: ['admin', 'manager', 'employee'] },
+    { id: 'reports', label: roleType === 'admin' ? 'Reports & Analytics' : 'Department Analytics', icon: BarChart3, roles: ['admin', 'manager'] },
+    { id: 'settings', label: 'Settings', icon: Settings, roles: ['admin'] },
   ];
+
+  // Strictly filter out any module that the current role is not authorized to see
+  const authorizedMenuItems = allMenuItems.filter(item => item.roles.includes(roleType));
+
+  const getRoleBadge = () => {
+    switch (roleType) {
+      case 'admin':
+        return (
+          <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+            <Shield className="w-3 h-3" /> Admin
+          </span>
+        );
+      case 'manager':
+        return (
+          <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
+            <UserCheck className="w-3 h-3" /> Manager
+          </span>
+        );
+      case 'employee':
+        return (
+          <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+            <User className="w-3 h-3" /> Employee
+          </span>
+        );
+    }
+  };
 
   return (
     <aside id="main-sidebar" className="w-64 bg-[#0f172a]/95 border-r border-white/5 flex flex-col h-screen shrink-0 select-none overflow-y-auto">
       {/* Brand Header */}
-      <div className="p-5 flex items-center gap-3 border-b border-white/5 cursor-pointer" onClick={() => onNavigate('dashboard')}>
-        <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#7b42f6] to-[#a078ff] flex items-center justify-center shadow-lg shadow-purple-600/30 ring-1 ring-white/20">
-          <Sparkles className="w-5 h-5 text-white" />
-        </div>
-        <div>
-          <div className="flex items-center gap-1.5">
-            <span className="font-bold text-lg text-white tracking-tight">Aura HR</span>
-            <span className="text-[10px] uppercase font-semibold px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 border border-purple-500/30">Pro</span>
+      <div className="p-5 flex items-center justify-between border-b border-white/5 cursor-pointer" onClick={() => onNavigate('dashboard')}>
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#7b42f6] to-[#a078ff] flex items-center justify-center shadow-lg shadow-purple-600/30 ring-1 ring-white/20">
+            <Sparkles className="w-5 h-5 text-white" />
           </div>
-          <p className="text-xs text-slate-400 font-medium">Smart HRMS System</p>
+          <div>
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold text-lg text-white tracking-tight">Aura HR</span>
+            </div>
+            <p className="text-xs text-slate-400 font-medium">Enterprise HRMS</p>
+          </div>
         </div>
+        {getRoleBadge()}
       </div>
 
       {/* Navigation List */}
       <div className="p-3 flex-1 space-y-1">
-        <div className="px-3 py-1.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider">
-          Main Menu
+        <div className="px-3 py-1.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider flex items-center justify-between">
+          <span>{roleType === 'admin' ? 'Administration' : (roleType === 'manager' ? `${currentUser.department || 'Department'} Portal` : 'Employee Workspace')}</span>
         </div>
-        {menuItems.map((item) => {
+        {authorizedMenuItems.map((item) => {
           const Icon = item.icon;
           const isActive = currentView === item.id || (item.id === 'employees' && (currentView === 'employee-detail' || currentView === 'add-employee'));
           
@@ -120,23 +162,26 @@ export const Sidebar: React.FC<SidebarProps> = ({
           <button
             id="btn-sidebar-support"
             onClick={onOpenSupport}
-            className="w-full py-1.5 px-3 rounded-lg text-xs font-semibold bg-[#a078ff]/20 hover:bg-[#a078ff]/30 text-purple-200 border border-[#a078ff]/40 flex items-center justify-center gap-1.5 transition-all"
+            className="w-full py-1.5 px-3 rounded-lg text-xs font-semibold bg-[#a078ff]/20 hover:bg-[#a078ff]/30 text-purple-200 border border-[#a078ff]/40 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
           >
             <HeadphonesIcon className="w-3.5 h-3.5" />
             Contact Support
           </button>
         </div>
 
-        {/* System Admin */}
-        <button
-          id="btn-sidebar-admin"
-          onClick={() => onNavigate('admin')}
-          className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-white/[0.04] transition-all"
-        >
-          <ShieldCheck className="w-4 h-4 text-emerald-400" />
-          <span>System Administration</span>
-        </button>
+        {/* System Admin Button: strictly Admin only */}
+        {roleType === 'admin' && (
+          <button
+            id="btn-sidebar-admin"
+            onClick={() => onNavigate('admin')}
+            className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-white/[0.04] transition-all cursor-pointer"
+          >
+            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+            <span>System Administration</span>
+          </button>
+        )}
       </div>
     </aside>
   );
 };
+

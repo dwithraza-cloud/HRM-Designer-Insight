@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   CheckSquare, 
   Plus, 
@@ -27,10 +27,45 @@ import {
   X,
   User,
   ArrowRight,
-  Briefcase
+  Briefcase,
+  BarChart3,
+  TrendingUp,
+  Target,
+  PieChart as PieIcon,
+  Activity,
+  Award,
+  ChevronDown,
+  ChevronUp,
+  LayoutGrid,
+  Paperclip,
+  Camera,
+  FileText,
+  Image as ImageIcon,
+  FileCode,
+  FileSpreadsheet,
+  Download,
+  Upload,
+  RefreshCw,
+  ExternalLink,
+  Wand2,
+  VideoOff
 } from 'lucide-react';
+import {
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  Legend,
+  Cell,
+  PieChart,
+  Pie,
+  ReferenceLine,
+  CartesianGrid
+} from 'recharts';
 import confetti from 'canvas-confetti';
-import { TaskItem, TaskAssignee, UserRole, Employee, UserProfile } from '../types';
+import { TaskItem, TaskAssignee, UserRole, Employee, UserProfile, TaskAttachment } from '../types';
 
 interface TaskManagementViewProps {
   tasks: TaskItem[];
@@ -41,6 +76,8 @@ interface TaskManagementViewProps {
   onTogglePinTask: (id: string) => void;
   onDeleteTask: (id: string) => void;
   onUpdateTaskStatus?: (id: string, status: TaskItem['status']) => void;
+  onAddAttachment?: (taskId: string, attachment: TaskAttachment) => void;
+  onRemoveAttachment?: (taskId: string, attachmentId: string) => void;
   onNavigate: (view: any) => void;
 }
 
@@ -53,10 +90,12 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
   onTogglePinTask,
   onDeleteTask,
   onUpdateTaskStatus,
+  onAddAttachment,
+  onRemoveAttachment,
   onNavigate
 }) => {
-  // Role simulation switcher (enables testing Admin, Manager, and Employee task perspectives)
-  const [activeRole, setActiveRole] = useState<UserRole>(currentUser.roleType || 'admin');
+  // Fixed user role from authenticated session
+  const userRole = currentUser.roleType || 'admin';
   
   // View & Filter States
   const [viewMode, setViewMode] = useState<'board' | 'list'>('list');
@@ -66,9 +105,43 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
   const [selectedDepartment, setSelectedDepartment] = useState<string>('All');
   const [activeTab, setActiveTab] = useState<'all' | 'assigned-to-me' | 'assigned-by-me' | 'in-progress' | 'completed'>('all');
   
+  // Dashboard Analytics Section States
+  const [showAnalyticsSummary, setShowAnalyticsSummary] = useState(true);
+  const [analyticsMetricMode, setAnalyticsMetricMode] = useState<'rate' | 'counts'>('rate');
+  const [analyticsTargetDept, setAnalyticsTargetDept] = useState<string>('All');
+  
   // Modal & Drawer States
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [selectedTaskForDetails, setSelectedTaskForDetails] = useState<TaskItem | null>(null);
+
+  // Attachment State & Camera Capture in TaskDetailModal
+  const [isCameraActive, setIsCameraActive] = useState(false);
+  const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const [previewAttachmentUrl, setPreviewAttachmentUrl] = useState<string | null>(null);
+  const [isGeneratingVisual, setIsGeneratingVisual] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+
+  // Stop camera when closing details modal or unmounting
+  useEffect(() => {
+    return () => {
+      if (cameraStream) {
+        cameraStream.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, [cameraStream]);
+
+  // Keep selectedTaskForDetails in sync with tasks prop updates
+  useEffect(() => {
+    if (selectedTaskForDetails) {
+      const updated = tasks.find(t => t.id === selectedTaskForDetails.id);
+      if (updated) {
+        setSelectedTaskForDetails(updated);
+      }
+    }
+  }, [tasks]);
 
   // Form State for Creating / Assigning a Task
   const [formTitle, setFormTitle] = useState('');
@@ -83,20 +156,6 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
   const categories = ['All', 'Leave', 'Performance', 'Payroll', 'Recruitment', 'Engineering', 'Design', 'Onboarding', 'Compliance', 'General'];
   const departments = ['All', 'Design', 'Engineering', 'Marketing', 'HR', 'Finance', 'Operations', 'Sales'];
 
-  // Current simulation user profile derived from active role
-  const simulatedUser = {
-    id: activeRole === 'admin' ? 'emp-1' : activeRole === 'manager' ? 'emp-4' : 'emp-2',
-    name: activeRole === 'admin' ? 'Ayon Ahmed' : activeRole === 'manager' ? 'Sarah Jenkins' : 'Rahim Uddin',
-    role: activeRole === 'admin' ? 'Lead UI/UX Designer & Admin' : activeRole === 'manager' ? 'VP of Product Design' : 'Senior Software Engineer',
-    roleType: activeRole,
-    department: activeRole === 'admin' ? 'Design' : activeRole === 'manager' ? 'Design' : 'Engineering',
-    avatar: activeRole === 'admin' 
-      ? 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZQndi0Q67LuyTUAs8C_7ptSSpWoFH67QhVbLxfJfqqymbTF0-ImTvZteCBSvRhku41rEwtRkkZ2yuI6nQmZb0BfCOfoZGNID_PEOn4VWAWuKVpWR7Ik8bXButYDHroiVhejf7BUJNlr5RCQjELnvfecxNjb3pdO-wFiNm8ZRyrk3KjzJktBW6t2HdB8uvLEdFXWKFvdGX3obC3EyYo3QUO3PVDq-c-ap2YZgHP_1pncDG6fIUYwwl'
-      : activeRole === 'manager'
-      ? 'https://lh3.googleusercontent.com/aida-public/AB6AXuCrGYbO589VOTATEVvsbR5nyyOSwLBLuKXOxbFTAMEVyEEoVKEAscptTr1Fw8iGYSdAB1g1J5Y2Vx6y8Ypywrc1QuHnwiu6JKqVnuiQ75E-Zl1lklVnZju58LXg4EI6rxi76D29F_QaeZ2oRg09f6FoJmK_QL6Z8b3aMDi0bl53XwFkCgcHB8gkqEbh1qkmBlu_dlAs6b6vNmeVUXXkWqoQmRb8581biV9eH9oJ2xg2_FZghdAbak5L'
-      : 'https://lh3.googleusercontent.com/aida-public/AB6AXuBSANbGI_8XJwr4JerK2U_S85Z10-Lhe_dnK9SL5j7CA7A78CwnhHQHcY4OfNOr2pDaW9hgOkTqKBCWPZ9PSSR9sfz9ljGdJCaRFTtYFjjW-EeDaH4Lb7pSfNCRoyGbmvg9LYJvJf4XTU2H0-vTX1OncSoyHd9Yq1BjbrpoWB6up8qQOivnc3S9AK11f-bL5xi6YcXHd-lgU3gKTaGFvNAZXYG0H5_OaDSz4Vlg_JLyRbeFO6H7cJrv'
-  };
-
   // Check role-based assignment eligibility for assignee dropdown:
   // - Admin can assign to Managers and Employees
   // - Manager can assign to Employees only
@@ -105,12 +164,12 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
     // Determine whether employee is manager or regular employee
     const isManager = emp.designation.includes('VP') || emp.designation.includes('Lead') || emp.designation.includes('Officer') || emp.designation.includes('Director') || emp.designation.includes('CTO');
     
-    if (activeRole === 'admin') {
+    if (userRole === 'admin') {
       return true; // Admin can assign to everyone
     }
-    if (activeRole === 'manager') {
+    if (userRole === 'manager') {
       // Manager can assign tasks to Employees only (not other managers or admins)
-      return !isManager && emp.id !== simulatedUser.id;
+      return !isManager && emp.id !== currentUser.id;
     }
     return false;
   });
@@ -120,16 +179,16 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
   // - Manager can view their own assigned tasks and tasks of employees under them / in their department.
   // - Employee can view and update only their own assigned tasks.
   const accessibleTasks = tasks.filter(task => {
-    if (activeRole === 'admin') return true;
-    if (activeRole === 'manager') {
-      const isAssignedToMe = task.assignedTo?.id === simulatedUser.id || task.assignedTo?.name === simulatedUser.name;
-      const isAssignedByMe = task.assignedBy?.id === simulatedUser.id || task.assignedBy?.name === simulatedUser.name;
-      const isInMyDept = task.department === simulatedUser.department || task.assignedTo?.department === simulatedUser.department;
+    if (userRole === 'admin') return true;
+    if (userRole === 'manager') {
+      const isAssignedToMe = task.assignedTo?.id === currentUser.id || task.assignedTo?.name === currentUser.name;
+      const isAssignedByMe = task.assignedBy?.id === currentUser.id || task.assignedBy?.name === currentUser.name;
+      const isInMyDept = task.department === currentUser.department || task.assignedTo?.department === currentUser.department;
       return isAssignedToMe || isAssignedByMe || isInMyDept;
     }
-    if (activeRole === 'employee') {
+    if (userRole === 'employee') {
       // Employee can view only their own assigned tasks
-      return task.assignedTo?.id === simulatedUser.id || task.assignedTo?.name === simulatedUser.name;
+      return task.assignedTo?.id === currentUser.id || task.assignedTo?.name === currentUser.name;
     }
     return false;
   });
@@ -137,10 +196,10 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
   // Apply tab filters
   const tabFilteredTasks = accessibleTasks.filter(task => {
     if (activeTab === 'assigned-to-me') {
-      return task.assignedTo?.id === simulatedUser.id || task.assignedTo?.name === simulatedUser.name;
+      return task.assignedTo?.id === currentUser.id || task.assignedTo?.name === currentUser.name;
     }
     if (activeTab === 'assigned-by-me') {
-      return task.assignedBy?.id === simulatedUser.id || task.assignedBy?.name === simulatedUser.name;
+      return task.assignedBy?.id === currentUser.id || task.assignedBy?.name === currentUser.name;
     }
     if (activeTab === 'in-progress') {
       return !task.completed && (task.status === 'In Progress' || task.status === 'Under Review');
@@ -195,12 +254,119 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
   const urgentInScope = accessibleTasks.filter(t => !t.completed && (t.priority === 'urgent' || t.priority === 'high')).length;
   const completionRate = totalInScope > 0 ? Math.round((completedInScope / totalInScope) * 100) : 0;
 
+  // --------------------------------------------------------------------------
+  // ROLE-PERMITTED RECHARTS DASHBOARD ANALYTICS CALCULATIONS
+  // --------------------------------------------------------------------------
+  // 1. Department Completion Rates (Filtered strictly by role permissions)
+  const departmentStatsMap: Record<string, { total: number; completed: number; inProgress: number; urgent: number }> = {};
+  accessibleTasks.forEach(task => {
+    const dept = task.department || task.assignedTo?.department || 'Operations';
+    if (!departmentStatsMap[dept]) {
+      departmentStatsMap[dept] = { total: 0, completed: 0, inProgress: 0, urgent: 0 };
+    }
+    departmentStatsMap[dept].total += 1;
+    if (task.completed || task.status === 'Completed') {
+      departmentStatsMap[dept].completed += 1;
+    } else if (task.status === 'In Progress' || task.status === 'Under Review') {
+      departmentStatsMap[dept].inProgress += 1;
+    }
+    if (!task.completed && (task.priority === 'urgent' || task.priority === 'high')) {
+      departmentStatsMap[dept].urgent += 1;
+    }
+  });
+
+  const departmentCompletionChartData = Object.keys(departmentStatsMap).map(dept => {
+    const stat = departmentStatsMap[dept];
+    const rate = stat.total > 0 ? Math.round((stat.completed / stat.total) * 100) : 0;
+    return {
+      department: dept,
+      rate,
+      completed: stat.completed,
+      pending: stat.total - stat.completed,
+      inProgress: stat.inProgress,
+      total: stat.total,
+      urgent: stat.urgent
+    };
+  }).sort((a, b) => b.rate - a.rate);
+
+  // 2. Employee Completion Rates (Filtered strictly by role permissions and accessible tasks)
+  const employeeStatsMap: Record<string, {
+    empId: string;
+    name: string;
+    role: string;
+    department: string;
+    avatar?: string;
+    total: number;
+    completed: number;
+    inProgress: number;
+    urgent: number;
+  }> = {};
+
+  accessibleTasks.forEach(task => {
+    const assignee = task.assignedTo;
+    const name = assignee?.name || 'Unassigned';
+    const empId = assignee?.id || name;
+    
+    if (!employeeStatsMap[name]) {
+      employeeStatsMap[name] = {
+        empId,
+        name,
+        role: assignee?.role || 'Staff Member',
+        department: task.department || assignee?.department || 'General',
+        avatar: assignee?.avatar,
+        total: 0,
+        completed: 0,
+        inProgress: 0,
+        urgent: 0
+      };
+    }
+    employeeStatsMap[name].total += 1;
+    if (task.completed || task.status === 'Completed') {
+      employeeStatsMap[name].completed += 1;
+    } else if (task.status === 'In Progress' || task.status === 'Under Review') {
+      employeeStatsMap[name].inProgress += 1;
+    }
+    if (!task.completed && (task.priority === 'urgent' || task.priority === 'high')) {
+      employeeStatsMap[name].urgent += 1;
+    }
+  });
+
+  const employeeCompletionChartData = Object.values(employeeStatsMap)
+    .filter(emp => analyticsTargetDept === 'All' || emp.department.toLowerCase() === analyticsTargetDept.toLowerCase())
+    .map(emp => {
+      const rate = emp.total > 0 ? Math.round((emp.completed / emp.total) * 100) : 0;
+      return {
+        name: emp.name.length > 14 ? `${emp.name.split(' ')[0]} ${emp.name.split(' ')[1]?.[0] || ''}.` : emp.name,
+        fullName: emp.name,
+        department: emp.department,
+        role: emp.role,
+        avatar: emp.avatar,
+        rate,
+        completed: emp.completed,
+        pending: emp.total - emp.completed,
+        inProgress: emp.inProgress,
+        total: emp.total,
+        urgent: emp.urgent
+      };
+    })
+    .sort((a, b) => b.rate - a.rate);
+
+  // Status Distribution Pie Data
+  const statusDistributionData = [
+    { name: 'Completed', value: completedInScope, color: '#10b981' },
+    { name: 'In Progress', value: inProgressInScope, color: '#3b82f6' },
+    { name: 'Pending / Action', value: Math.max(0, totalInScope - completedInScope - inProgressInScope), color: '#a855f7' },
+  ].filter(d => d.value > 0);
+
+  // Top performer in current scope
+  const topPerformer = employeeCompletionChartData.length > 0 ? employeeCompletionChartData[0] : null;
+
   // Handle Task Creation Submit
   const handleAssignTaskSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formTitle.trim()) return;
 
-    if (activeRole === 'employee') {
+    if (userRole === 'employee') {
       alert('Permission Denied: Employees cannot assign tasks.');
       return;
     }
@@ -229,11 +395,11 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
         avatar: targetEmp.avatar
       },
       assignedBy: {
-        id: simulatedUser.id,
-        name: simulatedUser.name,
-        role: simulatedUser.role,
-        roleType: simulatedUser.roleType,
-        avatar: simulatedUser.avatar
+        id: currentUser.id,
+        name: currentUser.name,
+        role: currentUser.role,
+        roleType: currentUser.roleType,
+        avatar: currentUser.avatar
       },
       tags: formTags.split(',').map(t => t.trim()).filter(Boolean)
     };
@@ -243,6 +409,173 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
     setFormTitle('');
     setFormDescription('');
     setFormTags('HR Workflow');
+  };
+
+  // Attachment Helper Functions
+  const handleStartCamera = async () => {
+    setCameraError(null);
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        setCameraError('Camera API is not supported on this browser or environment.');
+        return;
+      }
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }
+      });
+      setCameraStream(stream);
+      setIsCameraActive(true);
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        videoRef.current.play();
+      }
+    } catch (err: any) {
+      console.error('Camera access error:', err);
+      setCameraError(err.message || 'Unable to access camera. Please allow camera permissions.');
+    }
+  };
+
+  const handleStopCamera = () => {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+      setCameraStream(null);
+    }
+    setIsCameraActive(false);
+    setCameraError(null);
+  };
+
+  const handleCaptureCameraPhoto = () => {
+    if (!videoRef.current || !selectedTaskForDetails) return;
+    const video = videoRef.current;
+    const canvas = canvasRef.current || document.createElement('canvas');
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
+      const newAtt: TaskAttachment = {
+        id: `att-cam-${Date.now()}`,
+        name: `camera_snapshot_${new Date().toISOString().slice(0, 10)}.jpg`,
+        type: 'image',
+        url: dataUrl,
+        size: `${Math.round((dataUrl.length * 3) / 4 / 1024)} KB`,
+        uploadedAt: 'Just now',
+        source: 'camera'
+      };
+
+      if (onAddAttachment) {
+        onAddAttachment(selectedTaskForDetails.id, newAtt);
+      }
+      // Update local state directly for responsive feedback
+      setSelectedTaskForDetails({
+        ...selectedTaskForDetails,
+        attachments: [newAtt, ...(selectedTaskForDetails.attachments || [])]
+      });
+      handleStopCamera();
+      confetti({ particleCount: 25, spread: 45, origin: { y: 0.7 } });
+    }
+  };
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0 || !selectedTaskForDetails) return;
+    const file = e.target.files[0];
+    const reader = new FileReader();
+
+    reader.onload = (event) => {
+      const dataUrl = event.target?.result as string;
+      const isImg = file.type.startsWith('image/');
+      const isPdf = file.type.includes('pdf');
+      const isSpreadsheet = file.type.includes('sheet') || file.type.includes('csv') || file.name.endsWith('.xlsx');
+      
+      const newAtt: TaskAttachment = {
+        id: `att-up-${Date.now()}`,
+        name: file.name,
+        type: isImg ? 'image' : isPdf ? 'pdf' : isSpreadsheet ? 'spreadsheet' : 'document',
+        url: dataUrl,
+        size: `${(file.size / (1024 * 1024)).toFixed(2)} MB`,
+        uploadedAt: 'Just now',
+        source: 'upload'
+      };
+
+      if (onAddAttachment) {
+        onAddAttachment(selectedTaskForDetails.id, newAtt);
+      }
+      setSelectedTaskForDetails({
+        ...selectedTaskForDetails,
+        attachments: [newAtt, ...(selectedTaskForDetails.attachments || [])]
+      });
+      confetti({ particleCount: 25, spread: 45, origin: { y: 0.7 } });
+    };
+
+    reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleGeneratePlaceholderVisual = () => {
+    if (!selectedTaskForDetails) return;
+    setIsGeneratingVisual(true);
+
+    // Curated high quality professional placeholder visuals based on task category
+    const visualLibrary = [
+      {
+        name: 'task_architecture_blueprint.png',
+        url: 'https://images.unsplash.com/photo-1581291518857-4e27b48ff24e?auto=format&fit=crop&w=600&q=80',
+        size: '1.8 MB',
+        type: 'image' as const
+      },
+      {
+        name: 'compliance_audit_summary.png',
+        url: 'https://images.unsplash.com/photo-1554224155-6726b3ff858f?auto=format&fit=crop&w=600&q=80',
+        size: '1.2 MB',
+        type: 'image' as const
+      },
+      {
+        name: 'ui_spec_wireframes.png',
+        url: 'https://images.unsplash.com/photo-1507238691740-187a5b1d37b8?auto=format&fit=crop&w=600&q=80',
+        size: '2.4 MB',
+        type: 'image' as const
+      },
+      {
+        name: 'employee_review_matrix.png',
+        url: 'https://images.unsplash.com/photo-1551836022-d5d88e9218df?auto=format&fit=crop&w=600&q=80',
+        size: '1.5 MB',
+        type: 'image' as const
+      }
+    ];
+
+    setTimeout(() => {
+      const selected = visualLibrary[Math.floor(Math.random() * visualLibrary.length)];
+      const newAtt: TaskAttachment = {
+        id: `att-gen-${Date.now()}`,
+        name: selected.name,
+        type: selected.type,
+        url: selected.url,
+        size: selected.size,
+        uploadedAt: 'Just now',
+        source: 'generated'
+      };
+
+      if (onAddAttachment) {
+        onAddAttachment(selectedTaskForDetails.id, newAtt);
+      }
+      setSelectedTaskForDetails({
+        ...selectedTaskForDetails,
+        attachments: [newAtt, ...(selectedTaskForDetails.attachments || [])]
+      });
+      setIsGeneratingVisual(false);
+      confetti({ particleCount: 30, spread: 50, origin: { y: 0.7 } });
+    }, 450);
+  };
+
+  const handleRemoveTaskAttachment = (attId: string) => {
+    if (!selectedTaskForDetails) return;
+    if (onRemoveAttachment) {
+      onRemoveAttachment(selectedTaskForDetails.id, attId);
+    }
+    setSelectedTaskForDetails({
+      ...selectedTaskForDetails,
+      attachments: (selectedTaskForDetails.attachments || []).filter(a => a.id !== attId)
+    });
   };
 
   // Status Change Handler with fallback
@@ -316,38 +649,10 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
           </div>
         </div>
 
-        {/* Action Controls & Role Simulator */}
+        {/* Action Controls */}
         <div className="flex items-center gap-3 flex-wrap">
-          {/* Active Role Simulation Switcher */}
-          <div className="flex items-center gap-1 bg-white/[0.04] p-1 rounded-2xl border border-white/10 shadow-inner">
-            <span className="text-[11px] text-slate-400 font-semibold px-2 flex items-center gap-1">
-              <Shield className="w-3.5 h-3.5 text-purple-400" /> Role:
-            </span>
-            {(['admin', 'manager', 'employee'] as const).map((roleKey) => {
-              const isActive = activeRole === roleKey;
-              return (
-                <button
-                  key={roleKey}
-                  id={`btn-role-switch-${roleKey}`}
-                  onClick={() => setActiveRole(roleKey)}
-                  className={`px-3 py-1.5 rounded-xl text-xs font-bold capitalize transition-all cursor-pointer ${
-                    isActive
-                      ? roleKey === 'admin'
-                        ? 'bg-purple-600 text-white shadow-md shadow-purple-600/30'
-                        : roleKey === 'manager'
-                        ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/30'
-                        : 'bg-emerald-600 text-white shadow-md shadow-emerald-600/30'
-                      : 'text-slate-400 hover:text-white hover:bg-white/5'
-                  }`}
-                >
-                  {roleKey}
-                </button>
-              );
-            })}
-          </div>
-
           {/* Assign Task Button (Allowed for Admin & Manager, Hidden/Disabled for Employee) */}
-          {activeRole !== 'employee' ? (
+          {userRole !== 'employee' ? (
             <button
               id="btn-assign-new-task"
               onClick={() => {
@@ -382,16 +687,16 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
           <div>
             <div className="flex items-center gap-2">
               <span className="font-bold text-white">
-                Viewing as {simulatedUser.name}
+                Viewing as {currentUser.name}
               </span>
               <span className="text-[10px] uppercase font-extrabold px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                {activeRole.toUpperCase()}
+                {String(userRole || 'admin').toUpperCase()}
               </span>
             </div>
             <p className="text-[11px] text-slate-400 mt-0.5">
-              {activeRole === 'admin' && 'Full Administrative Access: Admin can assign tasks to Managers & Employees, and manage all organization tasks.'}
-              {activeRole === 'manager' && 'Department Scope: Manager can assign tasks to Employees only and view tasks under their department.'}
-              {activeRole === 'employee' && 'Individual Scope: Employee cannot assign tasks; can view and update their own assigned tasks.'}
+              {userRole === 'admin' && 'Full Administrative Access: Admin can assign tasks to Managers & Employees, and manage all organization tasks.'}
+              {userRole === 'manager' && `Department Scope (${currentUser.department || 'Design'}): Manager can assign tasks to Employees only and view department tasks.`}
+              {userRole === 'employee' && 'Individual Scope: Employee cannot assign tasks; can view and update their own assigned tasks.'}
             </p>
           </div>
         </div>
@@ -416,7 +721,7 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
           <div className="flex items-baseline gap-2">
             <p className="text-2xl font-bold text-white font-['Sora']">{totalInScope}</p>
             <span className="text-[11px] text-purple-300">
-              {activeRole === 'admin' ? 'Company-wide' : activeRole === 'manager' ? 'Dept & Assigned' : 'Assigned to Me'}
+              {userRole === 'admin' ? 'Company-wide' : userRole === 'manager' ? 'Dept & Assigned' : 'Assigned to Me'}
             </span>
           </div>
           <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
@@ -475,6 +780,387 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
         </div>
       </div>
 
+      {/* 3.5 DASHBOARD SUMMARY SECTION: RECHARTS TASK COMPLETION VISUALIZER */}
+      <div id="task-dashboard-summary-recharts" className="glass-panel p-5 rounded-2xl border border-white/5 space-y-4 relative overflow-hidden">
+        {/* Header with Title, Role Scoping Tag & Collapse / Metric Toggle */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-white/5">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-300">
+              <BarChart3 className="w-4 h-4" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h3 className="text-sm font-bold text-white font-['Sora']">Task Completion Analytics Summary</h3>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30 flex items-center gap-1">
+                  <Shield className="w-3 h-3 text-indigo-400" />
+                  {userRole === 'admin' && 'Organization Scope (All Units)'}
+                  {userRole === 'manager' && `${currentUser.department || 'Department'} & Assigned Scope`}
+                  {userRole === 'employee' && 'Personal Scope (Self)'}
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Real-time completion rates visualized across {departmentCompletionChartData.length} departments and {employeeCompletionChartData.length} team members within your role permission boundaries.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 flex-wrap self-start sm:self-auto">
+            {/* Metric Mode Toggle (Rate % vs Volume Count) */}
+            <div className="flex items-center gap-1 bg-white/[0.03] p-1 rounded-xl border border-white/5 text-xs">
+              <button
+                id="btn-metric-mode-rate"
+                onClick={() => setAnalyticsMetricMode('rate')}
+                className={`px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
+                  analyticsMetricMode === 'rate'
+                    ? 'bg-purple-600 text-white shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Completion Rate (%)
+              </button>
+              <button
+                id="btn-metric-mode-counts"
+                onClick={() => setAnalyticsMetricMode('counts')}
+                className={`px-2.5 py-1 rounded-lg font-semibold transition-all cursor-pointer ${
+                  analyticsMetricMode === 'counts'
+                    ? 'bg-purple-600 text-white shadow'
+                    : 'text-slate-400 hover:text-white'
+                }`}
+              >
+                Task Volume
+              </button>
+            </div>
+
+            {/* Department Filter for Employee Chart */}
+            {userRole !== 'employee' && departments.length > 1 && (
+              <div className="flex items-center gap-1 bg-white/[0.03] px-2.5 py-1 rounded-xl border border-white/5 text-xs">
+                <Building2 className="w-3 h-3 text-purple-400 shrink-0" />
+                <span className="text-[11px] text-slate-400 font-medium hidden md:inline">Dept:</span>
+                <select
+                  id="select-analytics-dept"
+                  value={analyticsTargetDept}
+                  onChange={(e) => setAnalyticsTargetDept(e.target.value)}
+                  className="bg-transparent text-xs text-purple-200 font-semibold focus:outline-none cursor-pointer pr-1"
+                >
+                  <option value="All" className="bg-[#131b2e] text-slate-200">All Depts</option>
+                  {departments.filter(d => d !== 'All').map(d => (
+                    <option key={d} value={d} className="bg-[#131b2e] text-slate-200">{d}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Toggle Panel Expand/Collapse */}
+            <button
+              id="btn-toggle-analytics-summary"
+              onClick={() => setShowAnalyticsSummary(!showAnalyticsSummary)}
+              className="p-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 transition-all cursor-pointer border border-white/5"
+              title={showAnalyticsSummary ? 'Collapse Analytics' : 'Expand Analytics'}
+            >
+              {showAnalyticsSummary ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+            </button>
+          </div>
+        </div>
+
+        {showAnalyticsSummary && (
+          <div className="space-y-5">
+            {/* Top Quick Telemetry Metric Highlights */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5">
+                <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider flex items-center gap-1">
+                  <Target className="w-3 h-3 text-purple-400" /> Target Benchmark
+                </span>
+                <p className="text-lg font-bold text-white mt-1 font-['Sora']">85% Target</p>
+                <span className={`text-[10px] font-semibold flex items-center gap-0.5 mt-0.5 ${
+                  completionRate >= 85 ? 'text-emerald-400' : 'text-amber-400'
+                }`}>
+                  <TrendingUp className="w-2.5 h-2.5" />
+                  {completionRate >= 85 ? 'Optimal SLA Achieved' : `${85 - completionRate}% to Target`}
+                </span>
+              </div>
+
+              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5">
+                <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider flex items-center gap-1">
+                  <Building2 className="w-3 h-3 text-indigo-400" /> Top Performing Dept
+                </span>
+                <p className="text-lg font-bold text-indigo-300 mt-1 font-['Sora'] truncate">
+                  {departmentCompletionChartData[0]?.department || 'N/A'}
+                </p>
+                <span className="text-[10px] text-slate-400 block mt-0.5">
+                  {departmentCompletionChartData[0] ? `${departmentCompletionChartData[0].rate}% Completed` : 'No tasks in scope'}
+                </span>
+              </div>
+
+              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5">
+                <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider flex items-center gap-1">
+                  <Award className="w-3 h-3 text-amber-400" /> Top Individual Contributor
+                </span>
+                <p className="text-lg font-bold text-white mt-1 font-['Sora'] truncate">
+                  {topPerformer ? topPerformer.fullName : 'N/A'}
+                </p>
+                <span className="text-[10px] text-emerald-400 font-semibold block mt-0.5">
+                  {topPerformer ? `${topPerformer.rate}% (${topPerformer.completed}/${topPerformer.total} Done)` : 'No data'}
+                </span>
+              </div>
+
+              <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5">
+                <span className="text-[10px] text-slate-400 uppercase font-bold tracking-wider flex items-center gap-1">
+                  <Activity className="w-3 h-3 text-emerald-400" /> Status Resolution
+                </span>
+                <p className="text-lg font-bold text-emerald-400 mt-1 font-['Sora']">
+                  {completedInScope} <span className="text-xs text-slate-400 font-normal">/ {totalInScope} Total</span>
+                </p>
+                <span className="text-[10px] text-purple-300 block mt-0.5">
+                  {inProgressInScope} Active In-Flight
+                </span>
+              </div>
+            </div>
+
+            {/* Main Charts Grid: Department Completion Rates + Employee Completion Rates */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {/* CHART 1: Completion Rates By Department */}
+              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Building2 className="w-4 h-4 text-purple-400" />
+                    <span className="text-xs font-bold text-white">Department Completion Rates</span>
+                  </div>
+                  <span className="text-[10px] text-purple-300 font-semibold bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-500/20">
+                    {departmentCompletionChartData.length} Departments
+                  </span>
+                </div>
+
+                {departmentCompletionChartData.length === 0 ? (
+                  <div className="h-56 flex items-center justify-center text-xs text-slate-400">
+                    No department task data available in current role scope.
+                  </div>
+                ) : (
+                  <div className="h-60 w-full pt-2">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={departmentCompletionChartData}
+                        margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" vertical={false} />
+                        <XAxis 
+                          dataKey="department" 
+                          stroke="#64748b" 
+                          fontSize={11}
+                          tickLine={false}
+                          axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
+                        />
+                        <YAxis 
+                          stroke="#64748b" 
+                          fontSize={11}
+                          tickLine={false}
+                          axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
+                          domain={analyticsMetricMode === 'rate' ? [0, 100] : [0, 'auto']}
+                          tickFormatter={(val) => analyticsMetricMode === 'rate' ? `${val}%` : val}
+                        />
+                        <Tooltip
+                          content={({ active, payload }) => {
+                            if (active && payload && payload.length) {
+                              const data = payload[0].payload;
+                              return (
+                                <div className="bg-[#131b2e] p-3 rounded-xl border border-white/10 shadow-xl text-xs space-y-1.5 min-w-[170px]">
+                                  <div className="flex items-center gap-1.5 font-bold text-white border-b border-white/10 pb-1">
+                                    <Building2 className="w-3.5 h-3.5 text-purple-400" />
+                                    <span>{data.department}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between text-[11px] text-slate-300 pt-0.5">
+                                    <span>Completion Rate:</span>
+                                    <span className="font-bold text-emerald-400 font-['Sora']">{data.rate}%</span>
+                                  </div>
+                                  <div className="flex items-center justify-between text-[11px] text-slate-300">
+                                    <span>Completed Tasks:</span>
+                                    <span className="font-bold text-white">{data.completed}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between text-[11px] text-slate-300">
+                                    <span>In Progress / Pending:</span>
+                                    <span className="font-bold text-amber-300">{data.pending}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between text-[11px] text-slate-300">
+                                    <span>Total Assigned:</span>
+                                    <span className="font-bold text-purple-300">{data.total}</span>
+                                  </div>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        {analyticsMetricMode === 'rate' && (
+                          <ReferenceLine 
+                            y={85} 
+                            stroke="#10b981" 
+                            strokeDasharray="4 4" 
+                            label={{ value: 'Target 85%', fill: '#10b981', fontSize: 10, position: 'insideTopRight' }} 
+                          />
+                        )}
+                        {analyticsMetricMode === 'rate' ? (
+                          <Bar dataKey="rate" radius={[6, 6, 0, 0]}>
+                            {departmentCompletionChartData.map((entry, index) => (
+                              <Cell 
+                                key={`cell-dept-${index}`} 
+                                fill={entry.rate >= 80 ? '#10b981' : entry.rate >= 50 ? '#8b5cf6' : '#f59e0b'} 
+                              />
+                            ))}
+                          </Bar>
+                        ) : (
+                          <>
+                            <Bar dataKey="completed" name="Completed" stackId="a" fill="#10b981" radius={[0, 0, 0, 0]} />
+                            <Bar dataKey="pending" name="In Progress / Pending" stackId="a" fill="#6366f1" radius={[6, 6, 0, 0]} />
+                          </>
+                        )}
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+
+                {/* Micro Department Rate Badges */}
+                <div className="flex items-center gap-2 flex-wrap pt-1">
+                  {departmentCompletionChartData.map((d) => (
+                    <div 
+                      key={d.department}
+                      className="text-[10px] px-2 py-1 rounded-lg bg-white/[0.02] border border-white/5 flex items-center gap-1.5"
+                    >
+                      <span className="text-slate-400">{d.department}:</span>
+                      <span className={`font-bold font-['Sora'] ${
+                        d.rate >= 80 ? 'text-emerald-400' : d.rate >= 50 ? 'text-purple-300' : 'text-amber-400'
+                      }`}>
+                        {d.rate}%
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* CHART 2: Completion Rates By Employee (Role-Permitted) */}
+              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-indigo-400" />
+                    <span className="text-xs font-bold text-white">Employee Completion Rates</span>
+                  </div>
+                  <span className="text-[10px] text-indigo-300 font-semibold bg-indigo-500/10 px-2 py-0.5 rounded-full border border-indigo-500/20">
+                    {employeeCompletionChartData.length} Assignees
+                  </span>
+                </div>
+
+                {employeeCompletionChartData.length === 0 ? (
+                  <div className="h-56 flex items-center justify-center text-xs text-slate-400">
+                    No employee task assignments found in current scope.
+                  </div>
+                ) : (
+                  <div className="h-60 w-full pt-2">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart
+                        data={employeeCompletionChartData}
+                        layout="vertical"
+                        margin={{ top: 5, right: 20, left: 10, bottom: 0 }}
+                      >
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" horizontal={false} />
+                        <XAxis 
+                          type="number"
+                          stroke="#64748b" 
+                          fontSize={11}
+                          tickLine={false}
+                          axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
+                          domain={analyticsMetricMode === 'rate' ? [0, 100] : [0, 'auto']}
+                          tickFormatter={(val) => analyticsMetricMode === 'rate' ? `${val}%` : val}
+                        />
+                        <YAxis 
+                          dataKey="name" 
+                          type="category"
+                          stroke="#94a3b8" 
+                          fontSize={11}
+                          tickLine={false}
+                          axisLine={{ stroke: 'rgba(255,255,255,0.1)' }}
+                          width={85}
+                        />
+                        <Tooltip
+                          content={({ active, payload }) => {
+                            if (active && payload && payload.length) {
+                              const data = payload[0].payload;
+                              return (
+                                <div className="bg-[#131b2e] p-3 rounded-xl border border-white/10 shadow-xl text-xs space-y-1.5 min-w-[190px]">
+                                  <div className="flex items-center gap-2 border-b border-white/10 pb-1.5">
+                                    {data.avatar ? (
+                                      <img src={data.avatar} alt={data.fullName} className="w-5 h-5 rounded-full object-cover" />
+                                    ) : (
+                                      <div className="w-5 h-5 rounded-full bg-purple-600 flex items-center justify-center text-[10px] text-white font-bold">
+                                        {data.fullName.charAt(0)}
+                                      </div>
+                                    )}
+                                    <div className="min-w-0">
+                                      <p className="font-bold text-white truncate">{data.fullName}</p>
+                                      <p className="text-[10px] text-slate-400">{data.department} • {data.role}</p>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center justify-between text-[11px] text-slate-300 pt-0.5">
+                                    <span>Completion Rate:</span>
+                                    <span className="font-bold text-emerald-400 font-['Sora']">{data.rate}%</span>
+                                  </div>
+                                  <div className="flex items-center justify-between text-[11px] text-slate-300">
+                                    <span>Completed / Total:</span>
+                                    <span className="font-bold text-white">{data.completed} of {data.total}</span>
+                                  </div>
+                                  <div className="flex items-center justify-between text-[11px] text-slate-300">
+                                    <span>In-Flight Workflows:</span>
+                                    <span className="font-bold text-blue-400">{data.inProgress}</span>
+                                  </div>
+                                </div>
+                              );
+                            }
+                            return null;
+                          }}
+                        />
+                        {analyticsMetricMode === 'rate' && (
+                          <ReferenceLine 
+                            x={85} 
+                            stroke="#10b981" 
+                            strokeDasharray="4 4" 
+                            label={{ value: '85%', fill: '#10b981', fontSize: 10, position: 'insideBottomRight' }} 
+                          />
+                        )}
+                        {analyticsMetricMode === 'rate' ? (
+                          <Bar dataKey="rate" radius={[0, 6, 6, 0]}>
+                            {employeeCompletionChartData.map((entry, index) => (
+                              <Cell 
+                                key={`cell-emp-${index}`} 
+                                fill={entry.rate >= 80 ? '#10b981' : entry.rate >= 50 ? '#6366f1' : '#f43f5e'} 
+                              />
+                            ))}
+                          </Bar>
+                        ) : (
+                          <>
+                            <Bar dataKey="completed" name="Completed" stackId="b" fill="#10b981" radius={[0, 0, 0, 0]} />
+                            <Bar dataKey="pending" name="In Progress" stackId="b" fill="#8b5cf6" radius={[0, 6, 6, 0]} />
+                          </>
+                        )}
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                )}
+
+                {/* Employee Performance Mini-Tags */}
+                <div className="flex items-center gap-1.5 flex-wrap pt-1">
+                  {employeeCompletionChartData.slice(0, 4).map((emp) => (
+                    <div 
+                      key={emp.fullName}
+                      className="text-[10px] px-2 py-0.5 rounded-lg bg-white/[0.02] border border-white/5 flex items-center gap-1"
+                    >
+                      <span className="text-slate-300">{emp.name}:</span>
+                      <span className="font-bold text-emerald-400 font-['Sora']">{emp.rate}%</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
       {/* 4. Filter Toolbar & Search Bar */}
       <div className="glass-panel p-4 rounded-2xl border border-white/5 space-y-3">
         {/* Top row: Tab selector + Layout Toggle + Search */}
@@ -490,10 +1176,10 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
                   : 'text-slate-400 hover:text-white'
               }`}
             >
-              {activeRole === 'admin' ? 'All Organization Tasks' : activeRole === 'manager' ? 'All Department Tasks' : 'All My Tasks'}
+              {userRole === 'admin' ? 'All Organization Tasks' : userRole === 'manager' ? 'All Department Tasks' : 'All My Tasks'}
             </button>
 
-            {activeRole !== 'employee' && (
+            {userRole !== 'employee' && (
               <button
                 id="tab-tasks-assigned-by-me"
                 onClick={() => setActiveTab('assigned-by-me')}
@@ -638,7 +1324,7 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
             </div>
 
             {/* Department Filter (Visible for Admin & Manager) */}
-            {activeRole !== 'employee' && (
+            {userRole !== 'employee' && (
               <div className="flex items-center gap-1 bg-white/[0.03] px-2.5 py-1 rounded-lg border border-white/5 text-xs">
                 <span className="text-[11px] text-slate-400">Dept:</span>
                 <select
@@ -681,11 +1367,11 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
               </div>
               <h3 className="text-sm font-bold text-white">No Tasks Found</h3>
               <p className="text-xs text-slate-400 max-w-md mx-auto">
-                {activeRole === 'employee'
+                {userRole === 'employee'
                   ? 'You currently have no tasks matching this filter. Once assigned by an Admin or Manager, they will appear here.'
                   : 'No tasks match your active filter criteria. Use the "Assign New Task" button above to delegate new tasks.'}
               </p>
-              {activeRole !== 'employee' && (
+              {userRole !== 'employee' && (
                 <button
                   onClick={() => setIsAssignModalOpen(true)}
                   className="brand-gradient-btn px-4 py-2 rounded-xl text-xs font-bold text-white shadow-lg shadow-purple-600/30 inline-flex items-center gap-1.5 cursor-pointer"
@@ -696,10 +1382,10 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
             </div>
           ) : (
             sortedTasks.map((task) => {
-              const isAssignedToCurrent = task.assignedTo?.id === simulatedUser.id || task.assignedTo?.name === simulatedUser.name;
-              const isAssignedByCurrent = task.assignedBy?.id === simulatedUser.id || task.assignedBy?.name === simulatedUser.name;
-              const canEditStatus = activeRole === 'admin' || isAssignedToCurrent || isAssignedByCurrent;
-              const canDelete = activeRole === 'admin' || (activeRole === 'manager' && isAssignedByCurrent);
+              const isAssignedToCurrent = task.assignedTo?.id === currentUser.id || task.assignedTo?.name === currentUser.name;
+              const isAssignedByCurrent = task.assignedBy?.id === currentUser.id || task.assignedBy?.name === currentUser.name;
+              const canEditStatus = userRole === 'admin' || isAssignedToCurrent || isAssignedByCurrent;
+              const canDelete = userRole === 'admin' || (userRole === 'manager' && isAssignedByCurrent);
 
               return (
                 <div
@@ -807,6 +1493,19 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
                               <span>Due: {task.dueDate}</span>
                             </div>
                           )}
+
+                          {/* Attachments Indicator Badge */}
+                          {task.attachments && task.attachments.length > 0 && (
+                            <button
+                              type="button"
+                              onClick={() => setSelectedTaskForDetails(task)}
+                              className="flex items-center gap-1 text-purple-300 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 px-2 py-0.5 rounded-md font-medium text-[10px] cursor-pointer"
+                              title={`${task.attachments.length} attached documents / photos`}
+                            >
+                              <Paperclip className="w-2.5 h-2.5" />
+                              <span>{task.attachments.length}</span>
+                            </button>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -910,13 +1609,21 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
                     </div>
                     <p className="text-xs font-semibold text-white line-clamp-2">{task.title}</p>
                     <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-white/5">
-                      <span>To: {task.assignedTo?.name || 'Unassigned'}</span>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="truncate">To: {task.assignedTo?.name || 'Unassigned'}</span>
+                        {task.attachments && task.attachments.length > 0 && (
+                          <span className="flex items-center gap-0.5 text-[9px] text-purple-300 bg-purple-500/20 px-1 py-0.2 rounded shrink-0">
+                            <Paperclip className="w-2 h-2" />
+                            {task.attachments.length}
+                          </span>
+                        )}
+                      </div>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           handleStatusChange(task.id, 'In Progress');
                         }}
-                        className="text-[10px] text-purple-400 hover:text-purple-300 font-bold flex items-center gap-0.5"
+                        className="text-[10px] text-purple-400 hover:text-purple-300 font-bold flex items-center gap-0.5 shrink-0"
                       >
                         Start <ArrowRight className="w-2.5 h-2.5" />
                       </button>
@@ -1023,7 +1730,7 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
                 <div>
                   <h3 className="text-base font-bold text-white">Assign New Task</h3>
                   <p className="text-[11px] text-slate-400">
-                    {activeRole === 'admin' 
+                    {userRole === 'admin' 
                       ? 'Admin Scope: Can assign tasks to Managers and Employees' 
                       : 'Manager Scope: Can assign tasks to Employees only'}
                   </p>
@@ -1075,7 +1782,7 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
                 <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
                   <span>Assign To (Eligible Workforce) <span className="text-rose-400">*</span></span>
                   <span className="text-[10px] text-purple-400">
-                    {activeRole === 'manager' ? 'Employees Only' : 'Managers & Employees'}
+                    {userRole === 'manager' ? 'Employees Only' : 'Managers & Employees'}
                   </span>
                 </label>
                 <select
@@ -1094,7 +1801,7 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
                     );
                   })}
                 </select>
-                {activeRole === 'manager' && (
+                {userRole === 'manager' && (
                   <p className="text-[10px] text-slate-500">
                     Rule enforced: As a Manager, you can delegate tasks to Employees only.
                   </p>
@@ -1294,6 +2001,219 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
                 </div>
               )}
 
+              {/* 📎 FILE ATTACHMENTS & VISUAL ARTIFACTS SECTION */}
+              <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Paperclip className="w-4 h-4 text-purple-400" />
+                    <span className="text-xs font-bold text-white">Attachments & Documents</span>
+                  </div>
+                  <span className="text-[10px] text-purple-300 font-semibold bg-purple-500/10 px-2 py-0.5 rounded-full border border-purple-500/20">
+                    {(selectedTaskForDetails.attachments || []).length} Attached
+                  </span>
+                </div>
+
+                {/* Attachment Action Buttons: Upload File, Camera Photo, AI Placeholder Visual */}
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  {/* 1. Upload Local File/Image */}
+                  <button
+                    id="btn-task-upload-file"
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border border-white/10 text-xs font-medium transition-all cursor-pointer group"
+                  >
+                    <Upload className="w-3.5 h-3.5 text-blue-400 group-hover:scale-110 transition-transform" />
+                    <span>Upload File</span>
+                  </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+
+                  {/* 2. Take Camera Photo */}
+                  <button
+                    id="btn-task-open-camera"
+                    type="button"
+                    onClick={isCameraActive ? handleStopCamera : handleStartCamera}
+                    className={`flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-medium transition-all cursor-pointer group ${
+                      isCameraActive 
+                        ? 'bg-rose-500/20 text-rose-300 border-rose-500/30' 
+                        : 'bg-white/5 hover:bg-white/10 text-slate-300 hover:text-white border-white/10'
+                    }`}
+                  >
+                    <Camera className={`w-3.5 h-3.5 ${isCameraActive ? 'text-rose-400 animate-pulse' : 'text-emerald-400'} group-hover:scale-110 transition-transform`} />
+                    <span>{isCameraActive ? 'Close Camera' : 'Camera Photo'}</span>
+                  </button>
+
+                  {/* 3. Generate Mock Visual / Document Placeholder */}
+                  <button
+                    id="btn-task-generate-visual"
+                    type="button"
+                    disabled={isGeneratingVisual}
+                    onClick={handleGeneratePlaceholderVisual}
+                    className="flex items-center justify-center gap-1.5 px-3 py-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-200 border border-purple-500/20 text-xs font-medium transition-all cursor-pointer group disabled:opacity-50"
+                  >
+                    <Wand2 className={`w-3.5 h-3.5 text-purple-400 ${isGeneratingVisual ? 'animate-spin' : 'group-hover:rotate-12'} transition-transform`} />
+                    <span>{isGeneratingVisual ? 'Generating...' : 'Add Visual'}</span>
+                  </button>
+                </div>
+
+                {/* Real-time Camera Viewport Drawer */}
+                {isCameraActive && (
+                  <div className="p-3 rounded-2xl bg-black/60 border border-purple-500/30 space-y-3 animate-in fade-in zoom-in-95">
+                    <div className="relative rounded-xl overflow-hidden bg-black aspect-video flex items-center justify-center border border-white/10">
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        playsInline
+                        muted
+                        className="w-full h-full object-cover"
+                      />
+                      <canvas ref={canvasRef} className="hidden" />
+                      <div className="absolute top-2 left-2 flex items-center gap-1.5 bg-black/60 backdrop-blur-md px-2 py-0.5 rounded-md text-[10px] text-emerald-400 font-mono">
+                        <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+                        LIVE CAMERA
+                      </div>
+                    </div>
+
+                    <div className="flex items-center justify-between gap-2">
+                      <button
+                        id="btn-task-capture-photo"
+                        type="button"
+                        onClick={handleCaptureCameraPhoto}
+                        className="flex-1 brand-gradient-btn py-2 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-2 shadow-lg shadow-purple-500/30 cursor-pointer"
+                      >
+                        <Camera className="w-3.5 h-3.5" />
+                        <span>Snap & Attach Photo</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={handleStopCamera}
+                        className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/15 text-slate-300 text-xs font-medium"
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Camera Permission or Error Warning */}
+                {cameraError && (
+                  <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-300 text-[11px] flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <VideoOff className="w-4 h-4 text-rose-400 shrink-0" />
+                      <span>{cameraError}</span>
+                    </div>
+                    <button 
+                      onClick={() => setCameraError(null)} 
+                      className="text-rose-400 hover:text-white p-1"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                )}
+
+                {/* Attached Files List */}
+                {(!selectedTaskForDetails.attachments || selectedTaskForDetails.attachments.length === 0) ? (
+                  <div className="py-4 text-center rounded-xl bg-white/[0.01] border border-dashed border-white/10">
+                    <p className="text-[11px] text-slate-400">No attachments linked to this task yet.</p>
+                    <p className="text-[10px] text-slate-500 mt-0.5">Use the buttons above to upload files, take photos, or generate visuals.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
+                    {selectedTaskForDetails.attachments.map((att) => {
+                      const isImg = att.type === 'image';
+                      return (
+                        <div
+                          key={att.id}
+                          className="group relative p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/5 hover:border-purple-500/30 transition-all flex flex-col justify-between"
+                        >
+                          {/* Image preview or Document Icon */}
+                          <div className="flex items-start gap-2.5">
+                            {isImg ? (
+                              <div 
+                                onClick={() => setPreviewAttachmentUrl(att.url)}
+                                className="w-12 h-12 rounded-lg bg-black/40 border border-white/10 overflow-hidden shrink-0 cursor-pointer relative group/img"
+                              >
+                                <img
+                                  src={att.url}
+                                  alt={att.name}
+                                  className="w-full h-full object-cover group-hover/img:scale-110 transition-transform duration-300"
+                                  referrerPolicy="no-referrer"
+                                />
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/img:opacity-100 flex items-center justify-center transition-opacity">
+                                  <Eye className="w-3.5 h-3.5 text-white" />
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="w-12 h-12 rounded-lg bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0 text-purple-300">
+                                {att.type === 'pdf' ? (
+                                  <FileText className="w-5 h-5 text-rose-400" />
+                                ) : att.type === 'spreadsheet' ? (
+                                  <FileSpreadsheet className="w-5 h-5 text-emerald-400" />
+                                ) : (
+                                  <FileText className="w-5 h-5 text-blue-400" />
+                                )}
+                              </div>
+                            )}
+
+                            {/* Details */}
+                            <div className="min-w-0 flex-1">
+                              <p className="text-xs font-semibold text-white truncate group-hover:text-purple-200 transition-colors" title={att.name}>
+                                {att.name}
+                              </p>
+                              <div className="flex items-center gap-1.5 text-[10px] text-slate-400 mt-0.5">
+                                <span>{att.size || '1.0 MB'}</span>
+                                <span>•</span>
+                                <span className="capitalize">{att.source || 'file'}</span>
+                              </div>
+                              <span className="text-[9px] text-slate-500 block mt-0.5">{att.uploadedAt}</span>
+                            </div>
+                          </div>
+
+                          {/* Quick Action Footer inside Card */}
+                          <div className="flex items-center justify-end gap-1.5 pt-2 mt-2 border-t border-white/5">
+                            {isImg && (
+                              <button
+                                type="button"
+                                onClick={() => setPreviewAttachmentUrl(att.url)}
+                                className="p-1 rounded-md text-slate-400 hover:text-purple-300 hover:bg-white/5 text-[10px] flex items-center gap-1"
+                                title="View full visual"
+                              >
+                                <Eye className="w-3 h-3" />
+                                <span>View</span>
+                              </button>
+                            )}
+                            <a
+                              href={att.url}
+                              download={att.name}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="p-1 rounded-md text-slate-400 hover:text-emerald-300 hover:bg-white/5 text-[10px] flex items-center gap-1"
+                              title="Download or open link"
+                            >
+                              <Download className="w-3 h-3" />
+                              <span>Open</span>
+                            </a>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveTaskAttachment(att.id)}
+                              className="p-1 rounded-md text-slate-400 hover:text-rose-400 hover:bg-rose-500/10 text-[10px] flex items-center gap-1 transition-colors"
+                              title="Delete attachment"
+                            >
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
               {/* Status Update Quick Action */}
               <div className="p-3.5 rounded-2xl bg-purple-500/10 border border-purple-500/20 space-y-2">
                 <span className="text-xs font-bold text-white">Update Status</span>
@@ -1321,11 +2241,60 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
             {/* Footer */}
             <div className="flex items-center justify-end pt-3 border-t border-white/10">
               <button
-                onClick={() => setSelectedTaskForDetails(null)}
-                className="brand-gradient-btn px-4 py-2 rounded-xl text-xs font-bold text-white"
+                onClick={() => {
+                  handleStopCamera();
+                  setSelectedTaskForDetails(null);
+                }}
+                className="brand-gradient-btn px-4 py-2 rounded-xl text-xs font-bold text-white cursor-pointer"
               >
                 Close
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 8. ATTACHMENT LIGHTBOX MODAL */}
+      {previewAttachmentUrl && (
+        <div 
+          className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-in fade-in"
+          onClick={() => setPreviewAttachmentUrl(null)}
+        >
+          <div 
+            className="relative max-w-2xl w-full bg-[#131b2e] rounded-2xl p-3 border border-white/15 shadow-2xl space-y-3 animate-in zoom-in-95"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+              <span className="text-xs font-bold text-white flex items-center gap-2">
+                <ImageIcon className="w-4 h-4 text-purple-400" />
+                Image Preview
+              </span>
+              <button
+                onClick={() => setPreviewAttachmentUrl(null)}
+                className="w-7 h-7 rounded-lg bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="rounded-xl overflow-hidden bg-black/50 border border-white/10 max-h-[70vh] flex items-center justify-center">
+              <img
+                src={previewAttachmentUrl}
+                alt="Attachment preview"
+                className="max-h-[68vh] w-auto max-w-full object-contain rounded-lg"
+                referrerPolicy="no-referrer"
+              />
+            </div>
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <a
+                href={previewAttachmentUrl}
+                download="task_attachment_visual.jpg"
+                target="_blank"
+                rel="noreferrer"
+                className="brand-gradient-btn px-4 py-2 rounded-xl text-xs font-bold text-white flex items-center gap-1.5"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Save Full Image</span>
+              </a>
             </div>
           </div>
         </div>

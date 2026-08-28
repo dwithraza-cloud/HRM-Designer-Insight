@@ -1,14 +1,14 @@
 import { Employee, LeaveRequest, AttendanceRecord, JobOpening, UpcomingEvent, ActivityItem, UserProfile, FeedbackItem, NotificationItem, TaskItem } from '../types';
 
-export const CURRENT_USER: UserProfile = {
-  id: 'usr-001',
+export const ADMIN_USER: UserProfile = {
+  id: 'usr-admin-01',
   name: 'Ayon Ahmed',
-  role: 'Lead UI/UX Designer',
+  role: 'HR Director & System Admin',
   roleType: 'admin',
   email: 'ayon.design@aurahrms.io',
   avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZQndi0Q67LuyTUAs8C_7ptSSpWoFH67QhVbLxfJfqqymbTF0-ImTvZteCBSvRhku41rEwtRkkZ2yuI6nQmZb0BfCOfoZGNID_PEOn4VWAWuKVpWR7Ik8bXButYDHroiVhejf7BUJNlr5RCQjELnvfecxNjb3pdO-wFiNm8ZRyrk3KjzJktBW6t2HdB8uvLEdFXWKFvdGX3obC3EyYo3QUO3PVDq-c-ap2YZgHP_1pncDG6fIUYwwl',
-  department: 'Design & Product Experience',
-  empId: 'EMP-0142',
+  department: 'Operations & HR',
+  empId: 'EMP-0001',
   location: 'Gulshan 2, Dhaka, Bangladesh',
   phone: '+880 1712-345678',
   address: 'House 42, Road 11, Block D, Banani, Dhaka-1213',
@@ -19,13 +19,69 @@ export const CURRENT_USER: UserProfile = {
   nationality: 'Bangladeshi',
   joiningDate: '15 January 2021',
   reportingManager: {
+    name: 'Executive Board',
+    role: 'Board of Directors',
+    avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=256&q=80'
+  },
+  baseSalary: 320000,
+  status: 'Active'
+};
+
+export const MANAGER_USER: UserProfile = {
+  id: 'usr-mgr-01',
+  name: 'Sarah Jenkins',
+  role: 'Design Department Lead',
+  roleType: 'manager',
+  email: 'sarah.jenkins@aurahrms.io',
+  avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCrGYbO589VOTATEVvsbR5nyyOSwLBLuKXOxbFTAMEVyEEoVKEAscptTr1Fw8iGYSdAB1g1J5Y2Vx6y8Ypywrc1QuHnwiu6JKqVnuiQ75E-Zl1lklVnZju58LXg4EI6rxi76D29F_QaeZ2oRg09f6FoJmK_QL6Z8b3aMDi0bl53XwFkCgcHB8gkqEbh1qkmBlu_dlAs6b6vNmeVUXXkWqoQmRb8581biV9eH9oJ2xg2_FZghdAbak5L',
+  department: 'Design',
+  empId: 'EMP-0103',
+  location: 'Gulshan 1, Dhaka, Bangladesh',
+  phone: '+1 (555) 234-5678',
+  address: 'Gulshan 1, Dhaka',
+  gender: 'Female',
+  dob: '18 May 1988',
+  bloodGroup: 'A+ Positive',
+  maritalStatus: 'Married',
+  nationality: 'American',
+  joiningDate: '12 March 2019',
+  reportingManager: {
+    name: 'Ayon Ahmed',
+    role: 'HR Director',
+    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZQndi0Q67LuyTUAs8C_7ptSSpWoFH67QhVbLxfJfqqymbTF0-ImTvZteCBSvRhku41rEwtRkkZ2yuI6nQmZb0BfCOfoZGNID_PEOn4VWAWuKVpWR7Ik8bXButYDHroiVhejf7BUJNlr5RCQjELnvfecxNjb3pdO-wFiNm8ZRyrk3KjzJktBW6t2HdB8uvLEdFXWKFvdGX3obC3EyYo3QUO3PVDq-c-ap2YZgHP_1pncDG6fIUYwwl'
+  },
+  baseSalary: 280000,
+  status: 'Active'
+};
+
+export const EMPLOYEE_USER: UserProfile = {
+  id: 'usr-emp-01',
+  name: 'Rahim Uddin',
+  role: 'UI/UX Visual Designer',
+  roleType: 'employee',
+  email: 'rahim.uddin@aurahrms.io',
+  avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBSANbGI_8XJwr4JerK2U_S85Z10-Lhe_dnK9SL5j7CA7A78CwnhHQHcY4OfNOr2pDaW9hgOkTqKBCWPZ9PSSR9sfz9ljGdJCaRFTtYFjjW-EeDaH4Lb7pSfNCRoyGbmvg9LYJvJf4XTU2H0-vTX1OncSoyHd9Yq1BjbrpoWB6up8qQOivnc3S9AK11f-bL5xi6YcXHd-lgU3gKTaGFvNAZXYG0H5_OaDSz4Vlg_JLyRbeFO6H7cJrv',
+  department: 'Design',
+  empId: 'EMP-0142',
+  location: 'Mirpur DOHS, Dhaka, Bangladesh',
+  phone: '+880 1711-223344',
+  address: 'Mirpur DOHS, Road 4, House 18, Dhaka',
+  gender: 'Male',
+  dob: '03 March 1992',
+  bloodGroup: 'B+ Positive',
+  maritalStatus: 'Single',
+  nationality: 'Bangladeshi',
+  joiningDate: '10 February 2020',
+  reportingManager: {
     name: 'Sarah Jenkins',
-    role: 'VP of Product Design',
+    role: 'Design Department Lead',
     avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCrGYbO589VOTATEVvsbR5nyyOSwLBLuKXOxbFTAMEVyEEoVKEAscptTr1Fw8iGYSdAB1g1J5Y2Vx6y8Ypywrc1QuHnwiu6JKqVnuiQ75E-Zl1lklVnZju58LXg4EI6rxi76D29F_QaeZ2oRg09f6FoJmK_QL6Z8b3aMDi0bl53XwFkCgcHB8gkqEbh1qkmBlu_dlAs6b6vNmeVUXXkWqoQmRb8581biV9eH9oJ2xg2_FZghdAbak5L'
   },
   baseSalary: 145000,
   status: 'Active'
 };
+
+export const CURRENT_USER: UserProfile = ADMIN_USER;
 
 export const INITIAL_EMPLOYEES: Employee[] = [
   {
@@ -644,7 +700,27 @@ export const INITIAL_TASKS: TaskItem[] = [
       avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCrGYbO589VOTATEVvsbR5nyyOSwLBLuKXOxbFTAMEVyEEoVKEAscptTr1Fw8iGYSdAB1g1J5Y2Vx6y8Ypywrc1QuHnwiu6JKqVnuiQ75E-Zl1lklVnZju58LXg4EI6rxi76D29F_QaeZ2oRg09f6FoJmK_QL6Z8b3aMDi0bl53XwFkCgcHB8gkqEbh1qkmBlu_dlAs6b6vNmeVUXXkWqoQmRb8581biV9eH9oJ2xg2_FZghdAbak5L'
     },
     department: 'Design',
-    tags: ['HR Approvals', 'Urgent Coverage']
+    tags: ['HR Approvals', 'Urgent Coverage'],
+    attachments: [
+      {
+        id: 'att-1',
+        name: 'leave_medical_certificate.jpg',
+        type: 'image',
+        url: 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&w=600&q=80',
+        size: '1.4 MB',
+        uploadedAt: 'Today at 09:18 AM',
+        source: 'upload'
+      },
+      {
+        id: 'att-2',
+        name: 'coverage_schedule_q2.pdf',
+        type: 'pdf',
+        url: 'https://images.unsplash.com/photo-1568667256549-094345857637?auto=format&fit=crop&w=600&q=80',
+        size: '420 KB',
+        uploadedAt: 'Today at 09:20 AM',
+        source: 'upload'
+      }
+    ]
   },
   {
     id: 'task-2',
@@ -673,7 +749,18 @@ export const INITIAL_TASKS: TaskItem[] = [
       avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZQndi0Q67LuyTUAs8C_7ptSSpWoFH67QhVbLxfJfqqymbTF0-ImTvZteCBSvRhku41rEwtRkkZ2yuI6nQmZb0BfCOfoZGNID_PEOn4VWAWuKVpWR7Ik8bXButYDHroiVhejf7BUJNlr5RCQjELnvfecxNjb3pdO-wFiNm8ZRyrk3KjzJktBW6t2HdB8uvLEdFXWKFvdGX3obC3EyYo3QUO3PVDq-c-ap2YZgHP_1pncDG6fIUYwwl'
     },
     department: 'Design',
-    tags: ['Quarterly Review', 'Design Leadership']
+    tags: ['Quarterly Review', 'Design Leadership'],
+    attachments: [
+      {
+        id: 'att-3',
+        name: 'ux_design_scorecards_matrix.png',
+        type: 'image',
+        url: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=600&q=80',
+        size: '2.1 MB',
+        uploadedAt: 'Yesterday at 04:35 PM',
+        source: 'generated'
+      }
+    ]
   },
   {
     id: 'task-3',

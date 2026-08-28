@@ -14,6 +14,7 @@ import { PayrollView } from './components/PayrollView';
 import { TaskManagementView } from './components/TaskManagementView';
 import { OtherViews } from './components/OtherViews';
 import { AuthView } from './components/AuthView';
+import { AccessDeniedView } from './components/AccessDeniedView';
 import { 
   ApplyLeaveModal, 
   DownloadReportModal, 
@@ -21,7 +22,9 @@ import {
   GlobalSearchModal 
 } from './components/Modals';
 import { 
-  CURRENT_USER, 
+  ADMIN_USER,
+  MANAGER_USER,
+  EMPLOYEE_USER,
   INITIAL_EMPLOYEES, 
   INITIAL_LEAVE_REQUESTS, 
   INITIAL_ATTENDANCE, 
@@ -31,12 +34,13 @@ import {
   NOTIFICATIONS,
   INITIAL_TASKS
 } from './data/initialData';
-import { ViewMode, Employee, LeaveRequest, JobOpening, UserRole, TaskItem } from './types';
+import { ViewMode, Employee, LeaveRequest, JobOpening, UserRole, TaskItem, UserProfile } from './types';
+import { authService } from './services/authService';
 
 export function App() {
   // Navigation & Authentication
   const [currentView, setCurrentView] = useState<ViewMode>('dashboard');
-  const [currentUser, setCurrentUser] = useState(CURRENT_USER);
+  const [currentUser, setCurrentUser] = useState<UserProfile>(ADMIN_USER);
   const [isAuthenticated, setIsAuthenticated] = useState(true);
 
   // Core Data State
@@ -78,8 +82,12 @@ export function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Handlers
+  // RBAC Action Handlers with Authorization Checks
   const handleSaveEmployee = (newEmp: Employee) => {
+    if (currentUser.roleType !== 'admin') {
+      showToast('⚠️ Access Denied (403): Only Admins can register new employee accounts.');
+      return;
+    }
     setEmployees(prev => [newEmp, ...prev]);
     setSelectedEmployee(newEmp);
     setActivities(prev => [
@@ -98,6 +106,10 @@ export function App() {
   };
 
   const handleDeleteEmployee = (id: string) => {
+    if (currentUser.roleType !== 'admin') {
+      showToast('⚠️ Access Denied (403): Only Admins can delete employee records.');
+      return;
+    }
     const emp = employees.find(e => e.id === id);
     if (window.confirm(`Are you sure you want to delete ${emp?.name || 'this employee'}?`)) {
       setEmployees(prev => prev.filter(e => e.id !== id));
@@ -121,17 +133,39 @@ export function App() {
   };
 
   const handleApproveLeave = (id: string) => {
+    if (currentUser.roleType === 'employee') {
+      showToast('⚠️ Access Denied (403): Employees cannot approve leave requests.');
+      return;
+    }
+    const targetLeave = leaveRequests.find(r => r.id === id);
+    if (currentUser.roleType === 'manager' && targetLeave && targetLeave.department !== currentUser.department) {
+      showToast(`⚠️ Access Denied: Managers can only approve leave requests for the ${currentUser.department} department.`);
+      return;
+    }
     setLeaveRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'Approved' } : r));
     confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
     showToast(`Leave request approved.`);
   };
 
   const handleRejectLeave = (id: string) => {
+    if (currentUser.roleType === 'employee') {
+      showToast('⚠️ Access Denied (403): Employees cannot reject leave requests.');
+      return;
+    }
+    const targetLeave = leaveRequests.find(r => r.id === id);
+    if (currentUser.roleType === 'manager' && targetLeave && targetLeave.department !== currentUser.department) {
+      showToast(`⚠️ Access Denied: Managers can only reject leave requests for the ${currentUser.department} department.`);
+      return;
+    }
     setLeaveRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'Rejected' } : r));
     showToast(`Leave request rejected.`);
   };
 
   const handleAddJob = (job: JobOpening) => {
+    if (currentUser.roleType === 'employee') {
+      showToast('⚠️ Access Denied (403): Employees cannot post job openings.');
+      return;
+    }
     setJobOpenings(prev => [job, ...prev]);
     showToast(`New job posting "${job.title}" created.`);
   };
@@ -174,6 +208,11 @@ export function App() {
       showToast(`Task added: "${newTask.title.slice(0, 30)}${newTask.title.length > 30 ? '...' : ''}"`);
     } else {
       const taskObj = titleOrTask as TaskItem;
+      // Role hierarchy assignment check:
+      if (currentUser.roleType === 'employee' && taskObj.assignedTo?.id !== currentUser.id) {
+        showToast('⚠️ Access Denied: Employees can only create personal tasks.');
+        return;
+      }
       setTasks(prev => [taskObj, ...prev]);
       showToast(`Task assigned to ${taskObj.assignedTo?.name || 'team member'}`);
     }
@@ -221,19 +260,220 @@ export function App() {
     showToast(`Task deleted.`);
   };
 
+  const handleAddAttachment = (taskId: string, attachment: any) => {
+    setTasks(prev => prev.map(t => {
+      if (t.id === taskId) {
+        const existing = t.attachments || [];
+        return {
+          ...t,
+          attachments: [attachment, ...existing]
+        };
+      }
+      return t;
+    }));
+    showToast(`Attachment "${attachment.name}" attached to task.`);
+  };
+
+  const handleRemoveAttachment = (taskId: string, attachmentId: string) => {
+    setTasks(prev => prev.map(t => {
+      if (t.id === taskId) {
+        return {
+          ...t,
+          attachments: (t.attachments || []).filter(a => a.id !== attachmentId)
+        };
+      }
+      return t;
+    }));
+    showToast(`Attachment removed.`);
+  };
+
   const handleSendMessage = (emp: Employee) => {
     setIsSupportOpen(true);
   };
 
-  const handleLoginSuccess = (email: string, role: UserRole) => {
+  const handleLoginSuccess = (userOrEmail: UserProfile | string, roleParam?: UserRole) => {
     setIsAuthenticated(true);
+    let activeUser: UserProfile;
+
+    if (typeof userOrEmail === 'object' && userOrEmail !== null) {
+      activeUser = userOrEmail;
+    } else {
+      const email = userOrEmail;
+      const role = roleParam || 'admin';
+      if (role === 'admin') activeUser = ADMIN_USER;
+      else if (role === 'manager') activeUser = MANAGER_USER;
+      else activeUser = EMPLOYEE_USER;
+    }
+
+    setCurrentUser(activeUser);
     setCurrentView('dashboard');
-    showToast(`Signed in as ${role.toUpperCase()} (${email})`);
+    const roleTitle = (activeUser.roleType || 'user').toUpperCase();
+    showToast(`Signed in as ${roleTitle} (${activeUser.email || activeUser.name})`);
   };
 
   const handleSignOut = () => {
+    authService.signOut();
     setIsAuthenticated(false);
     setCurrentView('auth-login');
+  };
+
+  // Helper to render RBAC guarded view
+  const renderCurrentView = () => {
+    const roleType = currentUser.roleType || 'admin';
+
+    // 1. Admin-Only Views
+    if (['payroll', 'add-employee', 'reports', 'settings', 'admin'].includes(currentView)) {
+      if (roleType !== 'admin') {
+        return (
+          <AccessDeniedView
+            currentUser={currentUser}
+            requiredRole="admin"
+            attemptedView={currentView}
+            onNavigate={setCurrentView}
+          />
+        );
+      }
+    }
+
+    // 2. Admin & Manager Views (Recruitment)
+    if (currentView === 'recruitment' && roleType === 'employee') {
+      return (
+        <AccessDeniedView
+          currentUser={currentUser}
+          requiredRole="admin-or-manager"
+          attemptedView="recruitment"
+          onNavigate={setCurrentView}
+        />
+      );
+    }
+
+    // View Components
+    switch (currentView) {
+      case 'dashboard':
+        return (
+          <DashboardView
+            currentUser={currentUser}
+            employees={employees}
+            leaveRequests={leaveRequests}
+            upcomingEvents={upcomingEvents}
+            activities={activities}
+            tasks={tasks}
+            onAddTask={handleAddTask}
+            onToggleTask={handleToggleTask}
+            onTogglePinTask={handleTogglePinTask}
+            onDeleteTask={handleDeleteTask}
+            onNavigate={setCurrentView}
+            onOpenApplyLeave={() => setIsApplyLeaveOpen(true)}
+          />
+        );
+
+      case 'employees':
+        return (
+          <EmployeeManagementView
+            employees={employees}
+            currentUser={currentUser}
+            onSelectEmployee={setSelectedEmployee}
+            onNavigate={setCurrentView}
+            onDeleteEmployee={handleDeleteEmployee}
+            onExportEmployees={() => setIsDownloadReportOpen(true)}
+          />
+        );
+
+      case 'employee-detail':
+        return (
+          <EmployeeDetailView
+            employee={selectedEmployee}
+            currentUser={currentUser}
+            onBack={() => setCurrentView('employees')}
+            onNavigate={setCurrentView}
+            onSendMessage={handleSendMessage}
+          />
+        );
+
+      case 'add-employee':
+        return (
+          <AddEmployeeView
+            onBack={() => setCurrentView('employees')}
+            onSaveEmployee={handleSaveEmployee}
+          />
+        );
+
+      case 'recruitment':
+        return (
+          <RecruitmentView
+            jobOpenings={jobOpenings}
+            onAddJob={handleAddJob}
+            onNavigate={setCurrentView}
+          />
+        );
+
+      case 'attendance':
+        return (
+          <AttendanceView
+            attendanceRecords={attendanceRecords}
+            onNavigate={setCurrentView}
+          />
+        );
+
+      case 'leave':
+        return (
+          <LeaveManagementView
+            leaveRequests={leaveRequests}
+            onApproveLeave={handleApproveLeave}
+            onRejectLeave={handleRejectLeave}
+            onOpenApplyLeave={() => setIsApplyLeaveOpen(true)}
+            onNavigate={setCurrentView}
+          />
+        );
+
+      case 'payroll':
+        return <PayrollView onNavigate={setCurrentView} />;
+
+      case 'performance':
+        return <PerformanceView onNavigate={setCurrentView} />;
+
+      case 'tasks':
+        return (
+          <TaskManagementView
+            tasks={tasks}
+            employees={employees}
+            currentUser={currentUser}
+            onAddTask={handleAddTask}
+            onToggleTask={handleToggleTask}
+            onTogglePinTask={handleTogglePinTask}
+            onDeleteTask={handleDeleteTask}
+            onUpdateTaskStatus={handleUpdateTaskStatus}
+            onAddAttachment={handleAddAttachment}
+            onRemoveAttachment={handleRemoveAttachment}
+            onNavigate={setCurrentView}
+          />
+        );
+
+      case 'assets':
+      case 'documents':
+      case 'reports':
+      case 'settings':
+      case 'admin':
+        return <OtherViews view={currentView} onNavigate={setCurrentView} />;
+
+      default:
+        return (
+          <DashboardView
+            currentUser={currentUser}
+            employees={employees}
+            leaveRequests={leaveRequests}
+            upcomingEvents={upcomingEvents}
+            activities={activities}
+            tasks={tasks}
+            onAddTask={handleAddTask}
+            onToggleTask={handleToggleTask}
+            onTogglePinTask={handleTogglePinTask}
+            onDeleteTask={handleDeleteTask}
+            onNavigate={setCurrentView}
+            onOpenApplyLeave={() => setIsApplyLeaveOpen(true)}
+          />
+        );
+    }
   };
 
   // If viewing Auth screens or unauthenticated
@@ -257,9 +497,10 @@ export function App() {
         </div>
       )}
 
-      {/* Main Sidebar */}
+      {/* Main Sidebar (Dynamically filters menu tabs according to currentUser.roleType) */}
       <Sidebar
         currentView={currentView}
+        currentUser={currentUser}
         onNavigate={setCurrentView}
         onOpenSupport={() => setIsSupportOpen(true)}
       />
@@ -277,100 +518,9 @@ export function App() {
           onSignOut={handleSignOut}
         />
 
-        {/* Dynamic Page Views Container */}
+        {/* Dynamic Page Views Container with RBAC Guarding */}
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
-          {currentView === 'dashboard' && (
-            <DashboardView
-              employees={employees}
-              leaveRequests={leaveRequests}
-              upcomingEvents={upcomingEvents}
-              activities={activities}
-              tasks={tasks}
-              onAddTask={handleAddTask}
-              onToggleTask={handleToggleTask}
-              onTogglePinTask={handleTogglePinTask}
-              onDeleteTask={handleDeleteTask}
-              onNavigate={setCurrentView}
-              onOpenApplyLeave={() => setIsApplyLeaveOpen(true)}
-            />
-          )}
-
-          {currentView === 'employees' && (
-            <EmployeeManagementView
-              employees={employees}
-              onSelectEmployee={setSelectedEmployee}
-              onNavigate={setCurrentView}
-              onDeleteEmployee={handleDeleteEmployee}
-              onExportEmployees={() => setIsDownloadReportOpen(true)}
-            />
-          )}
-
-          {currentView === 'employee-detail' && (
-            <EmployeeDetailView
-              employee={selectedEmployee}
-              onBack={() => setCurrentView('employees')}
-              onNavigate={setCurrentView}
-              onSendMessage={handleSendMessage}
-            />
-          )}
-
-          {currentView === 'add-employee' && (
-            <AddEmployeeView
-              onBack={() => setCurrentView('employees')}
-              onSaveEmployee={handleSaveEmployee}
-            />
-          )}
-
-          {currentView === 'recruitment' && (
-            <RecruitmentView
-              jobOpenings={jobOpenings}
-              onAddJob={handleAddJob}
-              onNavigate={setCurrentView}
-            />
-          )}
-
-          {currentView === 'attendance' && (
-            <AttendanceView
-              attendanceRecords={attendanceRecords}
-              onNavigate={setCurrentView}
-            />
-          )}
-
-          {currentView === 'leave' && (
-            <LeaveManagementView
-              leaveRequests={leaveRequests}
-              onApproveLeave={handleApproveLeave}
-              onRejectLeave={handleRejectLeave}
-              onOpenApplyLeave={() => setIsApplyLeaveOpen(true)}
-              onNavigate={setCurrentView}
-            />
-          )}
-
-          {currentView === 'payroll' && (
-            <PayrollView onNavigate={setCurrentView} />
-          )}
-
-          {currentView === 'performance' && (
-            <PerformanceView onNavigate={setCurrentView} />
-          )}
-
-          {currentView === 'tasks' && (
-            <TaskManagementView
-              tasks={tasks}
-              employees={employees}
-              currentUser={currentUser}
-              onAddTask={handleAddTask}
-              onToggleTask={handleToggleTask}
-              onTogglePinTask={handleTogglePinTask}
-              onDeleteTask={handleDeleteTask}
-              onUpdateTaskStatus={handleUpdateTaskStatus}
-              onNavigate={setCurrentView}
-            />
-          )}
-
-          {['assets', 'documents', 'reports', 'settings', 'admin'].includes(currentView) && (
-            <OtherViews view={currentView} onNavigate={setCurrentView} />
-          )}
+          {renderCurrentView()}
         </main>
       </div>
 
@@ -403,3 +553,4 @@ export function App() {
 }
 
 export default App;
+

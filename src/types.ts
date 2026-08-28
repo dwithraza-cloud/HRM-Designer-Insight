@@ -63,6 +63,7 @@ export interface Employee {
   address?: string;
   reportingManager?: string;
   baseSalary?: number;
+  roleType?: UserRole;
 }
 
 export interface LeaveRequest {
@@ -147,6 +148,16 @@ export interface TaskAssignee {
   email?: string;
 }
 
+export interface TaskAttachment {
+  id: string;
+  name: string;
+  type: 'image' | 'document' | 'pdf' | 'spreadsheet' | 'archive';
+  url: string;
+  size?: string;
+  uploadedAt: string;
+  source?: 'upload' | 'camera' | 'generated';
+}
+
 export interface TaskItem {
   id: string;
   title: string;
@@ -169,6 +180,7 @@ export interface TaskItem {
   department?: string;
   tags?: string[];
   notes?: string;
+  attachments?: TaskAttachment[];
 }
 
 export interface FeedbackItem {

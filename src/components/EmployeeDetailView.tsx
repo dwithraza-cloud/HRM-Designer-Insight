@@ -16,12 +16,14 @@ import {
   User, 
   CheckCircle2,
   CalendarDays,
-  Sparkles
+  Sparkles,
+  Lock
 } from 'lucide-react';
-import { Employee, ViewMode } from '../types';
+import { Employee, ViewMode, UserProfile } from '../types';
 
 interface EmployeeDetailViewProps {
   employee: Employee;
+  currentUser?: UserProfile;
   onBack: () => void;
   onNavigate: (view: ViewMode) => void;
   onSendMessage: (employee: Employee) => void;
@@ -29,14 +31,22 @@ interface EmployeeDetailViewProps {
 
 export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
   employee,
+  currentUser,
   onBack,
   onNavigate,
   onSendMessage
 }) => {
+  const roleType = currentUser?.roleType || 'admin';
+  const isAdmin = roleType === 'admin';
+  const isSelf = currentUser?.id === employee.id || currentUser?.name === employee.name;
+  const canViewSalary = isAdmin || isSelf;
+
   const [activeTab, setActiveTab] = useState<'Overview' | 'Personal' | 'Employment' | 'Attendance' | 'Leave' | 'Payroll' | 'Documents'>('Overview');
   const [isEditing, setIsEditing] = useState(false);
 
-  const tabs = ['Overview', 'Personal', 'Employment', 'Attendance', 'Leave', 'Payroll', 'Documents'] as const;
+  // Filter tabs - hide Payroll if not admin and not self
+  const allTabs = ['Overview', 'Personal', 'Employment', 'Attendance', 'Leave', 'Payroll', 'Documents'] as const;
+  const tabs = allTabs.filter(t => t !== 'Payroll' || canViewSalary);
 
   return (
     <div id="employee-detail-view" className="space-y-6 max-w-7xl mx-auto pb-12">
@@ -45,7 +55,7 @@ export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
         <div className="flex items-center gap-2 text-xs text-slate-400">
           <button 
             onClick={onBack}
-            className="flex items-center gap-1 hover:text-white transition-colors"
+            className="flex items-center gap-1 hover:text-white transition-colors cursor-pointer"
           >
             <ChevronLeft className="w-4 h-4" />
             <span>Employee Management</span>
@@ -56,7 +66,7 @@ export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
 
         <button
           onClick={onBack}
-          className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 border border-white/10"
+          className="text-xs font-semibold px-3 py-1.5 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] text-slate-300 border border-white/10 cursor-pointer"
         >
           ← Back to Directory
         </button>
@@ -79,7 +89,7 @@ export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
                 />
               ) : (
                 <div className="w-24 h-24 sm:w-28 sm:h-28 rounded-2xl bg-gradient-to-tr from-purple-600 to-indigo-500 text-white font-extrabold text-2xl flex items-center justify-center shadow-2xl">
-                  {employee.avatarInitials || employee.name.substring(0, 2).toUpperCase()}
+                  {employee.avatarInitials || (employee.name ? employee.name.substring(0, 2).toUpperCase() : 'EM')}
                 </div>
               )}
               <span className="absolute -bottom-1.5 -right-1.5 w-5 h-5 bg-emerald-500 rounded-full ring-4 ring-[#131b2e]" />
@@ -118,18 +128,20 @@ export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
 
           {/* Action Buttons */}
           <div className="flex items-center gap-2.5 w-full md:w-auto shrink-0">
-            <button
-              id="btn-emp-detail-edit"
-              onClick={() => setIsEditing(!isEditing)}
-              className="flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-semibold bg-white/[0.06] hover:bg-white/[0.1] text-slate-200 border border-white/10 flex items-center justify-center gap-1.5 transition-all"
-            >
-              <Edit className="w-3.5 h-3.5 text-purple-400" />
-              <span>{isEditing ? 'Editing...' : 'Edit Profile'}</span>
-            </button>
+            {isAdmin && (
+              <button
+                id="btn-emp-detail-edit"
+                onClick={() => setIsEditing(!isEditing)}
+                className="flex-1 md:flex-initial px-4 py-2 rounded-xl text-xs font-semibold bg-white/[0.06] hover:bg-white/[0.1] text-slate-200 border border-white/10 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+              >
+                <Edit className="w-3.5 h-3.5 text-purple-400" />
+                <span>{isEditing ? 'Editing...' : 'Edit Profile'}</span>
+              </button>
+            )}
             <button
               id="btn-emp-detail-message"
               onClick={() => onSendMessage(employee)}
-              className="flex-1 md:flex-initial brand-gradient-btn px-4 py-2 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5 transition-all shadow-md shadow-purple-600/30"
+              className="flex-1 md:flex-initial brand-gradient-btn px-4 py-2 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-1.5 transition-all shadow-md shadow-purple-600/30 cursor-pointer"
             >
               <MessageSquare className="w-3.5 h-3.5" />
               <span>Message</span>
@@ -144,7 +156,7 @@ export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
               key={tab}
               id={`tab-emp-${tab.toLowerCase()}`}
               onClick={() => setActiveTab(tab)}
-              className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap ${
+              className={`px-4 py-2 rounded-xl text-xs font-semibold transition-all whitespace-nowrap cursor-pointer ${
                 activeTab === tab
                   ? 'bg-purple-500/20 text-purple-200 border border-purple-500/40 shadow-sm'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.03]'
@@ -191,22 +203,31 @@ export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
               <p className="text-[11px] text-emerald-400/80">+2.1% higher than team average</p>
             </div>
 
-            {/* Total Earnings */}
+            {/* Total Earnings / Salary (Protected: Admin or Self) */}
             <div className="glass-panel p-5 rounded-2xl border border-white/5 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-slate-400">Total Earnings (YTD)</span>
+                <span className="text-xs font-medium text-slate-400">Compensation</span>
                 <CreditCard className="w-4 h-4 text-purple-400" />
               </div>
-              <div>
-                <p className="text-2xl font-bold text-white font-['Sora']">৳ 4,50,000</p>
-                <p className="text-xs text-purple-300 font-semibold mt-1">Base: ৳ {(employee.baseSalary || 145000).toLocaleString()} / mo</p>
-              </div>
-              <button 
-                onClick={() => onNavigate('payroll')}
-                className="text-[11px] text-purple-400 hover:text-purple-300 font-semibold"
-              >
-                View Payslips →
-              </button>
+              {canViewSalary ? (
+                <div>
+                  <p className="text-2xl font-bold text-white font-['Sora']">৳ {(employee.baseSalary || 145000).toLocaleString()}</p>
+                  <p className="text-xs text-purple-300 font-semibold mt-1">Base Monthly Salary</p>
+                  {isAdmin && (
+                    <button 
+                      onClick={() => onNavigate('payroll')}
+                      className="text-[11px] text-purple-400 hover:text-purple-300 font-semibold mt-2 inline-block cursor-pointer"
+                    >
+                      View Payroll Ledger →
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <div className="p-3 rounded-xl bg-white/[0.02] border border-white/5 flex items-center gap-2 text-slate-400">
+                  <Lock className="w-4 h-4 text-purple-400" />
+                  <span className="text-xs font-medium text-slate-400">Confidential (Admin Only)</span>
+                </div>
+              )}
             </div>
           </div>
 
@@ -310,7 +331,7 @@ export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
           </p>
           <button
             onClick={() => setActiveTab('Overview')}
-            className="px-4 py-2 rounded-xl text-xs font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30 mt-2 inline-block"
+            className="px-4 py-2 rounded-xl text-xs font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30 mt-2 inline-block cursor-pointer"
           >
             Back to Overview
           </button>
@@ -319,3 +340,4 @@ export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
     </div>
   );
 };
+

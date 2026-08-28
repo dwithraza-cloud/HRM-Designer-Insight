@@ -9,13 +9,16 @@ import {
   EyeOff, 
   ArrowRight, 
   ShieldCheck, 
-  CheckCircle2 
+  Shield, 
+  UserCheck, 
+  AlertCircle 
 } from 'lucide-react';
-import { UserRole } from '../types';
+import { UserProfile, UserRole } from '../types';
+import { authService } from '../services/authService';
 
 interface AuthViewProps {
   mode: 'login' | 'signup';
-  onLoginSuccess: (email: string, role: UserRole) => void;
+  onLoginSuccess: (userProfile: UserProfile) => void;
   onSwitchMode: (mode: 'login' | 'signup') => void;
 }
 
@@ -24,17 +27,60 @@ export const AuthView: React.FC<AuthViewProps> = ({
   onLoginSuccess,
   onSwitchMode
 }) => {
-  const [selectedRole, setSelectedRole] = useState<UserRole>('admin');
-  const [email, setEmail] = useState('ayon.design@aurahrms.io');
-  const [password, setPassword] = useState('••••••••••••');
-  const [name, setName] = useState('Ayon Ahmed');
-  const [company, setCompany] = useState('Aura Technologies Ltd.');
+  const [email, setEmail] = useState('admin@aurahrms.io');
+  const [password, setPassword] = useState('password');
+  const [name, setName] = useState('');
+  const [company, setCompany] = useState('');
+  const [roleTitle, setRoleTitle] = useState('Product Specialist');
+  const [assignedRole, setAssignedRole] = useState<UserRole>('employee');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onLoginSuccess(email, selectedRole);
+    setErrorMsg(null);
+    setIsLoading(true);
+
+    if (mode === 'login') {
+      const authResult = authService.authenticate(email, password);
+      setIsLoading(false);
+      if (authResult.success && authResult.user) {
+        onLoginSuccess(authResult.user);
+      } else {
+        setErrorMsg(authResult.error || 'Authentication failed. Please verify your credentials.');
+      }
+    } else {
+      // Organization registration
+      if (!name.trim() || !company.trim() || !email.trim()) {
+        setErrorMsg('Please complete all required fields.');
+        setIsLoading(false);
+        return;
+      }
+      
+      const creationResult = authService.createAccount('admin', {
+        name,
+        email,
+        roleTitle: roleTitle || 'Administrator',
+        roleType: 'admin', // Root organization creator is Admin
+        department: 'Executive Management',
+        baseSalary: 250000
+      });
+
+      setIsLoading(false);
+      if (creationResult.success && creationResult.account) {
+        onLoginSuccess(creationResult.account.profile);
+      } else {
+        setErrorMsg(creationResult.error || 'Failed to initialize organization.');
+      }
+    }
+  };
+
+  const handleQuickFill = (demoEmail: string, demoPass: string) => {
+    setEmail(demoEmail);
+    setPassword(demoPass);
+    setErrorMsg(null);
   };
 
   return (
@@ -43,46 +89,110 @@ export const AuthView: React.FC<AuthViewProps> = ({
       <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/15 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-indigo-600/10 rounded-full blur-3xl pointer-events-none" />
 
-      <div className="glass-panel w-full max-w-md p-8 rounded-3xl border border-white/10 relative z-10 shadow-2xl bg-gradient-to-b from-[#131b2e]/95 to-[#0f172a]/95">
+      <div className="glass-panel w-full max-w-lg p-8 rounded-3xl border border-white/10 relative z-10 shadow-2xl bg-gradient-to-b from-[#131b2e]/95 to-[#0f172a]/95">
         {/* Brand Header */}
         <div className="text-center space-y-2 mb-6">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#7b42f6] to-[#a078ff] flex items-center justify-center shadow-lg shadow-purple-600/30 ring-1 ring-white/20 mx-auto">
             <Sparkles className="w-6 h-6 text-white" />
           </div>
           <h1 className="text-2xl font-extrabold text-white tracking-tight font-['Sora']">
-            {mode === 'login' ? 'Sign in to Aura HR' : 'Create Organization Account'}
+            {mode === 'login' ? 'Sign In to Aura HR' : 'Register Organization Account'}
           </h1>
           <p className="text-xs text-slate-400">
-            {mode === 'login' ? 'Manage People, Power Growth with Smart HRMS' : 'Get started with enterprise workforce management'}
+            {mode === 'login' 
+              ? 'Secure workforce access with permanent database role enforcement' 
+              : 'Setup enterprise workforce management and administrator account'}
           </p>
         </div>
 
-        {/* Role Selector Tabs (Only on Login) */}
+        {/* Demo Credentials Quick-Fill Cards (Only on login screen for convenience) */}
         {mode === 'login' && (
-          <div className="grid grid-cols-3 gap-1 p-1 bg-white/[0.03] border border-white/5 rounded-2xl mb-6">
-            {[
-              { id: 'admin' as UserRole, label: 'Admin' },
-              { id: 'manager' as UserRole, label: 'Manager' },
-              { id: 'employee' as UserRole, label: 'Employee' }
-            ].map(r => (
+          <div className="mb-6 space-y-2">
+            <div className="flex items-center justify-between px-1">
+              <span className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                Select Pre-Configured Account:
+              </span>
+              <span className="text-[10px] text-purple-300 font-medium">Click to fill credentials</span>
+            </div>
+            
+            <div className="grid grid-cols-3 gap-2">
+              {/* Admin Card */}
               <button
-                key={r.id}
                 type="button"
-                onClick={() => {
-                  setSelectedRole(r.id);
-                  if (r.id === 'admin') setEmail('ayon.design@aurahrms.io');
-                  else if (r.id === 'manager') setEmail('sarah.jenkins@aurahrms.io');
-                  else setEmail('rahim.uddin@aurahrms.io');
-                }}
-                className={`py-1.5 text-xs font-semibold rounded-xl transition-all ${
-                  selectedRole === r.id
-                    ? 'bg-purple-500/20 text-purple-200 border border-purple-500/40 shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
+                id="btn-quick-fill-admin"
+                onClick={() => handleQuickFill('admin@aurahrms.io', 'password')}
+                className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer group ${
+                  email === 'admin@aurahrms.io'
+                    ? 'bg-purple-600/20 border-purple-500/50 shadow-md shadow-purple-950/40'
+                    : 'bg-white/[0.03] border-white/10 hover:bg-white/[0.06]'
                 }`}
               >
-                {r.label}
+                <div className="flex items-center justify-between mb-1">
+                  <div className="w-6 h-6 rounded-lg bg-purple-500/20 text-purple-300 flex items-center justify-center">
+                    <Shield className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-purple-500/30 text-purple-200">
+                    Admin
+                  </span>
+                </div>
+                <p className="text-xs font-bold text-white group-hover:text-purple-200 transition-colors">Ayon Ahmed</p>
+                <p className="text-[10px] text-slate-400 truncate">admin@aurahrms.io</p>
               </button>
-            ))}
+
+              {/* Manager Card */}
+              <button
+                type="button"
+                id="btn-quick-fill-manager"
+                onClick={() => handleQuickFill('manager@aurahrms.io', 'password')}
+                className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer group ${
+                  email === 'manager@aurahrms.io'
+                    ? 'bg-blue-600/20 border-blue-500/50 shadow-md shadow-blue-950/40'
+                    : 'bg-white/[0.03] border-white/10 hover:bg-white/[0.06]'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <div className="w-6 h-6 rounded-lg bg-blue-500/20 text-blue-300 flex items-center justify-center">
+                    <UserCheck className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-blue-500/30 text-blue-200">
+                    Manager
+                  </span>
+                </div>
+                <p className="text-xs font-bold text-white group-hover:text-blue-200 transition-colors">Sarah Jenkins</p>
+                <p className="text-[10px] text-slate-400 truncate">manager@aurahrms.io</p>
+              </button>
+
+              {/* Employee Card */}
+              <button
+                type="button"
+                id="btn-quick-fill-employee"
+                onClick={() => handleQuickFill('employee@aurahrms.io', 'password')}
+                className={`p-2.5 rounded-2xl border text-left transition-all cursor-pointer group ${
+                  email === 'employee@aurahrms.io'
+                    ? 'bg-emerald-600/20 border-emerald-500/50 shadow-md shadow-emerald-950/40'
+                    : 'bg-white/[0.03] border-white/10 hover:bg-white/[0.06]'
+                }`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-300 flex items-center justify-center">
+                    <User className="w-3.5 h-3.5" />
+                  </div>
+                  <span className="text-[9px] font-extrabold uppercase px-1.5 py-0.5 rounded bg-emerald-500/30 text-emerald-200">
+                    Staff
+                  </span>
+                </div>
+                <p className="text-xs font-bold text-white group-hover:text-emerald-200 transition-colors">Rahim Uddin</p>
+                <p className="text-[10px] text-slate-400 truncate">employee@aurahrms.io</p>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* Error Notification */}
+        {errorMsg && (
+          <div className="p-3 mb-4 rounded-xl bg-rose-500/15 border border-rose-500/30 flex items-center gap-2 text-rose-300 text-xs">
+            <AlertCircle className="w-4 h-4 shrink-0" />
+            <span>{errorMsg}</span>
           </div>
         )}
 
@@ -91,13 +201,13 @@ export const AuthView: React.FC<AuthViewProps> = ({
           {mode === 'signup' && (
             <>
               <div>
-                <label className="text-slate-400 block mb-1.5 font-medium">Full Name</label>
+                <label className="text-slate-400 block mb-1.5 font-medium">Administrator Full Name</label>
                 <div className="relative">
                   <User className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
                     required
-                    placeholder="e.g. Ayon Ahmed"
+                    placeholder="e.g. Alex Morgan"
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     className="w-full pl-9 pr-3.5 py-2.5 bg-white/[0.04] border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500/50"
@@ -106,7 +216,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
               </div>
 
               <div>
-                <label className="text-slate-400 block mb-1.5 font-medium">Company Name</label>
+                <label className="text-slate-400 block mb-1.5 font-medium">Company / Organization Name</label>
                 <div className="relative">
                   <Building className="w-4 h-4 text-slate-500 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
@@ -129,17 +239,18 @@ export const AuthView: React.FC<AuthViewProps> = ({
               <input
                 type="email"
                 required
+                id="input-auth-email"
                 placeholder="name@aurahrms.io"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full pl-9 pr-3.5 py-2.5 bg-white/[0.04] border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500/50"
+                className="w-full pl-9 pr-3.5 py-2.5 bg-white/[0.04] border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500/50 font-mono"
               />
             </div>
           </div>
 
           <div>
             <div className="flex items-center justify-between mb-1.5">
-              <label className="text-slate-400 font-medium">Password</label>
+              <label className="text-slate-400 font-medium">Account Password</label>
               {mode === 'login' && (
                 <button
                   type="button"
@@ -155,6 +266,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
               <input
                 type={showPassword ? 'text' : 'password'}
                 required
+                id="input-auth-password"
                 placeholder="Enter password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
@@ -180,10 +292,10 @@ export const AuthView: React.FC<AuthViewProps> = ({
                   onChange={(e) => setRememberMe(e.target.checked)}
                   className="w-3.5 h-3.5 accent-purple-500 rounded"
                 />
-                <span className="text-slate-400 text-xs">Keep me logged in</span>
+                <span className="text-slate-400 text-xs">Keep session persistent</span>
               </label>
               <span className="text-[11px] text-emerald-400 flex items-center gap-1 font-semibold">
-                <ShieldCheck className="w-3.5 h-3.5" /> 256-bit Encrypted
+                <ShieldCheck className="w-3.5 h-3.5" /> Database Authenticated
               </span>
             </div>
           )}
@@ -191,9 +303,14 @@ export const AuthView: React.FC<AuthViewProps> = ({
           <button
             type="submit"
             id="btn-auth-submit"
-            className="brand-gradient-btn w-full py-3 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-2 shadow-lg shadow-purple-600/30 transition-all cursor-pointer mt-2"
+            disabled={isLoading}
+            className="brand-gradient-btn w-full py-3 rounded-xl text-xs font-bold text-white flex items-center justify-center gap-2 shadow-lg shadow-purple-600/30 transition-all cursor-pointer mt-2 disabled:opacity-50"
           >
-            <span>{mode === 'login' ? 'Login to Dashboard' : 'Create Organization Account'}</span>
+            <span>
+              {isLoading 
+                ? 'Authenticating...' 
+                : (mode === 'login' ? 'Sign In to Dashboard' : 'Register Organization & Admin Account')}
+            </span>
             <ArrowRight className="w-4 h-4" />
           </button>
         </form>
@@ -202,12 +319,12 @@ export const AuthView: React.FC<AuthViewProps> = ({
         <div className="text-center pt-6 mt-6 border-t border-white/5 text-xs text-slate-400">
           {mode === 'login' ? (
             <p>
-              Don't have an organization setup yet?{' '}
+              New company or organization?{' '}
               <button
                 onClick={() => onSwitchMode('signup')}
                 className="text-purple-300 hover:text-purple-200 font-bold"
               >
-                Register Free
+                Setup Organization
               </button>
             </p>
           ) : (
@@ -217,7 +334,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
                 onClick={() => onSwitchMode('login')}
                 className="text-purple-300 hover:text-purple-200 font-bold"
               >
-                Sign In
+                Sign In to Account
               </button>
             </p>
           )}

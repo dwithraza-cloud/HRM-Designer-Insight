@@ -161,7 +161,7 @@ export const LeaveManagementView: React.FC<LeaveManagementViewProps> = ({
                         />
                       ) : (
                         <div className="w-10 h-10 rounded-full bg-purple-500/20 text-purple-300 font-bold flex items-center justify-center shrink-0">
-                          {req.avatarInitials || req.employeeName.substring(0, 2).toUpperCase()}
+                          {req.avatarInitials || (req.employeeName ? req.employeeName.substring(0, 2).toUpperCase() : 'LV')}
                         </div>
                       )}
                       <div>

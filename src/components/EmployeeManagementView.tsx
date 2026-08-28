@@ -14,12 +14,15 @@ import {
   Phone,
   CheckSquare,
   Square,
-  Sparkles
+  Sparkles,
+  Shield,
+  UserCheck
 } from 'lucide-react';
-import { Employee, ViewMode } from '../types';
+import { Employee, ViewMode, UserProfile } from '../types';
 
 interface EmployeeManagementViewProps {
   employees: Employee[];
+  currentUser: UserProfile;
   onSelectEmployee: (emp: Employee) => void;
   onNavigate: (view: ViewMode) => void;
   onDeleteEmployee: (id: string) => void;
@@ -28,27 +31,42 @@ interface EmployeeManagementViewProps {
 
 export const EmployeeManagementView: React.FC<EmployeeManagementViewProps> = ({
   employees,
+  currentUser,
   onSelectEmployee,
   onNavigate,
   onDeleteEmployee,
   onExportEmployees
 }) => {
+  const roleType = currentUser.roleType || 'admin';
+  const isManager = roleType === 'manager';
+  const isEmployee = roleType === 'employee';
+  const isAdmin = roleType === 'admin';
+
   const [searchTerm, setSearchTerm] = useState('');
-  const [deptFilter, setDeptFilter] = useState('All');
+  const [deptFilter, setDeptFilter] = useState(isManager ? currentUser.department || 'Design' : 'All');
   const [statusFilter, setStatusFilter] = useState('All');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 8;
 
+  // Role Scoped Employees:
+  // Managers can ONLY see employees in their department.
+  // Admin & Employee can see all directory members (or filtered).
+  const scopedBaseEmployees = isManager
+    ? employees.filter(emp => emp.department === currentUser.department)
+    : employees;
+
   // Filtering
-  const filtered = employees.filter((emp) => {
+  const filtered = scopedBaseEmployees.filter((emp) => {
     const matchesSearch = 
       emp.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       emp.empId.toLowerCase().includes(searchTerm.toLowerCase()) ||
       emp.designation.toLowerCase().includes(searchTerm.toLowerCase()) ||
       emp.email.toLowerCase().includes(searchTerm.toLowerCase());
 
-    const matchesDept = deptFilter === 'All' || emp.department === deptFilter;
+    const matchesDept = isManager 
+      ? true 
+      : (deptFilter === 'All' || emp.department === deptFilter);
     const matchesStatus = statusFilter === 'All' || emp.status === statusFilter;
 
     return matchesSearch && matchesDept && matchesStatus;
@@ -79,13 +97,19 @@ export const EmployeeManagementView: React.FC<EmployeeManagementViewProps> = ({
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-white tracking-tight">Employee Directory</h1>
+            <h1 className="text-2xl font-bold text-white tracking-tight">
+              {isAdmin ? 'Employee Directory' : (isManager ? `${currentUser.department} Team Directory` : 'Company Member Directory')}
+            </h1>
             <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-purple-500/20 text-purple-300 border border-purple-500/30">
-              {filtered.length} Total
+              {filtered.length} {isManager ? 'Team Members' : 'Total'}
             </span>
           </div>
           <p className="text-xs text-slate-400 mt-0.5">
-            Manage organization members, profiles, roles, and employment credentials.
+            {isAdmin 
+              ? 'Manage organization members, profiles, roles, and employment credentials.'
+              : (isManager 
+                  ? `Viewing subordinates and personnel assigned to the ${currentUser.department} department.`
+                  : 'Browse company contact information and directory listings.')}
           </p>
         </div>
 
@@ -93,19 +117,23 @@ export const EmployeeManagementView: React.FC<EmployeeManagementViewProps> = ({
           <button
             id="btn-emp-export"
             onClick={onExportEmployees}
-            className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white/[0.05] hover:bg-white/[0.09] text-slate-200 border border-white/10 transition-all"
+            className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-3.5 py-2 rounded-xl text-xs font-semibold bg-white/[0.05] hover:bg-white/[0.09] text-slate-200 border border-white/10 transition-all cursor-pointer"
           >
             <Download className="w-3.5 h-3.5 text-purple-400" />
             <span>Export Data</span>
           </button>
-          <button
-            id="btn-add-new-employee"
-            onClick={() => onNavigate('add-employee')}
-            className="flex-1 sm:flex-initial brand-gradient-btn flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white transition-all shadow-lg shadow-purple-600/30"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add New Employee</span>
-          </button>
+          
+          {/* Add Employee is strictly Admin only */}
+          {isAdmin && (
+            <button
+              id="btn-add-new-employee"
+              onClick={() => onNavigate('add-employee')}
+              className="flex-1 sm:flex-initial brand-gradient-btn flex items-center justify-center gap-2 px-4 py-2 rounded-xl text-xs font-bold text-white transition-all shadow-lg shadow-purple-600/30 cursor-pointer"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Add New Employee</span>
+            </button>
+          )}
         </div>
       </div>
 
@@ -126,23 +154,26 @@ export const EmployeeManagementView: React.FC<EmployeeManagementViewProps> = ({
 
         {/* Dropdowns */}
         <div className="flex items-center gap-3 w-full md:w-auto overflow-x-auto pb-1 md:pb-0">
-          {/* Department Filter */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-slate-400 hidden lg:inline">Dept:</span>
-            <select
-              id="select-dept-filter"
-              value={deptFilter}
-              onChange={(e) => { setDeptFilter(e.target.value); setCurrentPage(1); }}
-              className="bg-[#131b2e] border border-white/10 text-xs text-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-purple-500/50"
-            >
-              <option value="All">All Departments</option>
-              <option value="Design">Design</option>
-              <option value="Engineering">Engineering</option>
-              <option value="HR">HR</option>
-              <option value="Marketing">Marketing</option>
-              <option value="Finance">Finance</option>
-            </select>
-          </div>
+          {/* Department Filter (Admin & Employee only) */}
+          {!isManager && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-slate-400 hidden lg:inline">Dept:</span>
+              <select
+                id="select-dept-filter"
+                value={deptFilter}
+                onChange={(e) => { setDeptFilter(e.target.value); setCurrentPage(1); }}
+                className="bg-[#131b2e] border border-white/10 text-xs text-slate-200 rounded-xl px-3 py-2 focus:outline-none focus:border-purple-500/50"
+              >
+                <option value="All">All Departments</option>
+                <option value="Design">Design</option>
+                <option value="Engineering">Engineering</option>
+                <option value="HR">HR</option>
+                <option value="Marketing">Marketing</option>
+                <option value="Finance">Finance</option>
+                <option value="Operations">Operations</option>
+              </select>
+            </div>
+          )}
 
           {/* Status Filter */}
           <div className="flex items-center gap-2">
@@ -160,9 +191,9 @@ export const EmployeeManagementView: React.FC<EmployeeManagementViewProps> = ({
             </select>
           </div>
 
-          {(searchTerm || deptFilter !== 'All' || statusFilter !== 'All') && (
+          {(searchTerm || (!isManager && deptFilter !== 'All') || statusFilter !== 'All') && (
             <button
-              onClick={() => { setSearchTerm(''); setDeptFilter('All'); setStatusFilter('All'); }}
+              onClick={() => { setSearchTerm(''); if (!isManager) setDeptFilter('All'); setStatusFilter('All'); }}
               className="text-xs text-purple-400 hover:text-purple-300 font-semibold px-2 py-1"
             >
               Reset
@@ -177,19 +208,21 @@ export const EmployeeManagementView: React.FC<EmployeeManagementViewProps> = ({
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-white/5 bg-white/[0.02] text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                <th className="p-4 w-10 text-center">
-                  <button 
-                    onClick={toggleSelectAll} 
-                    className="text-slate-400 hover:text-white"
-                    aria-label="Select all employees"
-                  >
-                    {selectedIds.length === paginated.length && paginated.length > 0 ? (
-                      <CheckSquare className="w-4 h-4 text-purple-400" />
-                    ) : (
-                      <Square className="w-4 h-4" />
-                    )}
-                  </button>
-                </th>
+                {isAdmin && (
+                  <th className="p-4 w-10 text-center">
+                    <button 
+                      onClick={toggleSelectAll} 
+                      className="text-slate-400 hover:text-white"
+                      aria-label="Select all employees"
+                    >
+                      {selectedIds.length === paginated.length && paginated.length > 0 ? (
+                        <CheckSquare className="w-4 h-4 text-purple-400" />
+                      ) : (
+                        <Square className="w-4 h-4" />
+                      )}
+                    </button>
+                  </th>
+                )}
                 <th className="p-4">Employee</th>
                 <th className="p-4">Designation & Department</th>
                 <th className="p-4">Contact Info</th>
@@ -201,7 +234,7 @@ export const EmployeeManagementView: React.FC<EmployeeManagementViewProps> = ({
             <tbody className="divide-y divide-white/5 text-xs text-slate-300">
               {paginated.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="p-12 text-center text-slate-400">
+                  <td colSpan={isAdmin ? 7 : 6} className="p-12 text-center text-slate-400">
                     No employee records match the given criteria.
                   </td>
                 </tr>
@@ -215,20 +248,22 @@ export const EmployeeManagementView: React.FC<EmployeeManagementViewProps> = ({
                         isSelected ? 'bg-purple-900/10' : ''
                       }`}
                     >
-                      {/* Checkbox */}
-                      <td className="p-4 text-center">
-                        <button 
-                          onClick={() => toggleSelectOne(emp.id)} 
-                          className="text-slate-400 hover:text-white"
-                          aria-label={`Select ${emp.name}`}
-                        >
-                          {isSelected ? (
-                            <CheckSquare className="w-4 h-4 text-purple-400" />
-                          ) : (
-                            <Square className="w-4 h-4" />
-                          )}
-                        </button>
-                      </td>
+                      {/* Checkbox for Admin */}
+                      {isAdmin && (
+                        <td className="p-4 text-center">
+                          <button 
+                            onClick={() => toggleSelectOne(emp.id)} 
+                            className="text-slate-400 hover:text-white"
+                            aria-label={`Select ${emp.name}`}
+                          >
+                            {isSelected ? (
+                              <CheckSquare className="w-4 h-4 text-purple-400" />
+                            ) : (
+                              <Square className="w-4 h-4" />
+                            )}
+                          </button>
+                        </td>
+                      )}
 
                       {/* Employee Info */}
                       <td className="p-4">
@@ -248,7 +283,7 @@ export const EmployeeManagementView: React.FC<EmployeeManagementViewProps> = ({
                             />
                           ) : (
                             <div className="w-10 h-10 rounded-full bg-purple-500/20 text-purple-300 font-bold flex items-center justify-center shrink-0">
-                              {emp.avatarInitials || emp.name.substring(0, 2).toUpperCase()}
+                              {emp.avatarInitials || (emp.name ? emp.name.substring(0, 2).toUpperCase() : 'EM')}
                             </div>
                           )}
                           <div>
@@ -310,30 +345,38 @@ export const EmployeeManagementView: React.FC<EmployeeManagementViewProps> = ({
                               onSelectEmployee(emp);
                               onNavigate('employee-detail');
                             }}
-                            className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-purple-500/20 text-slate-400 hover:text-purple-300 transition-colors"
+                            className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-purple-500/20 text-slate-400 hover:text-purple-300 transition-colors cursor-pointer"
                             title="View Details"
                           >
                             <Eye className="w-3.5 h-3.5" />
                           </button>
-                          <button
-                            id={`btn-edit-emp-${emp.id}`}
-                            onClick={() => {
-                              onSelectEmployee(emp);
-                              onNavigate('employee-detail');
-                            }}
-                            className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-blue-500/20 text-slate-400 hover:text-blue-300 transition-colors"
-                            title="Edit"
-                          >
-                            <Edit className="w-3.5 h-3.5" />
-                          </button>
-                          <button
-                            id={`btn-delete-emp-${emp.id}`}
-                            onClick={() => onDeleteEmployee(emp.id)}
-                            className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 transition-colors"
-                            title="Delete"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
+
+                          {/* Edit: Admin only */}
+                          {isAdmin && (
+                            <button
+                              id={`btn-edit-emp-${emp.id}`}
+                              onClick={() => {
+                                onSelectEmployee(emp);
+                                onNavigate('employee-detail');
+                              }}
+                              className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-blue-500/20 text-slate-400 hover:text-blue-300 transition-colors cursor-pointer"
+                              title="Edit Employee"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+
+                          {/* Delete: strictly Admin only */}
+                          {isAdmin && (
+                            <button
+                              id={`btn-delete-emp-${emp.id}`}
+                              onClick={() => onDeleteEmployee(emp.id)}
+                              className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-rose-500/20 text-slate-400 hover:text-rose-300 transition-colors cursor-pointer"
+                              title="Delete Employee"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -388,3 +431,4 @@ export const EmployeeManagementView: React.FC<EmployeeManagementViewProps> = ({
     </div>
   );
 };
+
