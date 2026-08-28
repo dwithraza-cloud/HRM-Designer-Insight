@@ -16,72 +16,45 @@ export interface UserAccount {
 export const INITIAL_USER_ACCOUNTS: UserAccount[] = [
   {
     id: 'usr-admin-01',
-    name: 'Ayon Ahmed',
-    email: 'admin@aurahrms.io',
-    passwordHash: 'admin123',
-    roleType: 'admin',
-    profile: ADMIN_USER,
-    createdAt: '2021-01-15T08:00:00.000Z'
-  },
-  {
-    id: 'usr-admin-02',
-    name: 'Ayon Ahmed',
-    email: 'ayon.design@aurahrms.io',
-    passwordHash: 'password',
+    name: 'Raja Raza',
+    email: 'rajaraza300@gmail.com',
+    passwordHash: 'raza12345',
     roleType: 'admin',
     profile: ADMIN_USER,
     createdAt: '2021-01-15T08:00:00.000Z'
   },
   {
     id: 'usr-mgr-01',
-    name: 'Sarah Jenkins',
-    email: 'manager@aurahrms.io',
-    passwordHash: 'manager123',
-    roleType: 'manager',
-    profile: MANAGER_USER,
-    createdAt: '2019-03-12T08:00:00.000Z'
-  },
-  {
-    id: 'usr-mgr-02',
-    name: 'Sarah Jenkins',
-    email: 'sarah.jenkins@aurahrms.io',
-    passwordHash: 'password',
+    name: 'Aqsa',
+    email: 'aqsa@designerinsight.online',
+    passwordHash: 'aqsa12345',
     roleType: 'manager',
     profile: MANAGER_USER,
     createdAt: '2019-03-12T08:00:00.000Z'
   },
   {
     id: 'usr-emp-01',
-    name: 'Rahim Uddin',
-    email: 'employee@aurahrms.io',
-    passwordHash: 'employee123',
-    roleType: 'employee',
-    profile: EMPLOYEE_USER,
-    createdAt: '2020-02-10T08:00:00.000Z'
-  },
-  {
-    id: 'usr-emp-02',
-    name: 'Rahim Uddin',
-    email: 'rahim.uddin@aurahrms.io',
-    passwordHash: 'password',
+    name: 'Rani',
+    email: 'Rani@designerinsight.online',
+    passwordHash: 'rani12345',
     roleType: 'employee',
     profile: EMPLOYEE_USER,
     createdAt: '2020-02-10T08:00:00.000Z'
   },
   {
     id: 'usr-emp-03',
-    name: 'Ananya Roy',
-    email: 'ananya.roy@aurahrms.io',
+    name: 'Sumaiya Akter',
+    email: 'sumaiya.akter@aurahrms.io',
     passwordHash: 'password',
     roleType: 'employee',
     profile: {
       ...EMPLOYEE_USER,
       id: 'usr-emp-03',
-      name: 'Ananya Roy',
-      email: 'ananya.roy@aurahrms.io',
-      role: 'UI Designer & Illustrator',
-      department: 'Design',
-      empId: 'EMP-0155'
+      name: 'Sumaiya Akter',
+      email: 'sumaiya.akter@aurahrms.io',
+      role: 'HR Specialist',
+      department: 'HR',
+      empId: 'EMP-0102'
     },
     createdAt: '2021-06-18T08:00:00.000Z'
   },
@@ -104,8 +77,8 @@ export const INITIAL_USER_ACCOUNTS: UserAccount[] = [
   }
 ];
 
-const STORAGE_KEY_ACCOUNTS = 'aura_hrm_accounts_db';
-const STORAGE_KEY_SESSION = 'aura_hrm_active_session';
+const STORAGE_KEY_ACCOUNTS = 'aura_hrm_accounts_db_v2';
+const STORAGE_KEY_SESSION = 'aura_hrm_active_session_v2';
 
 class AuthService {
   private accounts: UserAccount[];
@@ -118,8 +91,27 @@ class AuthService {
     try {
       const stored = localStorage.getItem(STORAGE_KEY_ACCOUNTS);
       if (stored) {
-        const parsed = JSON.parse(stored);
+        const parsed: UserAccount[] = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
+          // Ensure the requested primary credentials exist or are synced
+          const primaryDefaults = INITIAL_USER_ACCOUNTS.slice(0, 3);
+          primaryDefaults.forEach(def => {
+            const idx = parsed.findIndex(
+              a => a.email.toLowerCase() === def.email.toLowerCase() || a.id === def.id
+            );
+            if (idx === -1) {
+              parsed.unshift(def);
+            } else {
+              // Ensure profile & role are up-to-date
+              parsed[idx].email = def.email;
+              parsed[idx].name = def.name;
+              parsed[idx].roleType = def.roleType;
+              parsed[idx].profile = def.profile;
+              if (!parsed[idx].passwordHash) {
+                parsed[idx].passwordHash = def.passwordHash;
+              }
+            }
+          });
           return parsed;
         }
       }

@@ -2,10 +2,10 @@ import { Employee, LeaveRequest, AttendanceRecord, JobOpening, UpcomingEvent, Ac
 
 export const ADMIN_USER: UserProfile = {
   id: 'usr-admin-01',
-  name: 'Ayon Ahmed',
+  name: 'Raja Raza',
   role: 'HR Director & System Admin',
   roleType: 'admin',
-  email: 'ayon.design@aurahrms.io',
+  email: 'rajaraza300@gmail.com',
   avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZQndi0Q67LuyTUAs8C_7ptSSpWoFH67QhVbLxfJfqqymbTF0-ImTvZteCBSvRhku41rEwtRkkZ2yuI6nQmZb0BfCOfoZGNID_PEOn4VWAWuKVpWR7Ik8bXButYDHroiVhejf7BUJNlr5RCQjELnvfecxNjb3pdO-wFiNm8ZRyrk3KjzJktBW6t2HdB8uvLEdFXWKFvdGX3obC3EyYo3QUO3PVDq-c-ap2YZgHP_1pncDG6fIUYwwl',
   department: 'Operations & HR',
   empId: 'EMP-0001',
@@ -29,10 +29,10 @@ export const ADMIN_USER: UserProfile = {
 
 export const MANAGER_USER: UserProfile = {
   id: 'usr-mgr-01',
-  name: 'Sarah Jenkins',
+  name: 'Aqsa',
   role: 'Design Department Lead',
   roleType: 'manager',
-  email: 'sarah.jenkins@aurahrms.io',
+  email: 'aqsa@designerinsight.online',
   avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCrGYbO589VOTATEVvsbR5nyyOSwLBLuKXOxbFTAMEVyEEoVKEAscptTr1Fw8iGYSdAB1g1J5Y2Vx6y8Ypywrc1QuHnwiu6JKqVnuiQ75E-Zl1lklVnZju58LXg4EI6rxi76D29F_QaeZ2oRg09f6FoJmK_QL6Z8b3aMDi0bl53XwFkCgcHB8gkqEbh1qkmBlu_dlAs6b6vNmeVUXXkWqoQmRb8581biV9eH9oJ2xg2_FZghdAbak5L',
   department: 'Design',
   empId: 'EMP-0103',
@@ -46,8 +46,8 @@ export const MANAGER_USER: UserProfile = {
   nationality: 'American',
   joiningDate: '12 March 2019',
   reportingManager: {
-    name: 'Ayon Ahmed',
-    role: 'HR Director',
+    name: 'Raja Raza',
+    role: 'HR Director & System Admin',
     avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZQndi0Q67LuyTUAs8C_7ptSSpWoFH67QhVbLxfJfqqymbTF0-ImTvZteCBSvRhku41rEwtRkkZ2yuI6nQmZb0BfCOfoZGNID_PEOn4VWAWuKVpWR7Ik8bXButYDHroiVhejf7BUJNlr5RCQjELnvfecxNjb3pdO-wFiNm8ZRyrk3KjzJktBW6t2HdB8uvLEdFXWKFvdGX3obC3EyYo3QUO3PVDq-c-ap2YZgHP_1pncDG6fIUYwwl'
   },
   baseSalary: 280000,
@@ -56,24 +56,24 @@ export const MANAGER_USER: UserProfile = {
 
 export const EMPLOYEE_USER: UserProfile = {
   id: 'usr-emp-01',
-  name: 'Rahim Uddin',
+  name: 'Rani',
   role: 'UI/UX Visual Designer',
   roleType: 'employee',
-  email: 'rahim.uddin@aurahrms.io',
+  email: 'Rani@designerinsight.online',
   avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBSANbGI_8XJwr4JerK2U_S85Z10-Lhe_dnK9SL5j7CA7A78CwnhHQHcY4OfNOr2pDaW9hgOkTqKBCWPZ9PSSR9sfz9ljGdJCaRFTtYFjjW-EeDaH4Lb7pSfNCRoyGbmvg9LYJvJf4XTU2H0-vTX1OncSoyHd9Yq1BjbrpoWB6up8qQOivnc3S9AK11f-bL5xi6YcXHd-lgU3gKTaGFvNAZXYG0H5_OaDSz4Vlg_JLyRbeFO6H7cJrv',
   department: 'Design',
   empId: 'EMP-0142',
   location: 'Mirpur DOHS, Dhaka, Bangladesh',
   phone: '+880 1711-223344',
   address: 'Mirpur DOHS, Road 4, House 18, Dhaka',
-  gender: 'Male',
+  gender: 'Female',
   dob: '03 March 1992',
   bloodGroup: 'B+ Positive',
   maritalStatus: 'Single',
   nationality: 'Bangladeshi',
   joiningDate: '10 February 2020',
   reportingManager: {
-    name: 'Sarah Jenkins',
+    name: 'Aqsa',
     role: 'Design Department Lead',
     avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCrGYbO589VOTATEVvsbR5nyyOSwLBLuKXOxbFTAMEVyEEoVKEAscptTr1Fw8iGYSdAB1g1J5Y2Vx6y8Ypywrc1QuHnwiu6JKqVnuiQ75E-Zl1lklVnZju58LXg4EI6rxi76D29F_QaeZ2oRg09f6FoJmK_QL6Z8b3aMDi0bl53XwFkCgcHB8gkqEbh1qkmBlu_dlAs6b6vNmeVUXXkWqoQmRb8581biV9eH9oJ2xg2_FZghdAbak5L'
   },
@@ -86,11 +86,11 @@ export const CURRENT_USER: UserProfile = ADMIN_USER;
 export const INITIAL_EMPLOYEES: Employee[] = [
   {
     id: 'emp-1',
-    empId: 'EMP-0142',
-    name: 'Ayon Ahmed',
-    designation: 'Lead UI/UX Designer',
-    department: 'Design',
-    email: 'ayon.design@aurahrms.io',
+    empId: 'EMP-0001',
+    name: 'Raja Raza',
+    designation: 'HR Director & System Admin',
+    department: 'Operations',
+    email: 'rajaraza300@gmail.com',
     phone: '+880 1712-345678',
     status: 'Active',
     joiningDate: '15 Jan 2021',
@@ -98,25 +98,25 @@ export const INITIAL_EMPLOYEES: Employee[] = [
     gender: 'Male',
     dob: '14 Aug 1994',
     address: 'House 42, Road 11, Block D, Banani, Dhaka-1213',
-    reportingManager: 'Sarah Jenkins',
-    baseSalary: 145000
+    reportingManager: 'Executive Board',
+    baseSalary: 320000
   },
   {
     id: 'emp-2',
-    empId: 'EMP-0101',
-    name: 'Rahim Uddin',
-    designation: 'Senior Software Engineer',
-    department: 'Engineering',
-    email: 'rahim.uddin@aurahrms.io',
+    empId: 'EMP-0142',
+    name: 'Rani',
+    designation: 'UI/UX Visual Designer',
+    department: 'Design',
+    email: 'Rani@designerinsight.online',
     phone: '+880 1711-223344',
     status: 'Active',
     joiningDate: '10 Feb 2020',
     avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBSANbGI_8XJwr4JerK2U_S85Z10-Lhe_dnK9SL5j7CA7A78CwnhHQHcY4OfNOr2pDaW9hgOkTqKBCWPZ9PSSR9sfz9ljGdJCaRFTtYFjjW-EeDaH4Lb7pSfNCRoyGbmvg9LYJvJf4XTU2H0-vTX1OncSoyHd9Yq1BjbrpoWB6up8qQOivnc3S9AK11f-bL5xi6YcXHd-lgU3gKTaGFvNAZXYG0H5_OaDSz4Vlg_JLyRbeFO6H7cJrv',
-    gender: 'Male',
+    gender: 'Female',
     dob: '03 Mar 1992',
     address: 'Mirpur DOHS, Dhaka',
-    reportingManager: 'David Rodriguez',
-    baseSalary: 160000
+    reportingManager: 'Aqsa',
+    baseSalary: 145000
   },
   {
     id: 'emp-3',
@@ -132,16 +132,16 @@ export const INITIAL_EMPLOYEES: Employee[] = [
     gender: 'Female',
     dob: '22 Nov 1995',
     address: 'Dhanmondi 27, Dhaka',
-    reportingManager: 'Sarah Jenkins',
+    reportingManager: 'Aqsa',
     baseSalary: 95000
   },
   {
     id: 'emp-4',
     empId: 'EMP-0103',
-    name: 'Sarah Jenkins',
-    designation: 'VP of Product Design',
+    name: 'Aqsa',
+    designation: 'Design Department Lead',
     department: 'Design',
-    email: 'sarah.jenkins@aurahrms.io',
+    email: 'aqsa@designerinsight.online',
     phone: '+1 (555) 234-5678',
     status: 'Active',
     joiningDate: '12 Mar 2019',
@@ -149,7 +149,7 @@ export const INITIAL_EMPLOYEES: Employee[] = [
     gender: 'Female',
     dob: '18 May 1988',
     address: 'Gulshan 1, Dhaka',
-    reportingManager: 'David Rodriguez',
+    reportingManager: 'Raja Raza',
     baseSalary: 280000
   },
   {
