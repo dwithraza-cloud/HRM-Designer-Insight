@@ -62,6 +62,10 @@ export function App() {
   const [isSupportOpen, setIsSupportOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
+  // Responsive Sidebar State (Mobile Drawer + Desktop Collapsible Rail)
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
+
   // Toast Notification state
   const [toastMsg, setToastMsg] = useState<string | null>(null);
 
@@ -72,12 +76,16 @@ export function App() {
     }, 3500);
   };
 
-  // Keyboard shortcut for Cmd/Ctrl+K search
+  // Keyboard shortcut for Cmd/Ctrl+K search & Cmd/Ctrl+\ sidebar toggle
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         setIsSearchOpen(prev => !prev);
+      }
+      if ((e.metaKey || e.ctrlKey) && (e.key === '\\' || e.key === 'b')) {
+        e.preventDefault();
+        setIsSidebarCollapsed(prev => !prev);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -302,6 +310,78 @@ export function App() {
     }));
   };
 
+  const handleUpdateEmployee = (updatedEmp: Employee) => {
+    // 1. Update in employee list
+    setEmployees(prev => prev.map(emp => emp.id === updatedEmp.id ? updatedEmp : emp));
+
+    // 2. Update selectedEmployee if currently active
+    setSelectedEmployee(updatedEmp);
+
+    // 3. If this updated employee is the active logged-in user, synchronize currentUser
+    if (
+      currentUser.id === updatedEmp.id || 
+      currentUser.email?.toLowerCase() === updatedEmp.email.toLowerCase() ||
+      currentUser.name.toLowerCase() === updatedEmp.name.toLowerCase()
+    ) {
+      setCurrentUser(prev => ({
+        ...prev,
+        id: updatedEmp.id || prev.id,
+        name: updatedEmp.name,
+        email: updatedEmp.email,
+        role: updatedEmp.designation,
+        department: updatedEmp.department,
+        empId: updatedEmp.empId,
+        phone: updatedEmp.phone || prev.phone,
+        address: updatedEmp.address || prev.address,
+        gender: updatedEmp.gender || prev.gender,
+        dob: updatedEmp.dob || prev.dob,
+        bloodGroup: updatedEmp.bloodGroup || prev.bloodGroup,
+        maritalStatus: updatedEmp.maritalStatus || prev.maritalStatus,
+        nationality: updatedEmp.nationality || prev.nationality,
+        location: updatedEmp.location || prev.location,
+        joiningDate: updatedEmp.joiningDate || prev.joiningDate,
+        status: updatedEmp.status || prev.status,
+        avatar: updatedEmp.avatar || prev.avatar,
+        baseSalary: updatedEmp.baseSalary || prev.baseSalary,
+        reportingManager: {
+          ...prev.reportingManager,
+          name: updatedEmp.reportingManager || prev.reportingManager.name
+        }
+      }));
+    }
+
+    // 4. Update in authService accounts
+    const account = authService.getAvailableAccounts().find(
+      a => a.id === updatedEmp.id || a.email.toLowerCase() === updatedEmp.email.toLowerCase()
+    );
+    if (account) {
+      authService.adminUpdateUserCredentials('admin', account.id, {
+        newEmail: updatedEmp.email
+      });
+      account.name = updatedEmp.name;
+      account.email = updatedEmp.email;
+      if (account.profile) {
+        account.profile.name = updatedEmp.name;
+        account.profile.email = updatedEmp.email;
+        account.profile.role = updatedEmp.designation;
+        account.profile.department = updatedEmp.department;
+        account.profile.empId = updatedEmp.empId;
+        account.profile.phone = updatedEmp.phone;
+        account.profile.address = updatedEmp.address || '';
+        account.profile.gender = updatedEmp.gender || '';
+        account.profile.dob = updatedEmp.dob || '';
+        account.profile.bloodGroup = updatedEmp.bloodGroup || '';
+        account.profile.maritalStatus = updatedEmp.maritalStatus || '';
+        account.profile.nationality = updatedEmp.nationality || '';
+        account.profile.joiningDate = updatedEmp.joiningDate;
+        account.profile.status = updatedEmp.status;
+        if (updatedEmp.avatar) account.profile.avatar = updatedEmp.avatar;
+      }
+    }
+
+    showToast(`Profile updated successfully for ${updatedEmp.name}!`);
+  };
+
   const handleLoginSuccess = (userOrEmail: UserProfile | string, roleParam?: UserRole) => {
     setIsAuthenticated(true);
     let activeUser: UserProfile;
@@ -388,6 +468,7 @@ export function App() {
             onDeleteEmployee={handleDeleteEmployee}
             onExportEmployees={() => setIsDownloadReportOpen(true)}
             onUpdateEmployeeEmail={handleUpdateEmployeeEmail}
+            onUpdateEmployee={handleUpdateEmployee}
             showToast={showToast}
           />
         );
@@ -400,6 +481,8 @@ export function App() {
             onBack={() => setCurrentView('employees')}
             onNavigate={setCurrentView}
             onSendMessage={handleSendMessage}
+            onUpdateEmployee={handleUpdateEmployee}
+            showToast={showToast}
           />
         );
 
@@ -521,17 +604,24 @@ export function App() {
         </div>
       )}
 
-      {/* Main Sidebar (Dynamically filters menu tabs according to currentUser.roleType) */}
+      {/* Main Sidebar (Responsive Drawer on mobile, Collapsible Rail on desktop) */}
       <Sidebar
         currentView={currentView}
         currentUser={currentUser}
-        onNavigate={setCurrentView}
+        onNavigate={(view) => {
+          setCurrentView(view);
+          setIsMobileSidebarOpen(false);
+        }}
         onOpenSupport={() => setIsSupportOpen(true)}
+        isMobileOpen={isMobileSidebarOpen}
+        onCloseMobile={() => setIsMobileSidebarOpen(false)}
+        isCollapsed={isSidebarCollapsed}
+        onToggleCollapse={() => setIsSidebarCollapsed(prev => !prev)}
       />
 
       {/* Content Area */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-        {/* Top Header */}
+        {/* Top Header with Hamburger on mobile & collapse toggle on desktop */}
         <Header
           currentUser={currentUser}
           notifications={notifications}
@@ -540,10 +630,13 @@ export function App() {
           onNavigate={setCurrentView}
           onOpenSearch={() => setIsSearchOpen(true)}
           onSignOut={handleSignOut}
+          onToggleMobileSidebar={() => setIsMobileSidebarOpen(prev => !prev)}
+          isSidebarCollapsed={isSidebarCollapsed}
+          onToggleSidebarCollapse={() => setIsSidebarCollapsed(prev => !prev)}
         />
 
         {/* Dynamic Page Views Container with RBAC Guarding */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 overflow-y-auto p-3.5 sm:p-5 lg:p-7">
           {renderCurrentView()}
         </main>
       </div>

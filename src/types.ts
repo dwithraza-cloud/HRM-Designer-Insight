@@ -63,7 +63,10 @@ export interface Employee {
   address?: string;
   reportingManager?: string;
   baseSalary?: number;
-  roleType?: UserRole;
+  bloodGroup?: string;
+  maritalStatus?: string;
+  nationality?: string;
+  location?: string;
 }
 
 export interface LeaveRequest {

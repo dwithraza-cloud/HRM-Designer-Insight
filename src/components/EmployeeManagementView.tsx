@@ -39,6 +39,7 @@ interface EmployeeManagementViewProps {
   onDeleteEmployee: (id: string) => void;
   onExportEmployees: () => void;
   onUpdateEmployeeEmail?: (oldEmail: string, newEmail: string) => void;
+  onUpdateEmployee?: (updatedEmployee: Employee) => void;
   showToast?: (msg: string) => void;
 }
 
@@ -50,6 +51,7 @@ export const EmployeeManagementView: React.FC<EmployeeManagementViewProps> = ({
   onDeleteEmployee,
   onExportEmployees,
   onUpdateEmployeeEmail,
+  onUpdateEmployee,
   showToast
 }) => {
   const roleType = currentUser.roleType || 'admin';
@@ -449,20 +451,18 @@ export const EmployeeManagementView: React.FC<EmployeeManagementViewProps> = ({
                             </button>
                           )}
 
-                          {/* Edit: Admin only */}
-                          {isAdmin && (
-                            <button
-                              id={`btn-edit-emp-${emp.id}`}
-                              onClick={() => {
-                                onSelectEmployee(emp);
-                                onNavigate('employee-detail');
-                              }}
-                              className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-blue-500/20 text-slate-400 hover:text-blue-300 transition-colors cursor-pointer"
-                              title="Edit Employee"
-                            >
-                              <Edit className="w-3.5 h-3.5" />
-                            </button>
-                          )}
+                          {/* Edit Profile: Accessible to edit employee profile */}
+                          <button
+                            id={`btn-edit-emp-${emp.id}`}
+                            onClick={() => {
+                              onSelectEmployee(emp);
+                              onNavigate('employee-detail');
+                            }}
+                            className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-blue-500/20 text-slate-400 hover:text-blue-300 transition-colors cursor-pointer"
+                            title="Edit Profile & Details"
+                          >
+                            <Edit className="w-3.5 h-3.5" />
+                          </button>
 
                           {/* Delete: strictly Admin only */}
                           {isAdmin && (
