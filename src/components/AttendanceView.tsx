@@ -12,7 +12,8 @@ import {
   LogIn, 
   Sparkles,
   CheckCircle2,
-  Calendar
+  Calendar,
+  Trash2
 } from 'lucide-react';
 import { AttendanceRecord, ViewMode, UserProfile } from '../types';
 
@@ -242,6 +243,19 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     if (showToast) showToast('📥 Attendance CSV report exported successfully.');
   };
 
+  const isAdmin = currentUser.roleType === 'admin';
+
+  const handleDeleteRecord = (id: string, name: string) => {
+    if (!isAdmin) {
+      if (showToast) showToast('⚠️ Access Denied (403): Only Admins can remove attendance log entries.');
+      return;
+    }
+    const updated = records.filter(r => r.id !== id);
+    setRecords(updated);
+    if (onUpdateRecords) onUpdateRecords(updated);
+    if (showToast) showToast(`✓ Attendance log removed for ${name}.`);
+  };
+
   const filteredRecords = records.filter(r => {
     const matchSearch = r.employeeName.toLowerCase().includes(searchTerm.toLowerCase()) || 
       r.empId.toLowerCase().includes(searchTerm.toLowerCase());
@@ -454,6 +468,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                 <th className="pb-3">Total Hours</th>
                 <th className="pb-3">Status</th>
                 <th className="pb-3">Log Date</th>
+                {isAdmin && <th className="pb-3 text-right">Actions</th>}
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5 text-slate-300">
@@ -497,6 +512,18 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                     </span>
                   </td>
                   <td className="py-3 text-slate-400 text-[11px]">{record.date}</td>
+                  {isAdmin && (
+                    <td className="py-3 text-right">
+                      <button
+                        id={`btn-delete-attendance-${record.id}`}
+                        onClick={() => handleDeleteRecord(record.id, record.employeeName)}
+                        title="Remove Attendance Record"
+                        className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/20 transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

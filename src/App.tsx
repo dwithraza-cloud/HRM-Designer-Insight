@@ -651,7 +651,14 @@ export function App() {
         );
 
       case 'performance':
-        return <PerformanceView onNavigate={setCurrentView} />;
+        return (
+          <PerformanceView 
+            currentUser={currentUser}
+            employees={employees}
+            onNavigate={setCurrentView}
+            showToast={showToast}
+          />
+        );
 
       case 'tasks':
         return (

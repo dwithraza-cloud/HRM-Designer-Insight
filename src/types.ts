@@ -93,7 +93,7 @@ export interface AttendanceRecord {
   empId: string;
   employeeName: string;
   department: string;
-  avatarInitials: string;
+  avatarInitials?: string;
   avatar?: string;
   clockIn: string;
   clockOut: string;
@@ -140,7 +140,7 @@ export interface AssetItem {
   id: string;
   name: string;
   serialNumber: string;
-  category: 'Laptop' | 'Display' | 'Security' | 'Mobile' | 'Peripheral' | 'Furniture' | 'Other';
+  category: 'Laptop' | 'Display' | 'Security' | 'Mobile' | 'Peripheral' | 'Furniture' | 'Digital Product' | 'Software License' | 'Cloud Resource' | 'Other';
   assignedTo?: {
     id: string;
     name: string;
@@ -152,6 +152,47 @@ export interface AssetItem {
   purchaseDate: string;
   status: 'Allocated' | 'Available' | 'In Repair' | 'Retired';
   specs?: string;
+  licenseKey?: string;
+  renewalDate?: string;
+  seatsCount?: number;
+}
+
+export interface ActiveInterview {
+  id: string;
+  candidateName: string;
+  candidateEmail: string;
+  jobTitle: string;
+  department: string;
+  interviewer: string;
+  date: string;
+  time: string;
+  stage: 'HR Screening' | 'Technical Round 1' | 'System Design' | 'Executive Final';
+  mode: 'Google Meet' | 'Zoom' | 'In-Person' | 'Phone';
+  status: 'Scheduled' | 'Completed' | 'Cancelled';
+  notes?: string;
+}
+
+export interface HiringVelocityMetric {
+  id: string;
+  department: string;
+  averageDays: number;
+  targetDays: number;
+  offerAcceptanceRate: number; // percentage
+  openRoles: number;
+  trend: 'faster' | 'on-track' | 'slower';
+}
+
+export interface TopPerformer {
+  id: string;
+  name: string;
+  empId?: string;
+  role: string;
+  department?: string;
+  score: number;
+  stars: number;
+  avatar?: string;
+  avatarInitials?: string;
+  tag: string;
 }
 
 export interface DocumentItem {

@@ -9,20 +9,41 @@ import {
   Sparkles, 
   Target, 
   Users,
-  ChevronRight
+  ChevronRight,
+  Trash2,
+  UserPlus,
+  X
 } from 'lucide-react';
 import { TOP_PERFORMERS, RECENT_FEEDBACK } from '../data/initialData';
-import { ViewMode } from '../types';
+import { ViewMode, UserProfile, Employee, TopPerformer } from '../types';
 
 interface PerformanceViewProps {
+  currentUser?: UserProfile;
+  employees?: Employee[];
   onNavigate: (view: ViewMode) => void;
+  showToast?: (msg: string) => void;
 }
 
-export const PerformanceView: React.FC<PerformanceViewProps> = ({ onNavigate }) => {
+export const PerformanceView: React.FC<PerformanceViewProps> = ({ 
+  currentUser,
+  employees = [],
+  onNavigate,
+  showToast
+}) => {
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedbackText, setFeedbackText] = useState('');
   const [feedbackRecipient, setFeedbackRecipient] = useState('Ayon Ahmed');
   const [feedbackList, setFeedbackList] = useState(RECENT_FEEDBACK);
+
+  // Top Performers State
+  const [topPerformers, setTopPerformers] = useState<TopPerformer[]>(TOP_PERFORMERS);
+  const [showAddPerformerModal, setShowAddPerformerModal] = useState(false);
+  const [selectedEmpId, setSelectedEmpId] = useState(employees[0]?.empId || '');
+  const [performerScore, setPerformerScore] = useState<number>(96);
+  const [performerStars, setPerformerStars] = useState<number>(5);
+  const [performerTag, setPerformerTag] = useState<string>('Sprint Champion');
+
+  const isAdmin = currentUser?.roleType === 'admin';
 
   const handlePostFeedback = (e: React.FormEvent) => {
     e.preventDefault();
@@ -31,9 +52,9 @@ export const PerformanceView: React.FC<PerformanceViewProps> = ({ onNavigate }) 
     setFeedbackList([
       {
         id: `fb-${Date.now()}`,
-        fromName: 'Ayon Ahmed',
+        fromName: currentUser?.name || 'Ayon Ahmed',
         toName: feedbackRecipient,
-        avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZQndi0Q67LuyTUAs8C_7ptSSpWoFH67QhVbLxfJfqqymbTF0-ImTvZteCBSvRhku41rEwtRkkZ2yuI6nQmZb0BfCOfoZGNID_PEOn4VWAWuKVpWR7Ik8bXButYDHroiVhejf7BUJNlr5RCQjELnvfecxNjb3pdO-wFiNm8ZRyrk3KjzJktBW6t2HdB8uvLEdFXWKFvdGX3obC3EyYo3QUO3PVDq-c-ap2YZgHP_1pncDG6fIUYwwl',
+        avatar: currentUser?.avatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZQndi0Q67LuyTUAs8C_7ptSSpWoFH67QhVbLxfJfqqymbTF0-ImTvZteCBSvRhku41rEwtRkkZ2yuI6nQmZb0BfCOfoZGNID_PEOn4VWAWuKVpWR7Ik8bXButYDHroiVhejf7BUJNlr5RCQjELnvfecxNjb3pdO-wFiNm8ZRyrk3KjzJktBW6t2HdB8uvLEdFXWKFvdGX3obC3EyYo3QUO3PVDq-c-ap2YZgHP_1pncDG6fIUYwwl',
         timeAgo: 'Just now',
         comment: feedbackText
       },
@@ -41,6 +62,53 @@ export const PerformanceView: React.FC<PerformanceViewProps> = ({ onNavigate }) 
     ]);
     setFeedbackText('');
     setShowFeedbackModal(false);
+    if (showToast) showToast(`✓ 360 Feedback submitted for ${feedbackRecipient}.`);
+  };
+
+  const handleAddTopPerformer = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!isAdmin) {
+      if (showToast) showToast('⚠️ Access Denied (403): Only Admins can add top performers.');
+      return;
+    }
+
+    const emp = employees.find(e => e.empId === selectedEmpId) || employees[0];
+    if (!emp) return;
+
+    // Check if already in top performers
+    const existingIndex = topPerformers.findIndex(p => p.empId === emp.empId || p.name.toLowerCase() === emp.name.toLowerCase());
+
+    const newPerformer: TopPerformer = {
+      id: existingIndex >= 0 ? topPerformers[existingIndex].id : `perf-${Date.now()}`,
+      empId: emp.empId,
+      name: emp.name,
+      role: emp.designation || 'Specialist',
+      department: emp.department,
+      score: Number(performerScore),
+      stars: Number(performerStars),
+      avatar: emp.avatar || 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80',
+      avatarInitials: emp.avatarInitials || emp.name.substring(0, 2).toUpperCase(),
+      tag: performerTag.trim() || 'Top Performer'
+    };
+
+    if (existingIndex >= 0) {
+      setTopPerformers(prev => prev.map((p, idx) => idx === existingIndex ? newPerformer : p));
+      if (showToast) showToast(`✓ Updated ${emp.name} in Top Performers (${performerScore}%).`);
+    } else {
+      setTopPerformers(prev => [newPerformer, ...prev]);
+      if (showToast) showToast(`✓ Added ${emp.name} to Top Performers (${performerScore}%).`);
+    }
+
+    setShowAddPerformerModal(false);
+  };
+
+  const handleRemoveTopPerformer = (id: string, name: string) => {
+    if (!isAdmin) {
+      if (showToast) showToast('⚠️ Access Denied (403): Only Admins can remove top performers.');
+      return;
+    }
+    setTopPerformers(prev => prev.filter(p => p.id !== id));
+    if (showToast) showToast(`✓ Removed ${name} from Top Performers.`);
   };
 
   return (
@@ -187,41 +255,75 @@ export const PerformanceView: React.FC<PerformanceViewProps> = ({ onNavigate }) 
               <Star className="w-4 h-4 text-amber-400" />
               Top Performers of Q2
             </h2>
-            <span className="text-xs text-slate-400">Leadership Board</span>
+            <div className="flex items-center gap-2">
+              {isAdmin && (
+                <button
+                  id="btn-add-top-performer"
+                  onClick={() => setShowAddPerformerModal(true)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/30 transition-all cursor-pointer"
+                >
+                  <UserPlus className="w-3.5 h-3.5" />
+                  <span>Add Performer</span>
+                </button>
+              )}
+              <span className="text-xs text-slate-400">Leadership Board</span>
+            </div>
           </div>
 
           <div className="space-y-3">
-            {TOP_PERFORMERS.map((p, idx) => (
-              <div key={p.id} className="p-3.5 rounded-2xl bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 flex items-center justify-between transition-colors">
-                <div className="flex items-center gap-3">
-                  <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                    idx === 0 ? 'bg-amber-400 text-black' : idx === 1 ? 'bg-slate-300 text-black' : 'bg-amber-700/60 text-white'
-                  }`}>
-                    {idx + 1}
-                  </span>
-                  <img 
-                    src={p.avatar} 
-                    alt={p.name} 
-                    className="w-10 h-10 rounded-full object-cover ring-2 ring-purple-500/30 shrink-0" 
-                    referrerPolicy="no-referrer"
-                  />
-                  <div>
-                    <h3 className="text-xs font-bold text-white">{p.name}</h3>
-                    <p className="text-[11px] text-slate-400">{p.role}</p>
+            {topPerformers.length === 0 ? (
+              <p className="text-xs text-slate-500 text-center py-6">No top performers listed yet.</p>
+            ) : (
+              topPerformers.map((p, idx) => (
+                <div key={p.id} className="p-3.5 rounded-2xl bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 flex items-center justify-between transition-colors">
+                  <div className="flex items-center gap-3">
+                    <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
+                      idx === 0 ? 'bg-amber-400 text-black' : idx === 1 ? 'bg-slate-300 text-black' : 'bg-amber-700/60 text-white'
+                    }`}>
+                      {idx + 1}
+                    </span>
+                    {p.avatar ? (
+                      <img 
+                        src={p.avatar} 
+                        alt={p.name} 
+                        className="w-10 h-10 rounded-full object-cover ring-2 ring-purple-500/30 shrink-0" 
+                        referrerPolicy="no-referrer"
+                      />
+                    ) : (
+                      <div className="w-10 h-10 rounded-full bg-purple-500/20 text-purple-300 font-bold flex items-center justify-center shrink-0 text-xs">
+                        {p.avatarInitials || p.name.substring(0, 2).toUpperCase()}
+                      </div>
+                    )}
+                    <div>
+                      <h3 className="text-xs font-bold text-white">{p.name}</h3>
+                      <p className="text-[11px] text-slate-400">{p.role}</p>
+                    </div>
                   </div>
-                </div>
 
-                <div className="text-right">
-                  <div className="flex items-center justify-end gap-1 text-amber-400">
-                    <Star className="w-3 h-3 fill-amber-400" />
-                    <span className="text-xs font-bold text-white font-mono">{p.score}%</span>
+                  <div className="flex items-center gap-3">
+                    <div className="text-right">
+                      <div className="flex items-center justify-end gap-1 text-amber-400">
+                        <Star className="w-3 h-3 fill-amber-400" />
+                        <span className="text-xs font-bold text-white font-mono">{p.score}%</span>
+                      </div>
+                      <span className="text-[10px] text-purple-300 font-semibold mt-0.5 inline-block bg-purple-500/10 px-2 py-0.5 rounded-full">
+                        {p.tag}
+                      </span>
+                    </div>
+                    {isAdmin && (
+                      <button
+                        id={`btn-remove-performer-${p.id}`}
+                        onClick={() => handleRemoveTopPerformer(p.id, p.name)}
+                        title="Remove from Top Performers"
+                        className="p-1.5 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/20 transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
-                  <span className="text-[10px] text-purple-300 font-semibold mt-0.5 inline-block bg-purple-500/10 px-2 py-0.5 rounded-full">
-                    {p.tag}
-                  </span>
                 </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
@@ -340,6 +442,99 @@ export const PerformanceView: React.FC<PerformanceViewProps> = ({ onNavigate }) 
                   className="brand-gradient-btn px-5 py-2 rounded-xl text-xs font-bold text-white shadow-md shadow-purple-600/30"
                 >
                   Submit Feedback
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal for Adding Top Performer (Admin Only) */}
+      {showAddPerformerModal && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="glass-panel p-6 sm:p-7 rounded-3xl border border-white/10 max-w-md w-full space-y-5 bg-[#131b2e] shadow-2xl animate-in fade-in zoom-in-95">
+            <div className="flex items-center justify-between border-b border-white/5 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-white font-['Sora']">Add to Top Performers</h3>
+                <p className="text-xs text-slate-400 mt-0.5">Recognize an employee with high-rating score and custom honors</p>
+              </div>
+              <button 
+                onClick={() => setShowAddPerformerModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleAddTopPerformer} className="space-y-4 text-xs">
+              <div>
+                <label className="text-slate-300 font-semibold block mb-1">Select Employee *</label>
+                <select
+                  value={selectedEmpId}
+                  onChange={(e) => setSelectedEmpId(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-[#0b1326] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-purple-500/50"
+                >
+                  {employees.map(emp => (
+                    <option key={emp.id} value={emp.empId}>
+                      {emp.name} ({emp.empId}) — {emp.designation || emp.department}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-slate-300 font-semibold block mb-1">Performance Score (%) *</label>
+                  <input
+                    type="number"
+                    min="50"
+                    max="100"
+                    required
+                    value={performerScore}
+                    onChange={(e) => setPerformerScore(Number(e.target.value))}
+                    className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/10 rounded-xl text-xs text-white font-mono focus:outline-none focus:border-purple-500/50"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-slate-300 font-semibold block mb-1">Star Rating (1-5)</label>
+                  <select
+                    value={performerStars}
+                    onChange={(e) => setPerformerStars(Number(e.target.value))}
+                    className="w-full px-3.5 py-2.5 bg-[#0b1326] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-purple-500/50"
+                  >
+                    <option value={5}>5 Stars ★★★★★</option>
+                    <option value={4}>4 Stars ★★★★☆</option>
+                    <option value={3}>3 Stars ★★★☆☆</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="text-slate-300 font-semibold block mb-1">Honors / Recognition Tag *</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. Sprint Champion, Design Virtuoso, Star Closer"
+                  value={performerTag}
+                  onChange={(e) => setPerformerTag(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-purple-500/50"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-white/5">
+                <button
+                  type="button"
+                  onClick={() => setShowAddPerformerModal(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-white/[0.05] hover:bg-white/[0.09] text-slate-300 transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="brand-gradient-btn px-5 py-2 rounded-xl text-xs font-bold text-white shadow-md shadow-purple-600/30 cursor-pointer"
+                >
+                  Add Top Performer
                 </button>
               </div>
             </form>

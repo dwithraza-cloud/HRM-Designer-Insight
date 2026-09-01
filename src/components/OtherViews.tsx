@@ -25,7 +25,10 @@ import {
   Upload,
   Calendar,
   Layers,
-  Filter
+  Filter,
+  Globe,
+  Cpu,
+  Smartphone
 } from 'lucide-react';
 import { ViewMode, UserProfile, Employee, AssetItem, DocumentItem } from '../types';
 
@@ -213,11 +216,11 @@ export const OtherViews: React.FC<OtherViewsProps> = ({
             <div className="flex items-center gap-2.5">
               <h1 className="text-2xl font-bold text-white tracking-tight font-['Sora']">Asset Management</h1>
               <span className="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-500/20 text-blue-300 border border-blue-500/30">
-                Hardware & Inventory (PKR)
+                Hardware, SaaS & Digital Assets (PKR)
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-1">
-              Track hardware items, workstations, peripherals, and security keys in Pakistani Rupees (Rs.).
+              Track physical workstations, digital products, cloud resources, software licenses, and security assets in Pakistani Rupees (Rs.).
             </p>
           </div>
 
@@ -228,7 +231,7 @@ export const OtherViews: React.FC<OtherViewsProps> = ({
               className="brand-gradient-btn flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold text-white shadow-lg shadow-purple-600/30 cursor-pointer"
             >
               <Plus className="w-4 h-4" />
-              <span>Add Hardware Asset</span>
+              <span>Register New Asset</span>
             </button>
           )}
         </div>
@@ -245,7 +248,7 @@ export const OtherViews: React.FC<OtherViewsProps> = ({
             <p className="text-xl sm:text-2xl font-bold text-white font-['Sora']">
               Rs. {totalAssetValuation.toLocaleString()} <span className="text-xs font-normal text-purple-300">PKR</span>
             </p>
-            <p className="text-[11px] text-purple-400 font-medium">Enterprise inventory</p>
+            <p className="text-[11px] text-purple-400 font-medium">Enterprise inventory & SaaS</p>
           </div>
 
           <div className="glass-panel p-5 rounded-2xl border border-white/5 space-y-2">
@@ -302,6 +305,9 @@ export const OtherViews: React.FC<OtherViewsProps> = ({
               className="bg-[#131b2e] border border-white/10 text-xs text-slate-200 rounded-xl px-3 py-2 focus:outline-none"
             >
               <option value="All">All Categories</option>
+              <option value="Digital Product">Digital Products</option>
+              <option value="Cloud Resource">Cloud Resources</option>
+              <option value="Software License">Software Licenses</option>
               <option value="Laptop">Laptops</option>
               <option value="Display">Displays</option>
               <option value="Security">Security Keys</option>
@@ -336,7 +342,7 @@ export const OtherViews: React.FC<OtherViewsProps> = ({
                 <tr className="border-b border-white/5 text-slate-400 uppercase text-[11px] font-bold">
                   <th className="pb-3">Asset Details</th>
                   <th className="pb-3">Category</th>
-                  <th className="pb-3">Serial No</th>
+                  <th className="pb-3">Serial / ID</th>
                   <th className="pb-3">Value (PKR)</th>
                   <th className="pb-3">Assigned To</th>
                   <th className="pb-3">Status</th>
@@ -349,7 +355,19 @@ export const OtherViews: React.FC<OtherViewsProps> = ({
                     <td className="py-3.5">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-xl bg-purple-500/15 text-purple-400 flex items-center justify-center border border-purple-500/25 shrink-0">
-                          {asset.category === 'Laptop' ? <Laptop className="w-4 h-4" /> : <HardDrive className="w-4 h-4" />}
+                          {asset.category === 'Laptop' ? (
+                            <Laptop className="w-4 h-4" />
+                          ) : asset.category === 'Digital Product' ? (
+                            <Layers className="w-4 h-4 text-cyan-400" />
+                          ) : asset.category === 'Cloud Resource' ? (
+                            <Globe className="w-4 h-4 text-blue-400" />
+                          ) : asset.category === 'Software License' ? (
+                            <Key className="w-4 h-4 text-amber-400" />
+                          ) : asset.category === 'Security' ? (
+                            <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                          ) : (
+                            <HardDrive className="w-4 h-4" />
+                          )}
                         </div>
                         <div>
                           <p className="font-bold text-white">{asset.name}</p>
@@ -479,6 +497,9 @@ export const OtherViews: React.FC<OtherViewsProps> = ({
                       className="w-full px-3 py-2.5 bg-[#0b1326] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-purple-500/50"
                     >
                       <option value="Laptop">Laptop</option>
+                      <option value="Digital Product">Digital Product</option>
+                      <option value="Cloud Resource">Cloud Resource</option>
+                      <option value="Software License">Software License</option>
                       <option value="Display">Display</option>
                       <option value="Security">Security Key</option>
                       <option value="Furniture">Furniture</option>
@@ -521,7 +542,7 @@ export const OtherViews: React.FC<OtherViewsProps> = ({
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
-                    <label className="text-slate-300 font-semibold block mb-1">Purchase Date</label>
+                    <label className="text-slate-300 font-semibold block mb-1">Purchase / Provision Date</label>
                     <input
                       type="text"
                       placeholder="e.g. 15 Jan 2024"
@@ -547,12 +568,12 @@ export const OtherViews: React.FC<OtherViewsProps> = ({
                 </div>
 
                 <div>
-                  <label className="text-slate-300 font-semibold block mb-1">Hardware Specifications</label>
+                  <label className="text-slate-300 font-semibold block mb-1">Specifications / License Tier / Cloud Specs</label>
                   <textarea
                     rows={2}
                     value={assetSpecs}
                     onChange={(e) => setAssetSpecs(e.target.value)}
-                    placeholder="M3 Max, 64GB RAM, 2TB SSD, 16-inch Liquid Retina XDR..."
+                    placeholder="e.g. Enterprise Tier, Unlimited Seats, 64GB RAM, AWS Production Cluster..."
                     className="w-full px-3.5 py-2 bg-white/[0.04] border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500/50"
                   />
                 </div>
