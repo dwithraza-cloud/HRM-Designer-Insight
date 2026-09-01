@@ -45,6 +45,10 @@ export const PerformanceView: React.FC<PerformanceViewProps> = ({
 
   const isAdmin = currentUser?.roleType === 'admin';
 
+  const activeTopPerformers = topPerformers.filter(p => 
+    employees.length === 0 || employees.some(e => e.empId === p.empId || e.name.toLowerCase() === p.name.toLowerCase())
+  );
+
   const handlePostFeedback = (e: React.FormEvent) => {
     e.preventDefault();
     if (!feedbackText) return;
@@ -271,10 +275,10 @@ export const PerformanceView: React.FC<PerformanceViewProps> = ({
           </div>
 
           <div className="space-y-3">
-            {topPerformers.length === 0 ? (
+            {activeTopPerformers.length === 0 ? (
               <p className="text-xs text-slate-500 text-center py-6">No top performers listed yet.</p>
             ) : (
-              topPerformers.map((p, idx) => (
+              activeTopPerformers.map((p, idx) => (
                 <div key={p.id} className="p-3.5 rounded-2xl bg-white/[0.02] hover:bg-white/[0.05] border border-white/5 flex items-center justify-between transition-colors">
                   <div className="flex items-center gap-3">
                     <span className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${

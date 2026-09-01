@@ -151,6 +151,21 @@ export function App() {
     const emp = employees.find(e => e.id === id);
     if (window.confirm(`Are you sure you want to delete ${emp?.name || 'this employee'}?`)) {
       setEmployees(prev => prev.filter(e => e.id !== id));
+      if (emp) {
+        setLeaveRequests(prev => prev.filter(r => r.empId !== emp.empId && r.employeeName !== emp.name));
+        setPayrollRecords(prev => prev.filter(p => p.empId !== emp.empId && p.employeeName !== emp.name));
+        setAttendanceRecords(prev => prev.filter(a => a.empId !== emp.empId && a.employeeName !== emp.name));
+      }
+      setActivities(prev => [
+        {
+          id: `act-${Date.now()}`,
+          type: 'employee',
+          highlightedText: emp?.name || 'Employee',
+          description: `was removed from employee records`,
+          timestamp: 'Just now'
+        },
+        ...prev
+      ]);
       showToast(`Employee record removed.`);
     }
   };
@@ -553,6 +568,8 @@ export function App() {
             currentUser={currentUser}
             employees={employees}
             leaveRequests={leaveRequests}
+            jobOpenings={jobOpenings}
+            payrollRecords={payrollRecords}
             upcomingEvents={upcomingEvents}
             activities={activities}
             tasks={tasks}

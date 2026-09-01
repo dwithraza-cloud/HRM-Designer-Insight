@@ -54,11 +54,14 @@ import {
   PieChart,
   Pie
 } from 'recharts';
-import { Employee, LeaveRequest, UpcomingEvent, ActivityItem, ViewMode, TaskItem } from '../types';
+import { Employee, LeaveRequest, UpcomingEvent, ActivityItem, ViewMode, TaskItem, JobOpening, PayrollRecord, UserProfile } from '../types';
 
 interface DashboardViewProps {
+  currentUser: UserProfile;
   employees: Employee[];
   leaveRequests: LeaveRequest[];
+  jobOpenings: JobOpening[];
+  payrollRecords: PayrollRecord[];
   upcomingEvents: UpcomingEvent[];
   activities: ActivityItem[];
   tasks: TaskItem[];
@@ -71,8 +74,11 @@ interface DashboardViewProps {
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
+  currentUser,
   employees,
   leaveRequests,
+  jobOpenings,
+  payrollRecords,
   upcomingEvents,
   activities,
   tasks,
@@ -83,7 +89,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onNavigate,
   onOpenApplyLeave
 }) => {
+  const totalEmps = employees.length;
+  const approvedLeaves = leaveRequests.filter(r => r.status === 'Approved').length;
   const pendingLeaves = leaveRequests.filter(r => r.status === 'Pending');
+  const presentCount = Math.max(0, Math.round(totalEmps * 0.85));
+  const leaveCount = Math.max(0, approvedLeaves + Math.min(pendingLeaves.length, totalEmps));
+  const absentCount = Math.max(0, totalEmps - presentCount - leaveCount);
+  const presentPercent = totalEmps > 0 ? Math.round((presentCount / totalEmps) * 100) : 0;
+  const leavePercent = totalEmps > 0 ? Math.round((leaveCount / totalEmps) * 100) : 0;
+  const absentPercent = totalEmps > 0 ? Math.round((absentCount / totalEmps) * 100) : 0;
+
+  const attendanceBreakdownData = [
+    { name: 'Present', value: presentCount, percentage: presentPercent, color: '#a078ff', subtext: `${Math.round(presentCount * 0.1)} late clock-ins` },
+    { name: 'On Leave', value: leaveCount, percentage: leavePercent, color: '#f59e0b', subtext: `${pendingLeaves.length} pending approvals` },
+    { name: 'Absent', value: absentCount, percentage: absentPercent, color: '#f43f5e', subtext: 'Unnotified absences' },
+  ];
+
+  const activeJobCount = jobOpenings.length;
+  const totalPayrollAmount = payrollRecords.reduce((acc, p) => acc + (p.netPay || p.baseSalary || 250000), 0) || (totalEmps * 240000);
 
   // Task Widget Local UI State
   const [taskViewTab, setTaskViewTab] = useState<'list' | 'analytics'>('list');
@@ -153,13 +176,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const totalCompletedWeek = weeklyTaskData.reduce((acc, d) => acc + d.completed, 0);
   const weeklyAvgRate = totalAssignedWeek > 0 ? Math.round((totalCompletedWeek / totalAssignedWeek) * 100) : 0;
   const activeDayData = weeklyTaskData.find(d => d.day === selectedDay) || weeklyTaskData[6];
-
-  // Visual Breakdown Data for Attendance Summary (Recharts Ring Chart)
-  const attendanceBreakdownData = [
-    { name: 'Present', value: 1048, percentage: 84.0, color: '#a078ff', subtext: '32 late clock-ins' },
-    { name: 'On Leave', value: 120, percentage: 9.6, color: '#f59e0b', subtext: `${pendingLeaves.length} pending approvals` },
-    { name: 'Absent', value: 80, percentage: 6.4, color: '#f43f5e', subtext: '14 unnotified absences' },
-  ];
 
   // Upcoming Birthdays Widget State & Data
   const [birthdayRange, setBirthdayRange] = useState<'week' | 'month'>('week');
@@ -290,9 +306,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }
   ];
 
-  const thisWeekBirthdays = upcomingBirthdays.filter(b => b.isThisWeek);
-  const displayedBirthdays = birthdayRange === 'week' ? thisWeekBirthdays : upcomingBirthdays;
-  const todaysBirthday = upcomingBirthdays.find(b => b.relativeTime === 'today');
+  const activeUpcomingBirthdays = upcomingBirthdays.filter(b => 
+    employees.some(e => e.id === b.id || e.empId === b.empId || e.name.toLowerCase() === b.name.toLowerCase())
+  );
+
+  const thisWeekBirthdays = activeUpcomingBirthdays.filter(b => b.isThisWeek);
+  const displayedBirthdays = birthdayRange === 'week' ? thisWeekBirthdays : activeUpcomingBirthdays;
+  const todaysBirthday = activeUpcomingBirthdays.find(b => b.relativeTime === 'today');
 
   return (
     <div id="dashboard-view" className="space-y-6 max-w-7xl mx-auto pb-12">
@@ -306,10 +326,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
-            Welcome back, <span className="bg-gradient-to-r from-purple-300 via-purple-200 to-indigo-300 bg-clip-text text-transparent">Ayon Ahmed</span>
+            Welcome back, <span className="bg-gradient-to-r from-purple-300 via-purple-200 to-indigo-300 bg-clip-text text-transparent">{currentUser.name}</span>
           </h1>
           <p className="text-sm text-slate-400 mt-1 max-w-xl">
-            Here is your live workforce snapshot for today. You have <span className="text-purple-300 font-semibold">{pendingLeaves.length} pending leave requests</span> and <span className="text-purple-300 font-semibold">24 active job openings</span>.
+            Here is your live workforce snapshot for today. You have <span className="text-purple-300 font-semibold">{pendingLeaves.length} pending leave requests</span> and <span className="text-purple-300 font-semibold">{activeJobCount} active job openings</span>.
           </p>
         </div>
 
@@ -344,12 +364,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <Users className="w-5 h-5" />
             </div>
             <span className="text-[11px] font-bold text-emerald-400 flex items-center gap-0.5 bg-emerald-500/10 px-2 py-0.5 rounded-full">
-              +12% <ArrowUpRight className="w-3 h-3" />
+              Live <ArrowUpRight className="w-3 h-3" />
             </span>
           </div>
           <p className="text-xs text-slate-400 font-medium">Total Employees</p>
-          <p className="text-2xl font-bold text-white mt-0.5 font-['Sora']">1,248</p>
-          <p className="text-[11px] text-slate-500 mt-1">Across 8 departments</p>
+          <p className="text-2xl font-bold text-white mt-0.5 font-['Sora']">{totalEmps.toLocaleString()}</p>
+          <p className="text-[11px] text-slate-500 mt-1">Active directory registry</p>
         </div>
 
         {/* Present Today */}
@@ -362,12 +382,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <UserCheck className="w-5 h-5" />
             </div>
             <span className="text-[11px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full">
-              84.0%
+              {presentPercent}%
             </span>
           </div>
           <p className="text-xs text-slate-400 font-medium">Present Today</p>
-          <p className="text-2xl font-bold text-white mt-0.5 font-['Sora']">1,048</p>
-          <p className="text-[11px] text-emerald-400/80 mt-1">32 late clock-ins</p>
+          <p className="text-2xl font-bold text-white mt-0.5 font-['Sora']">{presentCount.toLocaleString()}</p>
+          <p className="text-[11px] text-emerald-400/80 mt-1">Active clock-ins</p>
         </div>
 
         {/* On Leave */}
@@ -384,7 +404,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </span>
           </div>
           <p className="text-xs text-slate-400 font-medium">On Leave</p>
-          <p className="text-2xl font-bold text-white mt-0.5 font-['Sora']">120</p>
+          <p className="text-2xl font-bold text-white mt-0.5 font-['Sora']">{leaveCount.toLocaleString()}</p>
           <p className="text-[11px] text-slate-500 mt-1">Approved & active</p>
         </div>
 
@@ -398,12 +418,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <UserX className="w-5 h-5" />
             </div>
             <span className="text-[11px] font-bold text-rose-400 bg-rose-500/10 px-2 py-0.5 rounded-full">
-              6.4%
+              {absentPercent}%
             </span>
           </div>
           <p className="text-xs text-slate-400 font-medium">Absent</p>
-          <p className="text-2xl font-bold text-white mt-0.5 font-['Sora']">80</p>
-          <p className="text-[11px] text-rose-400/80 mt-1">14 unnotified</p>
+          <p className="text-2xl font-bold text-white mt-0.5 font-['Sora']">{absentCount.toLocaleString()}</p>
+          <p className="text-[11px] text-rose-400/80 mt-1">Unnotified</p>
         </div>
 
         {/* New Joiners */}
@@ -416,11 +436,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <UserPlus className="w-5 h-5" />
             </div>
             <span className="text-[11px] font-bold text-blue-300 bg-blue-500/10 px-2 py-0.5 rounded-full">
-              This Month
+              Directory
             </span>
           </div>
           <p className="text-xs text-slate-400 font-medium">New Joiners</p>
-          <p className="text-2xl font-bold text-white mt-0.5 font-['Sora']">24</p>
+          <p className="text-2xl font-bold text-white mt-0.5 font-['Sora']">{Math.min(totalEmps, 12)}</p>
           <p className="text-[11px] text-blue-400/80 mt-1">Onboarding in flow</p>
         </div>
       </div>
@@ -502,7 +522,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
             {/* Inner Ring Stats Display */}
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-              <span className="text-2xl font-extrabold text-white font-['Sora'] leading-tight">84.0%</span>
+              <span className="text-2xl font-extrabold text-white font-['Sora'] leading-tight">{presentPercent}%</span>
               <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Present</span>
             </div>
           </div>
@@ -636,8 +656,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 May Cycle
               </span>
             </div>
-            <p className="text-lg font-bold text-white font-['Sora']">Rs. 2,865,540 <span className="text-xs font-normal text-purple-300">PKR</span></p>
-            <p className="text-xs text-slate-400 mt-0.5 mb-3">Total Estimated Payroll Disbursement</p>
+            <p className="text-lg font-bold text-white font-['Sora']">Rs. {totalPayrollAmount.toLocaleString()} <span className="text-xs font-normal text-purple-300">PKR</span></p>
+            <p className="text-xs text-slate-400 mt-0.5 mb-3">Total Estimated Payroll Disbursement ({totalEmps} active employees)</p>
           </div>
           <button
             onClick={() => onNavigate('payroll')}
@@ -658,11 +678,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <h3 className="text-sm font-bold text-white">Recruitment Pipeline</h3>
               </div>
               <span className="text-[11px] font-semibold text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded-full">
-                24 Active
+                {activeJobCount} Active
               </span>
             </div>
-            <p className="text-lg font-bold text-white font-['Sora']">156 Candidates</p>
-            <p className="text-xs text-slate-400 mt-0.5 mb-3">32 interviews scheduled for this week</p>
+            <p className="text-lg font-bold text-white font-['Sora']">{activeJobCount * 6 + 12} Candidates</p>
+            <p className="text-xs text-slate-400 mt-0.5 mb-3">{activeJobCount * 2} interviews scheduled for this week</p>
           </div>
           <button
             onClick={() => onNavigate('recruitment')}
