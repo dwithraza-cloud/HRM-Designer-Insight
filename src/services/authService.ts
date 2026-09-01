@@ -1,5 +1,6 @@
 import { UserProfile, UserRole, ThemeMode } from '../types';
 import { ADMIN_USER, MANAGER_USER, EMPLOYEE_USER } from '../data/initialData';
+import { dbService } from './dbService';
 
 export interface UserAccount {
   id: string;
@@ -93,6 +94,20 @@ class AuthService {
 
   constructor() {
     this.accounts = this.loadAccounts();
+    // Background init with Firestore database
+    this.syncFromFirestore();
+  }
+
+  public async syncFromFirestore(): Promise<void> {
+    try {
+      const dbAccounts = await dbService.loadOrSeedCollection<UserAccount>('user_accounts', INITIAL_USER_ACCOUNTS);
+      if (dbAccounts && dbAccounts.length > 0) {
+        this.accounts = dbAccounts;
+        this.saveAccounts();
+      }
+    } catch (err) {
+      console.error('Failed to sync user_accounts from Firestore:', err);
+    }
   }
 
   private loadAccounts(): UserAccount[] {
@@ -101,7 +116,6 @@ class AuthService {
       if (stored) {
         const parsed: UserAccount[] = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          // Ensure the requested primary credentials exist or are synced
           const primaryDefaults = INITIAL_USER_ACCOUNTS.slice(0, 3);
           primaryDefaults.forEach(def => {
             const idx = parsed.findIndex(
@@ -110,7 +124,6 @@ class AuthService {
             if (idx === -1) {
               parsed.unshift(def);
             } else {
-              // Ensure profile & role are up-to-date while preserving user's saved themePreference
               const savedTheme = parsed[idx].themePreference || parsed[idx].profile?.themePreference || 'dark';
               parsed[idx].email = def.email;
               parsed[idx].name = def.name;
@@ -139,6 +152,15 @@ class AuthService {
       localStorage.setItem(STORAGE_KEY_ACCOUNTS, JSON.stringify(this.accounts));
     } catch {
       // Ignore
+    }
+  }
+
+  private async persistAccountToDB(account: UserAccount): Promise<void> {
+    this.saveAccounts();
+    try {
+      await dbService.saveItem('user_accounts', account);
+    } catch (e) {
+      console.error('Failed to persist account to Firestore:', e);
     }
   }
 
@@ -256,7 +278,7 @@ class AuthService {
     account.profile.themePreference = theme;
     account.lastUpdated = new Date().toISOString();
     this.accounts[accountIndex] = account;
-    this.saveAccounts();
+    this.persistAccountToDB(account);
 
     // If active session belongs to this user, update active session
     const active = this.getActiveSession();
@@ -349,7 +371,7 @@ class AuthService {
 
     account.lastUpdated = new Date().toISOString();
     this.accounts[accountIndex] = account;
-    this.saveAccounts();
+    this.persistAccountToDB(account);
 
     // Update active session
     const updatedProfile: UserProfile = {
@@ -439,7 +461,7 @@ class AuthService {
 
     account.lastUpdated = new Date().toISOString();
     this.accounts[accountIndex] = account;
-    this.saveAccounts();
+    this.persistAccountToDB(account);
 
     // If the active session is this user, update active session
     const currentSession = this.getActiveSession();
@@ -525,7 +547,7 @@ class AuthService {
     };
 
     this.accounts.unshift(created);
-    this.saveAccounts();
+    this.persistAccountToDB(created);
 
     return {
       success: true,
@@ -600,7 +622,7 @@ class AuthService {
     };
 
     this.accounts.push(newAccount);
-    this.saveAccounts();
+    this.persistAccountToDB(newAccount);
     return newAccount;
   }
 
@@ -610,4 +632,5 @@ class AuthService {
 }
 
 export const authService = new AuthService();
+
 

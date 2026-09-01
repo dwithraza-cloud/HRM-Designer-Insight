@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "1.0",
+  "collections": {
+    "employees": {
+      "description": "HRM Employee Directory Records"
+    },
+    "leave_requests": {
+      "description": "HRM Employee Leave Applications and Approvals"
+    },
+    "job_openings": {
+      "description": "Recruitment Pipeline Job Openings"
+    },
+    "tasks": {
+      "description": "Assigned HRM Work Tasks"
+    },
+    "attendance": {
+      "description": "Daily Clock In / Clock Out Attendance Logs"
+    },
+    "payroll_records": {
+      "description": "Monthly Salary and Payroll Disbursements"
+    },
+    "assets": {
+      "description": "Company Hardware and License Assets"
+    },
+    "documents": {
+      "description": "HR Policies and Workplace Documents"
+    },
+    "activities": {
+      "description": "System Audit Logs and Action Feed"
+    },
+    "notifications": {
+      "description": "User System Notifications"
+    },
+    "app_settings": {
+      "description": "Global HRM Configuration Settings"
+    }
+  }
+}

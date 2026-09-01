@@ -50,9 +50,24 @@ import {
   AssetItem,
   DocumentItem,
   AttendanceRecord,
-  ThemeMode
+  ThemeMode,
+  ActivityItem,
+  NotificationItem
 } from './types';
 import { authService } from './services/authService';
+import { dbService } from './services/dbService';
+
+function loadStoredData<T>(key: string, fallback: T): T {
+  try {
+    const item = localStorage.getItem(key);
+    if (item) {
+      return JSON.parse(item);
+    }
+  } catch (error) {
+    console.error(`Error loading ${key} from localStorage:`, error);
+  }
+  return fallback;
+}
 
 export function App() {
   // Navigation & Authentication - strictly require login on app launch
@@ -70,19 +85,163 @@ export function App() {
     root.setAttribute('data-theme', theme);
   }, [currentUser?.themePreference, currentUser?.id]);
 
-  // Core Data State
-  const [employees, setEmployees] = useState<Employee[]>(INITIAL_EMPLOYEES);
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee>(INITIAL_EMPLOYEES[0]);
-  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(INITIAL_LEAVE_REQUESTS);
-  const [jobOpenings, setJobOpenings] = useState<JobOpening[]>(INITIAL_JOB_OPENINGS);
-  const [tasks, setTasks] = useState<TaskItem[]>(INITIAL_TASKS);
-  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>(INITIAL_ATTENDANCE);
-  const [payrollRecords, setPayrollRecords] = useState<PayrollRecord[]>(INITIAL_PAYROLL_RECORDS);
-  const [assets, setAssets] = useState<AssetItem[]>(INITIAL_ASSETS);
-  const [documents, setDocuments] = useState<DocumentItem[]>(INITIAL_DOCUMENTS);
+  // Core Data State initialized with local state fallback while Firestore syncs
+  const [employees, setEmployees] = useState<Employee[]>(() => loadStoredData('insight_hrm_employees', INITIAL_EMPLOYEES));
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee>(() => {
+    const list = loadStoredData<Employee[]>('insight_hrm_employees', INITIAL_EMPLOYEES);
+    return list[0] || INITIAL_EMPLOYEES[0];
+  });
+  const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(() => loadStoredData('insight_hrm_leave_requests', INITIAL_LEAVE_REQUESTS));
+  const [jobOpenings, setJobOpenings] = useState<JobOpening[]>(() => loadStoredData('insight_hrm_job_openings', INITIAL_JOB_OPENINGS));
+  const [tasks, setTasks] = useState<TaskItem[]>(() => loadStoredData('insight_hrm_tasks', INITIAL_TASKS));
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>(() => loadStoredData('insight_hrm_attendance', INITIAL_ATTENDANCE));
+  const [payrollRecords, setPayrollRecords] = useState<PayrollRecord[]>(() => loadStoredData('insight_hrm_payroll_records', INITIAL_PAYROLL_RECORDS));
+  const [assets, setAssets] = useState<AssetItem[]>(() => loadStoredData('insight_hrm_assets', INITIAL_ASSETS));
+  const [documents, setDocuments] = useState<DocumentItem[]>(() => loadStoredData('insight_hrm_documents', INITIAL_DOCUMENTS));
   const [upcomingEvents] = useState(UPCOMING_EVENTS);
-  const [activities, setActivities] = useState(RECENT_ACTIVITIES);
-  const [notifications, setNotifications] = useState(NOTIFICATIONS);
+  const [activities, setActivities] = useState(() => loadStoredData('insight_hrm_activities', RECENT_ACTIVITIES));
+  const [notifications, setNotifications] = useState(() => loadStoredData('insight_hrm_notifications', NOTIFICATIONS));
+
+  // Sync state to Firestore Production Database & Realtime Listeners
+  useEffect(() => {
+    let unsubscribes: (() => void)[] = [];
+
+    async function initDatabase() {
+      try {
+        const loadedEmps = await dbService.loadOrSeedCollection('employees', INITIAL_EMPLOYEES);
+        setEmployees(loadedEmps);
+        if (loadedEmps.length > 0) setSelectedEmployee(loadedEmps[0]);
+
+        const loadedLeaves = await dbService.loadOrSeedCollection('leave_requests', INITIAL_LEAVE_REQUESTS);
+        setLeaveRequests(loadedLeaves);
+
+        const loadedJobs = await dbService.loadOrSeedCollection('job_openings', INITIAL_JOB_OPENINGS);
+        setJobOpenings(loadedJobs);
+
+        const loadedTasks = await dbService.loadOrSeedCollection('tasks', INITIAL_TASKS);
+        setTasks(loadedTasks);
+
+        const loadedAttendance = await dbService.loadOrSeedCollection('attendance', INITIAL_ATTENDANCE);
+        setAttendanceRecords(loadedAttendance);
+
+        const loadedPayroll = await dbService.loadOrSeedCollection('payroll_records', INITIAL_PAYROLL_RECORDS);
+        setPayrollRecords(loadedPayroll);
+
+        const loadedAssets = await dbService.loadOrSeedCollection('assets', INITIAL_ASSETS);
+        setAssets(loadedAssets);
+
+        const loadedDocs = await dbService.loadOrSeedCollection('documents', INITIAL_DOCUMENTS);
+        setDocuments(loadedDocs);
+
+        const loadedActs = await dbService.loadOrSeedCollection('activities', RECENT_ACTIVITIES);
+        setActivities(loadedActs);
+
+        const loadedNotifs = await dbService.loadOrSeedCollection('notifications', NOTIFICATIONS);
+        setNotifications(loadedNotifs);
+
+        // Realtime Firestore subscriptions
+        unsubscribes.push(dbService.subscribeToCollection<Employee>('employees', items => setEmployees(items)));
+        unsubscribes.push(dbService.subscribeToCollection<LeaveRequest>('leave_requests', items => setLeaveRequests(items)));
+        unsubscribes.push(dbService.subscribeToCollection<JobOpening>('job_openings', items => setJobOpenings(items)));
+        unsubscribes.push(dbService.subscribeToCollection<TaskItem>('tasks', items => setTasks(items)));
+        unsubscribes.push(dbService.subscribeToCollection<AttendanceRecord>('attendance', items => setAttendanceRecords(items)));
+        unsubscribes.push(dbService.subscribeToCollection<PayrollRecord>('payroll_records', items => setPayrollRecords(items)));
+        unsubscribes.push(dbService.subscribeToCollection<AssetItem>('assets', items => setAssets(items)));
+        unsubscribes.push(dbService.subscribeToCollection<DocumentItem>('documents', items => setDocuments(items)));
+        unsubscribes.push(dbService.subscribeToCollection<ActivityItem>('activities', items => setActivities(items)));
+        unsubscribes.push(dbService.subscribeToCollection<NotificationItem>('notifications', items => setNotifications(items)));
+      } catch (err) {
+        console.error('Error initializing Firestore database:', err);
+      }
+    }
+
+    initDatabase();
+
+    return () => {
+      unsubscribes.forEach(unsub => unsub());
+    };
+  }, []);
+
+  // Also maintain local storage backup
+  useEffect(() => {
+    try {
+      localStorage.setItem('insight_hrm_employees', JSON.stringify(employees));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [employees]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('insight_hrm_leave_requests', JSON.stringify(leaveRequests));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [leaveRequests]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('insight_hrm_job_openings', JSON.stringify(jobOpenings));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [jobOpenings]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('insight_hrm_tasks', JSON.stringify(tasks));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [tasks]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('insight_hrm_attendance', JSON.stringify(attendanceRecords));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [attendanceRecords]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('insight_hrm_payroll_records', JSON.stringify(payrollRecords));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [payrollRecords]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('insight_hrm_assets', JSON.stringify(assets));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [assets]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('insight_hrm_documents', JSON.stringify(documents));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [documents]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('insight_hrm_activities', JSON.stringify(activities));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [activities]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('insight_hrm_notifications', JSON.stringify(notifications));
+    } catch (e) {
+      console.error(e);
+    }
+  }, [notifications]);
 
   // Modals
   const [isApplyLeaveOpen, setIsApplyLeaveOpen] = useState(false);
@@ -120,72 +279,99 @@ export function App() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // RBAC Action Handlers with Authorization Checks
-  const handleSaveEmployee = (newEmp: Employee) => {
+  // RBAC Action Handlers with Authorization Checks & Production Database Persistence
+  const handleSaveEmployee = async (newEmp: Employee) => {
     if (currentUser.roleType !== 'admin') {
       showToast('⚠️ Access Denied (403): Only Admins can register new employee accounts.');
       return;
     }
-    setEmployees(prev => [newEmp, ...prev]);
-    setSelectedEmployee(newEmp);
-    setActivities(prev => [
-      {
+    try {
+      await dbService.saveItem('employees', newEmp);
+      setEmployees(prev => [newEmp, ...prev.filter(e => e.id !== newEmp.id)]);
+      setSelectedEmployee(newEmp);
+
+      const act: ActivityItem = {
         id: `act-${Date.now()}`,
         type: 'employee',
         highlightedText: newEmp.name,
         description: `was registered as ${newEmp.designation} in ${newEmp.department}`,
         timestamp: 'Just now'
-      },
-      ...prev
-    ]);
-    confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
-    showToast(`Employee ${newEmp.name} registered successfully!`);
-    setCurrentView('employee-detail');
+      };
+      await dbService.saveItem('activities', act);
+
+      confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
+      showToast(`Employee ${newEmp.name} registered successfully!`);
+      setCurrentView('employee-detail');
+    } catch (err: any) {
+      showToast(`❌ Database error: ${err.message || err}`);
+    }
   };
 
-  const handleDeleteEmployee = (id: string) => {
+  const handleDeleteEmployee = async (id: string) => {
     if (currentUser.roleType !== 'admin') {
       showToast('⚠️ Access Denied (403): Only Admins can delete employee records.');
       return;
     }
     const emp = employees.find(e => e.id === id);
     if (window.confirm(`Are you sure you want to delete ${emp?.name || 'this employee'}?`)) {
-      setEmployees(prev => prev.filter(e => e.id !== id));
-      if (emp) {
-        setLeaveRequests(prev => prev.filter(r => r.empId !== emp.empId && r.employeeName !== emp.name));
-        setPayrollRecords(prev => prev.filter(p => p.empId !== emp.empId && p.employeeName !== emp.name));
-        setAttendanceRecords(prev => prev.filter(a => a.empId !== emp.empId && a.employeeName !== emp.name));
-      }
-      setActivities(prev => [
-        {
+      try {
+        await dbService.deleteItem('employees', id);
+        setEmployees(prev => prev.filter(e => e.id !== id));
+        if (emp) {
+          const relatedLeaves = leaveRequests.filter(r => r.empId === emp.empId || r.employeeName === emp.name);
+          for (const r of relatedLeaves) {
+            await dbService.deleteItem('leave_requests', r.id);
+          }
+          setLeaveRequests(prev => prev.filter(r => r.empId !== emp.empId && r.employeeName !== emp.name));
+
+          const relatedPayrolls = payrollRecords.filter(p => p.empId === emp.empId || p.employeeName === emp.name);
+          for (const p of relatedPayrolls) {
+            await dbService.deleteItem('payroll_records', p.id);
+          }
+          setPayrollRecords(prev => prev.filter(p => p.empId !== emp.empId && p.employeeName !== emp.name));
+
+          const relatedAttendance = attendanceRecords.filter(a => a.empId === emp.empId || a.employeeName === emp.name);
+          for (const a of relatedAttendance) {
+            await dbService.deleteItem('attendance', a.id);
+          }
+          setAttendanceRecords(prev => prev.filter(a => a.empId !== emp.empId && a.employeeName !== emp.name));
+        }
+
+        const act: ActivityItem = {
           id: `act-${Date.now()}`,
           type: 'employee',
           highlightedText: emp?.name || 'Employee',
           description: `was removed from employee records`,
           timestamp: 'Just now'
-        },
-        ...prev
-      ]);
-      showToast(`Employee record removed.`);
+        };
+        await dbService.saveItem('activities', act);
+        showToast(`Employee record removed from database.`);
+      } catch (err: any) {
+        showToast(`❌ Database error: ${err.message || err}`);
+      }
     }
   };
 
-  const handleApplyLeave = (newLeave: LeaveRequest) => {
-    setLeaveRequests(prev => [newLeave, ...prev]);
-    setActivities(prev => [
-      {
+  const handleApplyLeave = async (newLeave: LeaveRequest) => {
+    try {
+      await dbService.saveItem('leave_requests', newLeave);
+      setLeaveRequests(prev => [newLeave, ...prev.filter(r => r.id !== newLeave.id)]);
+
+      const act: ActivityItem = {
         id: `act-${Date.now()}`,
         type: 'leave',
         highlightedText: newLeave.employeeName,
         description: `submitted a ${newLeave.leaveType} application (${newLeave.duration})`,
         timestamp: 'Just now'
-      },
-      ...prev
-    ]);
-    showToast(`Leave application submitted for approval.`);
+      };
+      await dbService.saveItem('activities', act);
+      showToast(`Leave application submitted for approval.`);
+    } catch (err: any) {
+      showToast(`❌ Database error: ${err.message || err}`);
+    }
   };
 
-  const handleApproveLeave = (id: string) => {
+  const handleApproveLeave = async (id: string) => {
     if (currentUser.roleType === 'employee') {
       showToast('⚠️ Access Denied (403): Employees cannot approve leave requests.');
       return;
@@ -195,292 +381,376 @@ export function App() {
       showToast(`⚠️ Access Denied: Managers can only approve leave requests for the ${currentUser.department} department.`);
       return;
     }
-    setLeaveRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'Approved' } : r));
-    confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
-    showToast(`Leave request approved.`);
+    try {
+      await dbService.updateItemFields('leave_requests', id, { status: 'Approved' });
+      setLeaveRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'Approved' } : r));
+      confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
+      showToast(`Leave request approved.`);
+    } catch (err: any) {
+      showToast(`❌ Database error: ${err.message || err}`);
+    }
   };
 
-  const handleRejectLeave = (id: string) => {
+  const handleRejectLeave = async (id: string) => {
     if (currentUser.roleType === 'employee') {
       showToast('⚠️ Access Denied (403): Employees cannot reject leave requests.');
       return;
     }
-    setLeaveRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'Rejected' } : r));
-    showToast(`Leave request rejected.`);
+    try {
+      await dbService.updateItemFields('leave_requests', id, { status: 'Rejected' });
+      setLeaveRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'Rejected' } : r));
+      showToast(`Leave request rejected.`);
+    } catch (err: any) {
+      showToast(`❌ Database error: ${err.message || err}`);
+    }
   };
 
   // --- RECRUITMENT CRUD HANDLERS ---
-  const handleAddJob = (job: JobOpening) => {
+  const handleAddJob = async (job: JobOpening) => {
     if (currentUser.roleType !== 'admin' && currentUser.roleType !== 'manager') {
       showToast('⚠️ Access Denied (403): Unauthorized operation.');
       return;
     }
-    setJobOpenings(prev => [job, ...prev]);
-    showToast(`✓ Job position "${job.title}" created successfully.`);
+    try {
+      await dbService.saveItem('job_openings', job);
+      setJobOpenings(prev => [job, ...prev.filter(j => j.id !== job.id)]);
+      showToast(`✓ Job position "${job.title}" created successfully.`);
+    } catch (err: any) {
+      showToast(`❌ Database error: ${err.message || err}`);
+    }
   };
 
-  const handleEditJob = (job: JobOpening) => {
+  const handleEditJob = async (job: JobOpening) => {
     if (currentUser.roleType !== 'admin' && currentUser.roleType !== 'manager') {
       showToast('⚠️ Access Denied (403): Unauthorized operation.');
       return;
     }
-    setJobOpenings(prev => prev.map(j => j.id === job.id ? job : j));
-    showToast(`✓ Job opening "${job.title}" updated.`);
+    try {
+      await dbService.saveItem('job_openings', job);
+      setJobOpenings(prev => prev.map(j => j.id === job.id ? job : j));
+      showToast(`✓ Job opening "${job.title}" updated.`);
+    } catch (err: any) {
+      showToast(`❌ Database error: ${err.message || err}`);
+    }
   };
 
-  const handleDeleteJob = (id: string) => {
+  const handleDeleteJob = async (id: string) => {
     if (currentUser.roleType !== 'admin') {
       showToast('⚠️ Access Denied (403): Only Admins can delete job positions.');
       return;
     }
-    setJobOpenings(prev => prev.filter(j => j.id !== id));
-    showToast(`✓ Job opening removed.`);
+    try {
+      await dbService.deleteItem('job_openings', id);
+      setJobOpenings(prev => prev.filter(j => j.id !== id));
+      showToast(`✓ Job opening removed.`);
+    } catch (err: any) {
+      showToast(`❌ Database error: ${err.message || err}`);
+    }
   };
 
   // --- PAYROLL CRUD HANDLERS ---
-  const handleAddPayrollRecord = (record: PayrollRecord) => {
+  const handleAddPayrollRecord = async (record: PayrollRecord) => {
     if (currentUser.roleType !== 'admin') {
       showToast('⚠️ Access Denied (403): Only Admins can create payroll records.');
       return;
     }
-    setPayrollRecords(prev => [record, ...prev]);
-    showToast(`✓ Payroll record added for ${record.employeeName}. Net: Rs. ${record.netSalary.toLocaleString()} PKR`);
+    try {
+      await dbService.saveItem('payroll_records', record);
+      setPayrollRecords(prev => [record, ...prev.filter(p => p.id !== record.id)]);
+      showToast(`✓ Payroll record added for ${record.employeeName}. Net: Rs. ${record.netSalary.toLocaleString()} PKR`);
+    } catch (err: any) {
+      showToast(`❌ Database error: ${err.message || err}`);
+    }
   };
 
-  const handleEditPayrollRecord = (record: PayrollRecord) => {
+  const handleEditPayrollRecord = async (record: PayrollRecord) => {
     if (currentUser.roleType !== 'admin') {
       showToast('⚠️ Access Denied (403): Only Admins can modify payroll records.');
       return;
     }
-    setPayrollRecords(prev => prev.map(p => p.id === record.id ? record : p));
-    showToast(`✓ Payroll record updated for ${record.employeeName}. Net: Rs. ${record.netSalary.toLocaleString()} PKR`);
+    try {
+      await dbService.saveItem('payroll_records', record);
+      setPayrollRecords(prev => prev.map(p => p.id === record.id ? record : p));
+      showToast(`✓ Payroll record updated for ${record.employeeName}. Net: Rs. ${record.netSalary.toLocaleString()} PKR`);
+    } catch (err: any) {
+      showToast(`❌ Database error: ${err.message || err}`);
+    }
   };
 
-  const handleDeletePayrollRecord = (id: string) => {
+  const handleDeletePayrollRecord = async (id: string) => {
     if (currentUser.roleType !== 'admin') {
       showToast('⚠️ Access Denied (403): Only Admins can delete payroll records.');
       return;
     }
-    setPayrollRecords(prev => prev.filter(p => p.id !== id));
-    showToast(`✓ Payroll disbursement record removed.`);
+    try {
+      await dbService.deleteItem('payroll_records', id);
+      setPayrollRecords(prev => prev.filter(p => p.id !== id));
+      showToast(`✓ Payroll disbursement record removed.`);
+    } catch (err: any) {
+      showToast(`❌ Database error: ${err.message || err}`);
+    }
   };
 
   // --- ASSET MANAGEMENT CRUD HANDLERS ---
-  const handleAddAsset = (asset: AssetItem) => {
+  const handleAddAsset = async (asset: AssetItem) => {
     if (currentUser.roleType !== 'admin') {
       showToast('⚠️ Access Denied (403): Only Admins can add hardware assets.');
       return;
     }
-    setAssets(prev => [asset, ...prev]);
-    showToast(`✓ Hardware asset "${asset.name}" (${asset.serialNumber}) registered.`);
+    try {
+      await dbService.saveItem('assets', asset);
+      setAssets(prev => [asset, ...prev.filter(a => a.id !== asset.id)]);
+      showToast(`✓ Hardware asset "${asset.name}" (${asset.serialNumber}) registered.`);
+    } catch (err: any) {
+      showToast(`❌ Database error: ${err.message || err}`);
+    }
   };
 
-  const handleEditAsset = (asset: AssetItem) => {
+  const handleEditAsset = async (asset: AssetItem) => {
     if (currentUser.roleType !== 'admin') {
       showToast('⚠️ Access Denied (403): Only Admins can edit hardware assets.');
       return;
     }
-    setAssets(prev => prev.map(a => a.id === asset.id ? asset : a));
-    showToast(`✓ Hardware asset "${asset.name}" updated.`);
+    try {
+      await dbService.saveItem('assets', asset);
+      setAssets(prev => prev.map(a => a.id === asset.id ? asset : a));
+      showToast(`✓ Hardware asset "${asset.name}" updated.`);
+    } catch (err: any) {
+      showToast(`❌ Database error: ${err.message || err}`);
+    }
   };
 
-  const handleDeleteAsset = (id: string) => {
+  const handleDeleteAsset = async (id: string) => {
     if (currentUser.roleType !== 'admin') {
       showToast('⚠️ Access Denied (403): Only Admins can delete hardware assets.');
       return;
     }
-    setAssets(prev => prev.filter(a => a.id !== id));
-    showToast(`✓ Hardware asset removed from inventory.`);
+    try {
+      await dbService.deleteItem('assets', id);
+      setAssets(prev => prev.filter(a => a.id !== id));
+      showToast(`✓ Hardware asset removed from inventory.`);
+    } catch (err: any) {
+      showToast(`❌ Database error: ${err.message || err}`);
+    }
   };
 
   // --- DOCUMENT MANAGEMENT CRUD HANDLERS ---
-  const handleAddDocument = (doc: DocumentItem) => {
+  const handleAddDocument = async (doc: DocumentItem) => {
     if (currentUser.roleType !== 'admin' && currentUser.roleType !== 'manager') {
       showToast('⚠️ Access Denied (403): Only Admins and Managers can upload documents.');
       return;
     }
-    setDocuments(prev => [doc, ...prev]);
-    showToast(`✓ Document "${doc.name}" uploaded successfully.`);
+    try {
+      await dbService.saveItem('documents', doc);
+      setDocuments(prev => [doc, ...prev.filter(d => d.id !== doc.id)]);
+      showToast(`✓ Document "${doc.name}" uploaded successfully.`);
+    } catch (err: any) {
+      showToast(`❌ Database error: ${err.message || err}`);
+    }
   };
 
-  const handleEditDocument = (doc: DocumentItem) => {
+  const handleEditDocument = async (doc: DocumentItem) => {
     if (currentUser.roleType !== 'admin' && currentUser.roleType !== 'manager') {
       showToast('⚠️ Access Denied (403): Only Admins and Managers can edit documents.');
       return;
     }
-    setDocuments(prev => prev.map(d => d.id === doc.id ? doc : d));
-    showToast(`✓ Document "${doc.name}" updated.`);
+    try {
+      await dbService.saveItem('documents', doc);
+      setDocuments(prev => prev.map(d => d.id === doc.id ? doc : d));
+      showToast(`✓ Document "${doc.name}" updated.`);
+    } catch (err: any) {
+      showToast(`❌ Database error: ${err.message || err}`);
+    }
   };
 
-  const handleDeleteDocument = (id: string) => {
+  const handleDeleteDocument = async (id: string) => {
     if (currentUser.roleType !== 'admin' && currentUser.roleType !== 'manager') {
       showToast('⚠️ Access Denied (403): Only Admins and Managers can delete documents.');
       return;
     }
-    setDocuments(prev => prev.filter(d => d.id !== id));
-    showToast(`✓ Document removed from repository.`);
+    try {
+      await dbService.deleteItem('documents', id);
+      setDocuments(prev => prev.filter(d => d.id !== id));
+      showToast(`✓ Document removed from repository.`);
+    } catch (err: any) {
+      showToast(`❌ Database error: ${err.message || err}`);
+    }
   };
 
   // --- TASK HANDLERS ---
-  const handleAddTask = (newTask: TaskItem) => {
-    setTasks(prev => [newTask, ...prev]);
-    showToast(`Task "${newTask.title}" assigned successfully!`);
+  const handleAddTask = async (newTask: TaskItem) => {
+    try {
+      await dbService.saveItem('tasks', newTask);
+      setTasks(prev => [newTask, ...prev.filter(t => t.id !== newTask.id)]);
+      showToast(`Task "${newTask.title}" assigned successfully!`);
+    } catch (err: any) {
+      showToast(`❌ Database error: ${err.message || err}`);
+    }
   };
 
-  const handleUpdateTaskStatus = (id: string, status: TaskItem['status']) => {
-    setTasks(prev => prev.map(t => {
-      if (t.id === id) {
-        return {
-          ...t,
-          status,
-          completed: status === 'Completed'
-        };
+  const handleUpdateTaskStatus = async (id: string, status: TaskItem['status']) => {
+    const completed = status === 'Completed';
+    try {
+      await dbService.updateItemFields('tasks', id, { status, completed });
+      setTasks(prev => prev.map(t => t.id === id ? { ...t, status, completed } : t));
+    } catch (err: any) {
+      showToast(`❌ Database error: ${err.message || err}`);
+    }
+  };
+
+  const handleToggleTask = async (id: string) => {
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+    const nextCompleted = !task.completed;
+    const nextStatus: TaskItem['status'] = nextCompleted ? 'Completed' : 'Pending';
+    try {
+      await dbService.updateItemFields('tasks', id, { completed: nextCompleted, status: nextStatus });
+      setTasks(prev => prev.map(t => t.id === id ? { ...t, completed: nextCompleted, status: nextStatus } : t));
+      if (nextCompleted) {
+        confetti({ particleCount: 35, spread: 45, origin: { y: 0.8 } });
+        showToast(`Task completed!`);
       }
-      return t;
-    }));
+    } catch (err: any) {
+      showToast(`❌ Database error: ${err.message || err}`);
+    }
   };
 
-  const handleToggleTask = (id: string) => {
-    setTasks(prev => prev.map(t => {
-      if (t.id === id) {
-        const nextCompleted = !t.completed;
-        const nextStatus: TaskItem['status'] = nextCompleted ? 'Completed' : 'Pending';
-        if (nextCompleted) {
-          confetti({ particleCount: 35, spread: 45, origin: { y: 0.8 } });
-          showToast(`Task completed!`);
-        }
-        return { ...t, completed: nextCompleted, status: nextStatus };
-      }
-      return t;
-    }));
+  const handleTogglePinTask = async (id: string) => {
+    const task = tasks.find(t => t.id === id);
+    if (!task) return;
+    const nextPinned = !task.pinned;
+    try {
+      await dbService.updateItemFields('tasks', id, { pinned: nextPinned });
+      setTasks(prev => prev.map(t => t.id === id ? { ...t, pinned: nextPinned } : t));
+      showToast(nextPinned ? `Task pinned to top` : `Task unpinned`);
+    } catch (err: any) {
+      showToast(`❌ Database error: ${err.message || err}`);
+    }
   };
 
-  const handleTogglePinTask = (id: string) => {
-    setTasks(prev => prev.map(t => {
-      if (t.id === id) {
-        const nextPinned = !t.pinned;
-        showToast(nextPinned ? `Task pinned to top` : `Task unpinned`);
-        return { ...t, pinned: nextPinned };
-      }
-      return t;
-    }));
+  const handleDeleteTask = async (id: string) => {
+    try {
+      await dbService.deleteItem('tasks', id);
+      setTasks(prev => prev.filter(t => t.id !== id));
+      showToast(`Task deleted.`);
+    } catch (err: any) {
+      showToast(`❌ Database error: ${err.message || err}`);
+    }
   };
 
-  const handleDeleteTask = (id: string) => {
-    setTasks(prev => prev.filter(t => t.id !== id));
-    showToast(`Task deleted.`);
+  const handleAddAttachment = async (taskId: string, attachment: any) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    const updatedAttachments = [attachment, ...(task.attachments || [])];
+    try {
+      await dbService.updateItemFields('tasks', taskId, { attachments: updatedAttachments });
+      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, attachments: updatedAttachments } : t));
+      showToast(`Attachment "${attachment.name}" attached to task.`);
+    } catch (err: any) {
+      showToast(`❌ Database error: ${err.message || err}`);
+    }
   };
 
-  const handleAddAttachment = (taskId: string, attachment: any) => {
-    setTasks(prev => prev.map(t => {
-      if (t.id === taskId) {
-        const existing = t.attachments || [];
-        return {
-          ...t,
-          attachments: [attachment, ...existing]
-        };
-      }
-      return t;
-    }));
-    showToast(`Attachment "${attachment.name}" attached to task.`);
-  };
-
-  const handleRemoveAttachment = (taskId: string, attachmentId: string) => {
-    setTasks(prev => prev.map(t => {
-      if (t.id === taskId) {
-        return {
-          ...t,
-          attachments: (t.attachments || []).filter(a => a.id !== attachmentId)
-        };
-      }
-      return t;
-    }));
-    showToast(`Attachment removed.`);
+  const handleRemoveAttachment = async (taskId: string, attachmentId: string) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    const updatedAttachments = (task.attachments || []).filter(a => a.id !== attachmentId);
+    try {
+      await dbService.updateItemFields('tasks', taskId, { attachments: updatedAttachments });
+      setTasks(prev => prev.map(t => t.id === taskId ? { ...t, attachments: updatedAttachments } : t));
+      showToast(`Attachment removed.`);
+    } catch (err: any) {
+      showToast(`❌ Database error: ${err.message || err}`);
+    }
   };
 
   const handleSendMessage = (emp: Employee) => {
     setIsSupportOpen(true);
   };
 
-  const handleUpdateEmployeeEmail = (oldEmail: string, newEmail: string) => {
-    setEmployees(prev => prev.map(emp => {
-      if (emp.email.toLowerCase() === oldEmail.toLowerCase()) {
-        return { ...emp, email: newEmail };
+  const handleUpdateEmployeeEmail = async (oldEmail: string, newEmail: string) => {
+    const targetEmp = employees.find(emp => emp.email.toLowerCase() === oldEmail.toLowerCase());
+    if (targetEmp) {
+      const updated = { ...targetEmp, email: newEmail };
+      try {
+        await dbService.saveItem('employees', updated);
+        setEmployees(prev => prev.map(e => e.id === updated.id ? updated : e));
+      } catch (err: any) {
+        showToast(`❌ Database error: ${err.message || err}`);
       }
-      return emp;
-    }));
+    }
   };
 
-  const handleUpdateEmployee = (updatedEmp: Employee) => {
-    // 1. Update in employee list
-    setEmployees(prev => prev.map(emp => emp.id === updatedEmp.id ? updatedEmp : emp));
+  const handleUpdateEmployee = async (updatedEmp: Employee) => {
+    try {
+      await dbService.saveItem('employees', updatedEmp);
+      setEmployees(prev => prev.map(emp => emp.id === updatedEmp.id ? updatedEmp : emp));
+      setSelectedEmployee(updatedEmp);
 
-    // 2. Update selectedEmployee if currently active
-    setSelectedEmployee(updatedEmp);
-
-    // 3. If this updated employee is the active logged-in user, synchronize currentUser
-    if (
-      currentUser.id === updatedEmp.id || 
-      currentUser.email?.toLowerCase() === updatedEmp.email.toLowerCase() ||
-      currentUser.name.toLowerCase() === updatedEmp.name.toLowerCase()
-    ) {
-      setCurrentUser(prev => ({
-        ...prev,
-        id: updatedEmp.id || prev.id,
-        name: updatedEmp.name,
-        email: updatedEmp.email,
-        role: updatedEmp.designation,
-        department: updatedEmp.department,
-        empId: updatedEmp.empId,
-        phone: updatedEmp.phone || prev.phone,
-        address: updatedEmp.address || prev.address,
-        gender: updatedEmp.gender || prev.gender,
-        dob: updatedEmp.dob || prev.dob,
-        bloodGroup: updatedEmp.bloodGroup || prev.bloodGroup,
-        maritalStatus: updatedEmp.maritalStatus || prev.maritalStatus,
-        nationality: updatedEmp.nationality || prev.nationality,
-        location: updatedEmp.location || prev.location,
-        joiningDate: updatedEmp.joiningDate || prev.joiningDate,
-        status: updatedEmp.status || prev.status,
-        avatar: updatedEmp.avatar || prev.avatar,
-        baseSalary: updatedEmp.baseSalary || prev.baseSalary,
-        reportingManager: {
-          ...prev.reportingManager,
-          name: updatedEmp.reportingManager || prev.reportingManager.name
-        }
-      }));
-    }
-
-    // 4. Update in authService accounts
-    const account = authService.getAvailableAccounts().find(
-      a => a.id === updatedEmp.id || a.email.toLowerCase() === updatedEmp.email.toLowerCase()
-    );
-    if (account) {
-      authService.adminUpdateUserCredentials('admin', account.id, {
-        newEmail: updatedEmp.email
-      });
-      account.name = updatedEmp.name;
-      account.email = updatedEmp.email;
-      if (account.profile) {
-        account.profile.name = updatedEmp.name;
-        account.profile.email = updatedEmp.email;
-        account.profile.role = updatedEmp.designation;
-        account.profile.department = updatedEmp.department;
-        account.profile.empId = updatedEmp.empId;
-        account.profile.phone = updatedEmp.phone;
-        account.profile.address = updatedEmp.address || '';
-        account.profile.gender = updatedEmp.gender || '';
-        account.profile.dob = updatedEmp.dob || '';
-        account.profile.bloodGroup = updatedEmp.bloodGroup || '';
-        account.profile.maritalStatus = updatedEmp.maritalStatus || '';
-        account.profile.nationality = updatedEmp.nationality || '';
-        account.profile.joiningDate = updatedEmp.joiningDate;
-        account.profile.status = updatedEmp.status;
-        if (updatedEmp.avatar) account.profile.avatar = updatedEmp.avatar;
+      if (
+        currentUser.id === updatedEmp.id || 
+        currentUser.email?.toLowerCase() === updatedEmp.email.toLowerCase() ||
+        currentUser.name.toLowerCase() === updatedEmp.name.toLowerCase()
+      ) {
+        setCurrentUser(prev => ({
+          ...prev,
+          id: updatedEmp.id || prev.id,
+          name: updatedEmp.name,
+          email: updatedEmp.email,
+          role: updatedEmp.designation,
+          department: updatedEmp.department,
+          empId: updatedEmp.empId,
+          phone: updatedEmp.phone || prev.phone,
+          address: updatedEmp.address || prev.address,
+          gender: updatedEmp.gender || prev.gender,
+          dob: updatedEmp.dob || prev.dob,
+          bloodGroup: updatedEmp.bloodGroup || prev.bloodGroup,
+          maritalStatus: updatedEmp.maritalStatus || prev.maritalStatus,
+          nationality: updatedEmp.nationality || prev.nationality,
+          location: updatedEmp.location || prev.location,
+          joiningDate: updatedEmp.joiningDate || prev.joiningDate,
+          status: updatedEmp.status || prev.status,
+          avatar: updatedEmp.avatar || prev.avatar,
+          baseSalary: updatedEmp.baseSalary || prev.baseSalary,
+          reportingManager: {
+            ...prev.reportingManager,
+            name: updatedEmp.reportingManager || prev.reportingManager.name
+          }
+        }));
       }
-    }
 
-    showToast(`Profile updated successfully for ${updatedEmp.name}!`);
+      const account = authService.getAvailableAccounts().find(
+        a => a.id === updatedEmp.id || a.email.toLowerCase() === updatedEmp.email.toLowerCase()
+      );
+      if (account) {
+        authService.adminUpdateUserCredentials('admin', account.id, {
+          newEmail: updatedEmp.email
+        });
+        account.name = updatedEmp.name;
+        account.email = updatedEmp.email;
+        if (account.profile) {
+          account.profile.name = updatedEmp.name;
+          account.profile.email = updatedEmp.email;
+          account.profile.role = updatedEmp.designation;
+          account.profile.department = updatedEmp.department;
+          account.profile.empId = updatedEmp.empId;
+          account.profile.phone = updatedEmp.phone;
+          account.profile.address = updatedEmp.address || '';
+          account.profile.gender = updatedEmp.gender || '';
+          account.profile.dob = updatedEmp.dob || '';
+          account.profile.bloodGroup = updatedEmp.bloodGroup || '';
+          account.profile.maritalStatus = updatedEmp.maritalStatus || '';
+          account.profile.nationality = updatedEmp.nationality || '';
+          account.profile.joiningDate = updatedEmp.joiningDate;
+          account.profile.status = updatedEmp.status;
+          if (updatedEmp.avatar) account.profile.avatar = updatedEmp.avatar;
+        }
+      }
+
+      showToast(`Profile updated successfully for ${updatedEmp.name}!`);
+    } catch (err: any) {
+      showToast(`❌ Database error: ${err.message || err}`);
+    }
   };
 
   const handleLoginSuccess = (userOrEmail: UserProfile | string, roleParam?: UserRole) => {
