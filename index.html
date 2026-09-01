@@ -3,13 +3,33 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Aura HR - Smart HRMS</title>
-    <meta name="description" content="Manage People, Power Growth with Aura HR - Modern Enterprise HRMS" />
+    <title>Insight HRM - Smart Enterprise HR Management System</title>
+    <meta name="description" content="Manage People, Power Growth with Insight HRM - Modern Enterprise Human Resource Management System" />
+    <meta property="og:title" content="Insight HRM - Smart Enterprise HR Management System" />
+    <meta property="og:description" content="Manage People, Power Growth with Insight HRM - Modern Enterprise Human Resource Management System" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Sora:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script>
+      (function() {
+        try {
+          var session = localStorage.getItem('insight_hrm_active_session_v3') || localStorage.getItem('aura_hrm_active_session_v2');
+          var theme = 'dark';
+          if (session) {
+            var parsed = JSON.parse(session);
+            if (parsed && (parsed.themePreference === 'light' || parsed.themePreference === 'dark')) {
+              theme = parsed.themePreference;
+            }
+          }
+          document.documentElement.classList.remove('dark', 'light');
+          document.documentElement.classList.add(theme);
+          document.documentElement.setAttribute('data-theme', theme);
+        } catch (e) {}
+      })();
+    </script>
   </head>
-  <body class="bg-[#0b1326] text-[#dae2fd] antialiased selection:bg-[#a078ff] selection:text-[#340080] overflow-x-hidden">
+  <body class="bg-[#0b1326] text-[#dae2fd] antialiased selection:bg-[#FF4E00] selection:text-[#ffffff] overflow-x-hidden">
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>

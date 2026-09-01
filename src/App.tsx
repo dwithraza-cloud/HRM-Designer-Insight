@@ -30,12 +30,28 @@ import {
   INITIAL_LEAVE_REQUESTS, 
   INITIAL_ATTENDANCE, 
   INITIAL_JOB_OPENINGS, 
+  INITIAL_PAYROLL_RECORDS,
+  INITIAL_ASSETS,
+  INITIAL_DOCUMENTS,
   UPCOMING_EVENTS, 
   RECENT_ACTIVITIES, 
   NOTIFICATIONS,
   INITIAL_TASKS
 } from './data/initialData';
-import { ViewMode, Employee, LeaveRequest, JobOpening, UserRole, TaskItem, UserProfile } from './types';
+import { 
+  ViewMode, 
+  Employee, 
+  LeaveRequest, 
+  JobOpening, 
+  UserRole, 
+  TaskItem, 
+  UserProfile,
+  PayrollRecord,
+  AssetItem,
+  DocumentItem,
+  AttendanceRecord,
+  ThemeMode
+} from './types';
 import { authService } from './services/authService';
 
 export function App() {
@@ -45,13 +61,25 @@ export function App() {
   const [currentUser, setCurrentUser] = useState<UserProfile>(() => initialSession || ADMIN_USER);
   const [currentView, setCurrentView] = useState<ViewMode>(() => initialSession ? 'dashboard' : 'auth-login');
 
+  // Apply user-specific theme whenever currentUser changes
+  useEffect(() => {
+    const theme = currentUser?.themePreference || 'dark';
+    const root = document.documentElement;
+    root.classList.remove('light', 'dark');
+    root.classList.add(theme);
+    root.setAttribute('data-theme', theme);
+  }, [currentUser?.themePreference, currentUser?.id]);
+
   // Core Data State
   const [employees, setEmployees] = useState<Employee[]>(INITIAL_EMPLOYEES);
   const [selectedEmployee, setSelectedEmployee] = useState<Employee>(INITIAL_EMPLOYEES[0]);
   const [leaveRequests, setLeaveRequests] = useState<LeaveRequest[]>(INITIAL_LEAVE_REQUESTS);
   const [jobOpenings, setJobOpenings] = useState<JobOpening[]>(INITIAL_JOB_OPENINGS);
   const [tasks, setTasks] = useState<TaskItem[]>(INITIAL_TASKS);
-  const [attendanceRecords] = useState(INITIAL_ATTENDANCE);
+  const [attendanceRecords, setAttendanceRecords] = useState<AttendanceRecord[]>(INITIAL_ATTENDANCE);
+  const [payrollRecords, setPayrollRecords] = useState<PayrollRecord[]>(INITIAL_PAYROLL_RECORDS);
+  const [assets, setAssets] = useState<AssetItem[]>(INITIAL_ASSETS);
+  const [documents, setDocuments] = useState<DocumentItem[]>(INITIAL_DOCUMENTS);
   const [upcomingEvents] = useState(UPCOMING_EVENTS);
   const [activities, setActivities] = useState(RECENT_ACTIVITIES);
   const [notifications, setNotifications] = useState(NOTIFICATIONS);
@@ -62,7 +90,7 @@ export function App() {
   const [isSupportOpen, setIsSupportOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  // Responsive Sidebar State (Mobile Drawer + Desktop Collapsible Rail)
+  // Responsive Sidebar State
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
@@ -162,91 +190,149 @@ export function App() {
       showToast('⚠️ Access Denied (403): Employees cannot reject leave requests.');
       return;
     }
-    const targetLeave = leaveRequests.find(r => r.id === id);
-    if (currentUser.roleType === 'manager' && targetLeave && targetLeave.department !== currentUser.department) {
-      showToast(`⚠️ Access Denied: Managers can only reject leave requests for the ${currentUser.department} department.`);
-      return;
-    }
     setLeaveRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'Rejected' } : r));
     showToast(`Leave request rejected.`);
   };
 
+  // --- RECRUITMENT CRUD HANDLERS ---
   const handleAddJob = (job: JobOpening) => {
-    if (currentUser.roleType === 'employee') {
-      showToast('⚠️ Access Denied (403): Employees cannot post job openings.');
+    if (currentUser.roleType !== 'admin' && currentUser.roleType !== 'manager') {
+      showToast('⚠️ Access Denied (403): Unauthorized operation.');
       return;
     }
     setJobOpenings(prev => [job, ...prev]);
-    showToast(`New job posting "${job.title}" created.`);
+    showToast(`✓ Job position "${job.title}" created successfully.`);
   };
 
-  const handleAddTask = (
-    titleOrTask: string | Partial<TaskItem>,
-    priority: 'high' | 'medium' | 'low' | 'urgent' = 'medium',
-    category = 'HR Action'
-  ) => {
-    if (typeof titleOrTask === 'string') {
-      if (!titleOrTask.trim()) return;
-      const newTask: TaskItem = {
-        id: `task-${Date.now()}`,
-        title: titleOrTask.trim(),
-        completed: false,
-        status: 'Pending',
-        pinned: false,
-        priority,
-        category,
-        dueDate: 'Today',
-        createdAt: 'Just now',
-        department: currentUser.department || 'Operations',
-        assignedTo: {
-          id: currentUser.id,
-          name: currentUser.name,
-          role: currentUser.role,
-          roleType: currentUser.roleType,
-          department: currentUser.department,
-          avatar: currentUser.avatar
-        },
-        assignedBy: {
-          id: currentUser.id,
-          name: currentUser.name,
-          role: currentUser.role,
-          roleType: currentUser.roleType,
-          avatar: currentUser.avatar
-        }
-      };
-      setTasks(prev => [newTask, ...prev]);
-      showToast(`Task added: "${newTask.title.slice(0, 30)}${newTask.title.length > 30 ? '...' : ''}"`);
-    } else {
-      const taskObj = titleOrTask as TaskItem;
-      // Role hierarchy assignment check:
-      if (currentUser.roleType === 'employee' && taskObj.assignedTo?.id !== currentUser.id) {
-        showToast('⚠️ Access Denied: Employees can only create personal tasks.');
-        return;
-      }
-      setTasks(prev => [taskObj, ...prev]);
-      showToast(`Task assigned to ${taskObj.assignedTo?.name || 'team member'}`);
+  const handleEditJob = (job: JobOpening) => {
+    if (currentUser.roleType !== 'admin' && currentUser.roleType !== 'manager') {
+      showToast('⚠️ Access Denied (403): Unauthorized operation.');
+      return;
     }
+    setJobOpenings(prev => prev.map(j => j.id === job.id ? job : j));
+    showToast(`✓ Job opening "${job.title}" updated.`);
+  };
+
+  const handleDeleteJob = (id: string) => {
+    if (currentUser.roleType !== 'admin') {
+      showToast('⚠️ Access Denied (403): Only Admins can delete job positions.');
+      return;
+    }
+    setJobOpenings(prev => prev.filter(j => j.id !== id));
+    showToast(`✓ Job opening removed.`);
+  };
+
+  // --- PAYROLL CRUD HANDLERS ---
+  const handleAddPayrollRecord = (record: PayrollRecord) => {
+    if (currentUser.roleType !== 'admin') {
+      showToast('⚠️ Access Denied (403): Only Admins can create payroll records.');
+      return;
+    }
+    setPayrollRecords(prev => [record, ...prev]);
+    showToast(`✓ Payroll record added for ${record.employeeName}. Net: Rs. ${record.netSalary.toLocaleString()} PKR`);
+  };
+
+  const handleEditPayrollRecord = (record: PayrollRecord) => {
+    if (currentUser.roleType !== 'admin') {
+      showToast('⚠️ Access Denied (403): Only Admins can modify payroll records.');
+      return;
+    }
+    setPayrollRecords(prev => prev.map(p => p.id === record.id ? record : p));
+    showToast(`✓ Payroll record updated for ${record.employeeName}. Net: Rs. ${record.netSalary.toLocaleString()} PKR`);
+  };
+
+  const handleDeletePayrollRecord = (id: string) => {
+    if (currentUser.roleType !== 'admin') {
+      showToast('⚠️ Access Denied (403): Only Admins can delete payroll records.');
+      return;
+    }
+    setPayrollRecords(prev => prev.filter(p => p.id !== id));
+    showToast(`✓ Payroll disbursement record removed.`);
+  };
+
+  // --- ASSET MANAGEMENT CRUD HANDLERS ---
+  const handleAddAsset = (asset: AssetItem) => {
+    if (currentUser.roleType !== 'admin') {
+      showToast('⚠️ Access Denied (403): Only Admins can add hardware assets.');
+      return;
+    }
+    setAssets(prev => [asset, ...prev]);
+    showToast(`✓ Hardware asset "${asset.name}" (${asset.serialNumber}) registered.`);
+  };
+
+  const handleEditAsset = (asset: AssetItem) => {
+    if (currentUser.roleType !== 'admin') {
+      showToast('⚠️ Access Denied (403): Only Admins can edit hardware assets.');
+      return;
+    }
+    setAssets(prev => prev.map(a => a.id === asset.id ? asset : a));
+    showToast(`✓ Hardware asset "${asset.name}" updated.`);
+  };
+
+  const handleDeleteAsset = (id: string) => {
+    if (currentUser.roleType !== 'admin') {
+      showToast('⚠️ Access Denied (403): Only Admins can delete hardware assets.');
+      return;
+    }
+    setAssets(prev => prev.filter(a => a.id !== id));
+    showToast(`✓ Hardware asset removed from inventory.`);
+  };
+
+  // --- DOCUMENT MANAGEMENT CRUD HANDLERS ---
+  const handleAddDocument = (doc: DocumentItem) => {
+    if (currentUser.roleType !== 'admin' && currentUser.roleType !== 'manager') {
+      showToast('⚠️ Access Denied (403): Only Admins and Managers can upload documents.');
+      return;
+    }
+    setDocuments(prev => [doc, ...prev]);
+    showToast(`✓ Document "${doc.name}" uploaded successfully.`);
+  };
+
+  const handleEditDocument = (doc: DocumentItem) => {
+    if (currentUser.roleType !== 'admin' && currentUser.roleType !== 'manager') {
+      showToast('⚠️ Access Denied (403): Only Admins and Managers can edit documents.');
+      return;
+    }
+    setDocuments(prev => prev.map(d => d.id === doc.id ? doc : d));
+    showToast(`✓ Document "${doc.name}" updated.`);
+  };
+
+  const handleDeleteDocument = (id: string) => {
+    if (currentUser.roleType !== 'admin' && currentUser.roleType !== 'manager') {
+      showToast('⚠️ Access Denied (403): Only Admins and Managers can delete documents.');
+      return;
+    }
+    setDocuments(prev => prev.filter(d => d.id !== id));
+    showToast(`✓ Document removed from repository.`);
+  };
+
+  // --- TASK HANDLERS ---
+  const handleAddTask = (newTask: TaskItem) => {
+    setTasks(prev => [newTask, ...prev]);
+    showToast(`Task "${newTask.title}" assigned successfully!`);
   };
 
   const handleUpdateTaskStatus = (id: string, status: TaskItem['status']) => {
     setTasks(prev => prev.map(t => {
       if (t.id === id) {
-        const completed = status === 'Completed';
-        return { ...t, status, completed };
+        return {
+          ...t,
+          status,
+          completed: status === 'Completed'
+        };
       }
       return t;
     }));
-    showToast(`Task status updated to ${status}`);
   };
 
   const handleToggleTask = (id: string) => {
     setTasks(prev => prev.map(t => {
       if (t.id === id) {
         const nextCompleted = !t.completed;
-        const nextStatus: TaskItem['status'] = nextCompleted ? 'Completed' : 'In Progress';
+        const nextStatus: TaskItem['status'] = nextCompleted ? 'Completed' : 'Pending';
         if (nextCompleted) {
-          confetti({ particleCount: 35, spread: 50, origin: { y: 0.8 } });
-          showToast(`Task marked completed!`);
+          confetti({ particleCount: 35, spread: 45, origin: { y: 0.8 } });
+          showToast(`Task completed!`);
         }
         return { ...t, completed: nextCompleted, status: nextStatus };
       }
@@ -402,6 +488,27 @@ export function App() {
     showToast(`Signed in as ${roleTitle} (${activeUser.email || activeUser.name})`);
   };
 
+  // User-Specific Theme Toggle Handler
+  const handleToggleTheme = (targetTheme?: ThemeMode) => {
+    const current = currentUser.themePreference || 'dark';
+    const nextTheme: ThemeMode = targetTheme || (current === 'light' ? 'dark' : 'light');
+    
+    // 1. Update active currentUser state
+    const updatedUser = { ...currentUser, themePreference: nextTheme };
+    setCurrentUser(updatedUser);
+
+    // 2. Persist in database/localStorage for this specific user
+    authService.updateThemePreference(currentUser.id || currentUser.email, nextTheme);
+
+    // 3. Immediately apply to DOM
+    const root = document.documentElement;
+    root.classList.remove('light', 'dark');
+    root.classList.add(nextTheme);
+    root.setAttribute('data-theme', nextTheme);
+
+    showToast(`✓ Theme switched to ${nextTheme === 'light' ? 'Light' : 'Dark'} Mode (saved to your account).`);
+  };
+
   const handleSignOut = () => {
     authService.signOut();
     setIsAuthenticated(false);
@@ -412,7 +519,7 @@ export function App() {
   const renderCurrentView = () => {
     const roleType = currentUser.roleType || 'admin';
 
-    // 1. Admin-Only Views (Settings is accessible to all roles)
+    // 1. Admin-Only Views
     if (['payroll', 'add-employee', 'reports', 'admin'].includes(currentView)) {
       if (roleType !== 'admin') {
         return (
@@ -498,8 +605,12 @@ export function App() {
         return (
           <RecruitmentView
             jobOpenings={jobOpenings}
+            currentUser={currentUser}
             onAddJob={handleAddJob}
+            onEditJob={handleEditJob}
+            onDeleteJob={handleDeleteJob}
             onNavigate={setCurrentView}
+            showToast={showToast}
           />
         );
 
@@ -507,7 +618,10 @@ export function App() {
         return (
           <AttendanceView
             attendanceRecords={attendanceRecords}
+            currentUser={currentUser}
+            onUpdateRecords={setAttendanceRecords}
             onNavigate={setCurrentView}
+            showToast={showToast}
           />
         );
 
@@ -523,7 +637,18 @@ export function App() {
         );
 
       case 'payroll':
-        return <PayrollView onNavigate={setCurrentView} />;
+        return (
+          <PayrollView 
+            payrollRecords={payrollRecords}
+            employees={employees}
+            currentUser={currentUser}
+            onAddPayrollRecord={handleAddPayrollRecord}
+            onEditPayrollRecord={handleEditPayrollRecord}
+            onDeletePayrollRecord={handleDeletePayrollRecord}
+            onNavigate={setCurrentView}
+            showToast={showToast}
+          />
+        );
 
       case 'performance':
         return <PerformanceView onNavigate={setCurrentView} />;
@@ -551,6 +676,8 @@ export function App() {
           <SettingsView
             currentUser={currentUser}
             employees={employees}
+            currentTheme={currentUser.themePreference || 'dark'}
+            onToggleTheme={handleToggleTheme}
             onUpdateCurrentUser={setCurrentUser}
             onUpdateEmployeeEmail={handleUpdateEmployeeEmail}
             onNavigate={setCurrentView}
@@ -561,7 +688,23 @@ export function App() {
       case 'assets':
       case 'documents':
       case 'reports':
-        return <OtherViews view={currentView} onNavigate={setCurrentView} />;
+        return (
+          <OtherViews 
+            view={currentView} 
+            onNavigate={setCurrentView}
+            currentUser={currentUser}
+            employees={employees}
+            assets={assets}
+            onAddAsset={handleAddAsset}
+            onEditAsset={handleEditAsset}
+            onDeleteAsset={handleDeleteAsset}
+            documents={documents}
+            onAddDocument={handleAddDocument}
+            onEditDocument={handleEditDocument}
+            onDeleteDocument={handleDeleteDocument}
+            showToast={showToast}
+          />
+        );
 
       default:
         return (
@@ -608,6 +751,7 @@ export function App() {
       <Sidebar
         currentView={currentView}
         currentUser={currentUser}
+        currentTheme={currentUser.themePreference || 'dark'}
         onNavigate={(view) => {
           setCurrentView(view);
           setIsMobileSidebarOpen(false);
@@ -621,10 +765,12 @@ export function App() {
 
       {/* Content Area */}
       <div className="flex-1 flex flex-col min-w-0 h-screen overflow-hidden">
-        {/* Top Header with Hamburger on mobile & collapse toggle on desktop */}
+        {/* Top Header */}
         <Header
           currentUser={currentUser}
           notifications={notifications}
+          currentTheme={currentUser.themePreference || 'dark'}
+          onToggleTheme={handleToggleTheme}
           onOpenReportModal={() => setIsDownloadReportOpen(true)}
           onOpenNotifications={() => {}}
           onNavigate={setCurrentView}
@@ -670,4 +816,3 @@ export function App() {
 }
 
 export default App;
-

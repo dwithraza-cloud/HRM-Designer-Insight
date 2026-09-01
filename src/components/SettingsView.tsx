@@ -21,14 +21,20 @@ import {
   Check,
   X,
   Building,
-  Key
+  Key,
+  Sun,
+  Moon,
+  Laptop,
+  CheckCheck
 } from 'lucide-react';
-import { UserProfile, UserRole, Employee, ViewMode } from '../types';
+import { UserProfile, UserRole, Employee, ViewMode, ThemeMode } from '../types';
 import { authService, UserAccount } from '../services/authService';
 
 interface SettingsViewProps {
   currentUser: UserProfile;
   employees: Employee[];
+  currentTheme?: ThemeMode;
+  onToggleTheme?: (theme?: ThemeMode) => void;
   onUpdateCurrentUser: (updatedUser: UserProfile) => void;
   onUpdateEmployeeEmail?: (oldEmail: string, newEmail: string) => void;
   onNavigate: (view: ViewMode) => void;
@@ -38,6 +44,8 @@ interface SettingsViewProps {
 export const SettingsView: React.FC<SettingsViewProps> = ({
   currentUser,
   employees,
+  currentTheme = currentUser.themePreference || 'dark',
+  onToggleTheme,
   onUpdateCurrentUser,
   onUpdateEmployeeEmail,
   onNavigate,
@@ -736,46 +744,172 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       {/* TAB 3: PREFERENCES & 2FA */}
       {activeTab === 'security-preferences' && (
-        <div className="glass-panel p-6 sm:p-8 rounded-3xl border border-white/10 space-y-6">
-          <div className="space-y-4">
-            <h2 className="text-sm font-bold text-white uppercase tracking-wider text-purple-300 flex items-center gap-2">
-              <ShieldCheck className="w-4 h-4" /> Security & Session Controls
-            </h2>
+        <div className="space-y-6">
+          {/* Theme & Display Preference Card */}
+          <div className="glass-panel p-6 sm:p-8 rounded-3xl border border-white/10 space-y-5">
+            <div>
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-bold text-white uppercase tracking-wider text-purple-300 flex items-center gap-2">
+                  <Sun className="w-4 h-4 text-amber-400" /> Interface Theme & Appearance
+                </h2>
+                <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30">
+                  User-Specific Preference
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 mt-1">
+                Choose your preferred visual theme for Insight HRM. Your selection is stored permanently to your account (<strong className="text-slate-200">{currentUser.email}</strong>) and does not affect other users.
+              </p>
+            </div>
 
-            <div className="space-y-3 text-xs">
-              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-between">
-                <div>
-                  <p className="font-bold text-white">Enforce Two-Factor Authentication (2FA)</p>
-                  <p className="text-slate-400 text-[11px]">Require a secondary verification code for all HR portal logins.</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Light Theme Card */}
+              <div
+                id="theme-card-light"
+                onClick={() => {
+                  if (onToggleTheme) onToggleTheme('light');
+                }}
+                className={`p-5 rounded-2xl border transition-all cursor-pointer relative overflow-hidden group ${
+                  currentTheme === 'light'
+                    ? 'bg-purple-600/10 border-purple-500 ring-2 ring-purple-500/30 shadow-lg'
+                    : 'bg-white/[0.02] border-white/10 hover:border-white/20 hover:bg-white/[0.04]'
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                      currentTheme === 'light' ? 'bg-amber-400/20 text-amber-400 border border-amber-400/30' : 'bg-white/[0.05] text-slate-400'
+                    }`}>
+                      <Sun className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                        Light Mode
+                        {currentTheme === 'light' && (
+                          <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold border border-emerald-500/30">
+                            Active
+                          </span>
+                        )}
+                      </h4>
+                      <p className="text-[11px] text-slate-400 mt-0.5">High-clarity bright canvas for well-lit environments.</p>
+                    </div>
+                  </div>
+                  <div className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 ${
+                    currentTheme === 'light' ? 'border-purple-500 bg-purple-600 text-white' : 'border-white/20'
+                  }`}>
+                    {currentTheme === 'light' && <Check className="w-3 h-3 stroke-[3]" />}
+                  </div>
                 </div>
-                <input type="checkbox" defaultChecked className="w-4 h-4 accent-purple-500 rounded" />
+
+                {/* Light Mode Preview Thumbnail */}
+                <div className="mt-4 p-3 rounded-xl bg-slate-100 border border-slate-200 space-y-2">
+                  <div className="flex items-center justify-between border-b border-slate-200 pb-1.5">
+                    <div className="h-2 w-16 bg-slate-300 rounded" />
+                    <div className="h-2 w-6 bg-purple-500 rounded" />
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    <div className="h-6 bg-white rounded border border-slate-200" />
+                    <div className="h-6 bg-white rounded border border-slate-200" />
+                    <div className="h-6 bg-white rounded border border-slate-200" />
+                  </div>
+                </div>
               </div>
 
-              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-between">
-                <div>
-                  <p className="font-bold text-white">Email Login Alerts</p>
-                  <p className="text-slate-400 text-[11px]">Receive an immediate email notification whenever a new device logs into your account.</p>
+              {/* Dark Theme Card */}
+              <div
+                id="theme-card-dark"
+                onClick={() => {
+                  if (onToggleTheme) onToggleTheme('dark');
+                }}
+                className={`p-5 rounded-2xl border transition-all cursor-pointer relative overflow-hidden group ${
+                  currentTheme === 'dark'
+                    ? 'bg-purple-600/10 border-purple-500 ring-2 ring-purple-500/30 shadow-lg'
+                    : 'bg-white/[0.02] border-white/10 hover:border-white/20 hover:bg-white/[0.04]'
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                      currentTheme === 'dark' ? 'bg-purple-500/20 text-purple-300 border border-purple-500/30' : 'bg-white/[0.05] text-slate-400'
+                    }`}>
+                      <Moon className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                        Dark Mode
+                        {currentTheme === 'dark' && (
+                          <span className="text-[10px] bg-emerald-500/20 text-emerald-400 px-2 py-0.5 rounded-full font-bold border border-emerald-500/30">
+                            Active
+                          </span>
+                        )}
+                      </h4>
+                      <p className="text-[11px] text-slate-400 mt-0.5">Deep indigo enterprise dark theme with soft contrast.</p>
+                    </div>
+                  </div>
+                  <div className={`w-5 h-5 rounded-full border flex items-center justify-center shrink-0 ${
+                    currentTheme === 'dark' ? 'border-purple-500 bg-purple-600 text-white' : 'border-white/20'
+                  }`}>
+                    {currentTheme === 'dark' && <Check className="w-3 h-3 stroke-[3]" />}
+                  </div>
                 </div>
-                <input type="checkbox" defaultChecked className="w-4 h-4 accent-purple-500 rounded" />
-              </div>
 
-              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-between">
-                <div>
-                  <p className="font-bold text-white">Automatic Daily Cloud Backup</p>
-                  <p className="text-slate-400 text-[11px]">Encrypt and sync workforce attendance, payroll, and task databases.</p>
+                {/* Dark Mode Preview Thumbnail */}
+                <div className="mt-4 p-3 rounded-xl bg-[#0b1326] border border-white/10 space-y-2">
+                  <div className="flex items-center justify-between border-b border-white/10 pb-1.5">
+                    <div className="h-2 w-16 bg-slate-700 rounded" />
+                    <div className="h-2 w-6 bg-purple-500 rounded" />
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    <div className="h-6 bg-[#131b2e] rounded border border-white/10" />
+                    <div className="h-6 bg-[#131b2e] rounded border border-white/10" />
+                    <div className="h-6 bg-[#131b2e] rounded border border-white/10" />
+                  </div>
                 </div>
-                <input type="checkbox" defaultChecked className="w-4 h-4 accent-purple-500 rounded" />
               </div>
             </div>
           </div>
 
-          <div className="pt-4 border-t border-white/5 flex justify-end">
-            <button
-              onClick={() => showToast('Preferences updated successfully.')}
-              className="brand-gradient-btn px-5 py-2 rounded-xl text-xs font-bold text-white shadow-md shadow-purple-600/30 cursor-pointer"
-            >
-              Save Preferences
-            </button>
+          {/* Security & 2FA Card */}
+          <div className="glass-panel p-6 sm:p-8 rounded-3xl border border-white/10 space-y-6">
+            <div className="space-y-4">
+              <h2 className="text-sm font-bold text-white uppercase tracking-wider text-purple-300 flex items-center gap-2">
+                <ShieldCheck className="w-4 h-4" /> Security & Session Controls
+              </h2>
+
+              <div className="space-y-3 text-xs">
+                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-between">
+                  <div>
+                    <p className="font-bold text-white">Enforce Two-Factor Authentication (2FA)</p>
+                    <p className="text-slate-400 text-[11px]">Require a secondary verification code for all HR portal logins.</p>
+                  </div>
+                  <input type="checkbox" defaultChecked className="w-4 h-4 accent-purple-500 rounded" />
+                </div>
+
+                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-between">
+                  <div>
+                    <p className="font-bold text-white">Email Login Alerts</p>
+                    <p className="text-slate-400 text-[11px]">Receive an immediate email notification whenever a new device logs into your account.</p>
+                  </div>
+                  <input type="checkbox" defaultChecked className="w-4 h-4 accent-purple-500 rounded" />
+                </div>
+
+                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-between">
+                  <div>
+                    <p className="font-bold text-white">Automatic Daily Cloud Backup</p>
+                    <p className="text-slate-400 text-[11px]">Encrypt and sync workforce attendance, payroll, and task databases.</p>
+                  </div>
+                  <input type="checkbox" defaultChecked className="w-4 h-4 accent-purple-500 rounded" />
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-white/5 flex justify-end">
+              <button
+                onClick={() => showToast('Preferences updated successfully.')}
+                className="brand-gradient-btn px-5 py-2 rounded-xl text-xs font-bold text-white shadow-md shadow-purple-600/30 cursor-pointer"
+              >
+                Save Preferences
+              </button>
+            </div>
           </div>
         </div>
       )}

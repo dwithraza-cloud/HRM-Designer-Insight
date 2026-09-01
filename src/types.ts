@@ -19,6 +19,8 @@ export type ViewMode =
 
 export type UserRole = 'admin' | 'manager' | 'employee';
 
+export type ThemeMode = 'dark' | 'light';
+
 export interface UserProfile {
   id: string;
   name: string;
@@ -44,6 +46,7 @@ export interface UserProfile {
   };
   baseSalary: number;
   status: 'Active' | 'On Leave' | 'Inactive';
+  themePreference?: ThemeMode;
 }
 
 export interface Employee {
@@ -109,6 +112,59 @@ export interface JobOpening {
   status: 'Active' | 'Draft' | 'Closed';
   icon: string;
   postedDate: string;
+  salaryRange?: string; // in Rs. / PKR
+  description?: string;
+  experience?: string;
+  requirements?: string[];
+}
+
+export interface PayrollRecord {
+  id: string;
+  empId: string;
+  employeeName: string;
+  department: string;
+  designation: string;
+  baseSalary: number; // in PKR
+  allowances: number; // in PKR
+  deductions: number; // in PKR
+  netSalary: number;  // in PKR
+  status: 'Paid' | 'Processing' | 'On Hold';
+  paymentDate: string;
+  month: string;
+  avatar?: string;
+  avatarInitials?: string;
+  paymentMethod?: string;
+}
+
+export interface AssetItem {
+  id: string;
+  name: string;
+  serialNumber: string;
+  category: 'Laptop' | 'Display' | 'Security' | 'Mobile' | 'Peripheral' | 'Furniture' | 'Other';
+  assignedTo?: {
+    id: string;
+    name: string;
+    empId: string;
+    department: string;
+    avatar?: string;
+  };
+  valuePkr: number; // in PKR / Rs.
+  purchaseDate: string;
+  status: 'Allocated' | 'Available' | 'In Repair' | 'Retired';
+  specs?: string;
+}
+
+export interface DocumentItem {
+  id: string;
+  name: string;
+  tag: 'Policy' | 'Legal' | 'Benefits' | 'Workplace' | 'Tax' | 'Technical' | 'Compliance';
+  size: string;
+  updated: string;
+  fileFormat: string;
+  description?: string;
+  uploadedBy?: string;
+  restrictedTo?: 'all' | 'admin-manager' | 'admin-only';
+  downloadCount?: number;
 }
 
 export interface ActivityItem {

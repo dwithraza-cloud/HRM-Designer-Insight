@@ -13,13 +13,17 @@ import {
   Sparkles,
   Menu,
   PanelLeftClose,
-  PanelLeftOpen
+  PanelLeftOpen,
+  Sun,
+  Moon
 } from 'lucide-react';
-import { UserProfile, NotificationItem, ViewMode } from '../types';
+import { UserProfile, NotificationItem, ViewMode, ThemeMode } from '../types';
 
 interface HeaderProps {
   currentUser: UserProfile;
   notifications: NotificationItem[];
+  currentTheme: ThemeMode;
+  onToggleTheme: (theme?: ThemeMode) => void;
   onOpenReportModal: () => void;
   onOpenNotifications: () => void;
   onNavigate: (view: ViewMode) => void;
@@ -33,6 +37,8 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   currentUser,
   notifications,
+  currentTheme,
+  onToggleTheme,
   onOpenReportModal,
   onNavigate,
   onOpenSearch,
@@ -193,6 +199,21 @@ export const Header: React.FC<HeaderProps> = ({
           <Settings className="w-4 h-4" />
         </button>
 
+        {/* User-Specific Theme Toggle (Sun/Moon quick button) */}
+        <button
+          id="btn-header-theme-toggle"
+          onClick={() => onToggleTheme()}
+          className="w-9 h-9 rounded-xl flex items-center justify-center bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-slate-300 hover:text-amber-400 dark:hover:text-amber-300 transition-all cursor-pointer active:scale-95"
+          aria-label={`Switch to ${currentTheme === 'light' ? 'Dark' : 'Light'} Mode`}
+          title={`Switch to ${currentTheme === 'light' ? 'Dark' : 'Light'} Mode (saved to your account)`}
+        >
+          {currentTheme === 'light' ? (
+            <Moon className="w-4 h-4 text-purple-600 transition-transform duration-200" />
+          ) : (
+            <Sun className="w-4 h-4 text-amber-400 transition-transform duration-200" />
+          )}
+        </button>
+
         {/* User Profile */}
         <div className="relative">
           <button
@@ -229,6 +250,40 @@ export const Header: React.FC<HeaderProps> = ({
                 <p className="text-[11px] text-slate-400 truncate">{currentUser.email}</p>
                 <div className="mt-2">
                   {getRoleTag()}
+                </div>
+              </div>
+
+              {/* Theme Preference Row */}
+              <div className="px-2.5 py-2 border-b border-white/5 mb-1">
+                <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1.5 font-medium">
+                  <span>Interface Theme</span>
+                  <span className="text-[10px] text-purple-400 font-semibold uppercase">{currentTheme} Mode</span>
+                </div>
+                <div className="grid grid-cols-2 gap-1.5 p-0.5 bg-white/[0.04] rounded-xl border border-white/5">
+                  <button
+                    id="menu-btn-theme-light"
+                    onClick={() => onToggleTheme('light')}
+                    className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                      currentTheme === 'light'
+                        ? 'bg-purple-600 text-white shadow-sm'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Sun className="w-3.5 h-3.5 text-amber-400" />
+                    <span>Light</span>
+                  </button>
+                  <button
+                    id="menu-btn-theme-dark"
+                    onClick={() => onToggleTheme('dark')}
+                    className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                      currentTheme === 'dark'
+                        ? 'bg-purple-600 text-white shadow-sm'
+                        : 'text-slate-400 hover:text-slate-200'
+                    }`}
+                  >
+                    <Moon className="w-3.5 h-3.5 text-purple-300" />
+                    <span>Dark</span>
+                  </button>
                 </div>
               </div>
 

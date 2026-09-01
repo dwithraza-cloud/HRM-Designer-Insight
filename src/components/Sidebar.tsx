@@ -23,10 +23,12 @@ import {
   PanelLeftOpen
 } from 'lucide-react';
 import { ViewMode, UserProfile } from '../types';
+import { InsightLogo } from './InsightLogo';
 
 interface SidebarProps {
   currentView: ViewMode;
   currentUser: UserProfile;
+  currentTheme?: 'dark' | 'light';
   onNavigate: (view: ViewMode) => void;
   onOpenSupport: () => void;
   isMobileOpen: boolean;
@@ -38,6 +40,7 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({ 
   currentView, 
   currentUser,
+  currentTheme = currentUser.themePreference || 'dark',
   onNavigate,
   onOpenSupport,
   isMobileOpen,
@@ -46,6 +49,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   onToggleCollapse
 }) => {
   const roleType = currentUser.roleType || 'admin';
+  const isLight = currentTheme === 'light';
 
   // Base list of all items
   const allMenuItems: { 
@@ -76,19 +80,31 @@ export const Sidebar: React.FC<SidebarProps> = ({
     switch (roleType) {
       case 'admin':
         return (
-          <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+          <span className={`flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+            isLight 
+              ? 'bg-purple-100 text-purple-700 border-purple-200' 
+              : 'bg-purple-500/20 text-purple-300 border-purple-500/30'
+          }`}>
             <Shield className="w-3 h-3" /> Admin
           </span>
         );
       case 'manager':
         return (
-          <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-blue-500/20 text-blue-300 border border-blue-500/30">
+          <span className={`flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+            isLight 
+              ? 'bg-blue-100 text-blue-700 border-blue-200' 
+              : 'bg-blue-500/20 text-blue-300 border-blue-500/30'
+          }`}>
             <UserCheck className="w-3 h-3" /> Manager
           </span>
         );
       case 'employee':
         return (
-          <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+          <span className={`flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${
+            isLight 
+              ? 'bg-emerald-100 text-emerald-700 border-emerald-200' 
+              : 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30'
+          }`}>
             <User className="w-3 h-3" /> Employee
           </span>
         );
@@ -115,7 +131,11 @@ export const Sidebar: React.FC<SidebarProps> = ({
       {/* Main Sidebar (Off-canvas Drawer on Mobile, Collapsible Rail on Desktop) */}
       <aside 
         id="main-sidebar" 
-        className={`fixed inset-y-0 left-0 z-50 lg:static flex flex-col h-screen select-none bg-[#0f172a]/95 lg:bg-[#0f172a]/95 backdrop-blur-xl lg:backdrop-blur-none border-r border-white/5 transition-all duration-300 ease-in-out shrink-0 overflow-hidden ${
+        className={`fixed inset-y-0 left-0 z-50 lg:static flex flex-col h-screen select-none backdrop-blur-xl lg:backdrop-blur-none border-r transition-all duration-300 ease-in-out shrink-0 overflow-hidden ${
+          isLight
+            ? 'bg-white lg:bg-white border-slate-200 shadow-sm'
+            : 'bg-[#0f172a]/95 lg:bg-[#0f172a]/95 border-white/5'
+        } ${
           isMobileOpen 
             ? 'translate-x-0 w-72 max-w-[85vw] shadow-2xl shadow-purple-950/40' 
             : '-translate-x-full lg:translate-x-0'
@@ -124,23 +144,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
         }`}
       >
         {/* Brand Header */}
-        <div className={`p-4 border-b border-white/5 flex items-center justify-between transition-all ${
+        <div className={`p-4 border-b flex items-center justify-between transition-all ${
+          isLight ? 'border-slate-200' : 'border-white/5'
+        } ${
           isCollapsed ? 'lg:p-3 lg:justify-center' : 'p-4 sm:p-5'
         }`}>
           <div 
             className="flex items-center gap-3 cursor-pointer overflow-hidden" 
             onClick={() => handleItemClick('dashboard')}
-            title="Aura HR Dashboard"
+            title="Insight HRM Dashboard"
           >
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-[#7b42f6] to-[#a078ff] flex items-center justify-center shadow-lg shadow-purple-600/30 ring-1 ring-white/20 shrink-0">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
+            <InsightLogo className="w-10 h-10 shrink-0" />
             {(!isCollapsed || isMobileOpen) && (
               <div className="overflow-hidden">
                 <div className="flex items-center gap-1.5">
-                  <span className="font-bold text-lg text-white tracking-tight truncate">Aura HR</span>
+                  <span className={`font-bold text-lg tracking-tight truncate ${
+                    isLight ? 'text-slate-900' : 'text-white'
+                  }`}>Insight HRM</span>
                 </div>
-                <p className="text-xs text-slate-400 font-medium truncate">Enterprise HRMS</p>
+                <p className={`text-xs font-medium truncate ${
+                  isLight ? 'text-slate-500' : 'text-slate-400'
+                }`}>Enterprise HRM</p>
               </div>
             )}
           </div>
@@ -157,7 +181,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <button
               id="btn-close-mobile-sidebar"
               onClick={onCloseMobile}
-              className="lg:hidden p-2 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              className={`lg:hidden p-2 rounded-xl transition-colors cursor-pointer ${
+                isLight ? 'text-slate-500 hover:text-slate-900 hover:bg-slate-100' : 'text-slate-400 hover:text-white hover:bg-white/10'
+              }`}
               aria-label="Close Navigation"
             >
               <X className="w-5 h-5" />
@@ -168,7 +194,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
         {/* Navigation List */}
         <div className="p-3 flex-1 space-y-1 overflow-y-auto overflow-x-hidden">
           {(!isCollapsed || isMobileOpen) && (
-            <div className="px-3 py-1.5 text-[11px] font-semibold text-slate-500 uppercase tracking-wider flex items-center justify-between">
+            <div className={`px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider flex items-center justify-between ${
+              isLight ? 'text-slate-400' : 'text-slate-500'
+            }`}>
               <span className="truncate">
                 {roleType === 'admin' ? 'Administration' : (roleType === 'manager' ? `${currentUser.department || 'Department'} Portal` : 'Employee Workspace')}
               </span>
@@ -190,19 +218,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
                       : 'justify-between px-3.5 py-2.5'
                   } ${
                     isActive
-                      ? 'bg-gradient-to-r from-[#a078ff]/20 to-[#7b42f6]/10 text-white border border-[#a078ff]/40 shadow-sm shadow-purple-900/30'
-                      : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
+                      ? isLight
+                        ? 'bg-purple-100 text-purple-900 border border-purple-300 shadow-sm font-semibold'
+                        : 'bg-gradient-to-r from-[#a078ff]/20 to-[#7b42f6]/10 text-white border border-[#a078ff]/40 shadow-sm shadow-purple-900/30'
+                      : isLight
+                        ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                        : 'text-slate-400 hover:text-slate-200 hover:bg-white/[0.04]'
                   }`}
                   title={isCollapsed && !isMobileOpen ? item.label : undefined}
                 >
                   <div className={`flex items-center ${isCollapsed && !isMobileOpen ? 'justify-center' : 'gap-3'}`}>
                     <div className="relative">
                       <Icon className={`w-4 h-4 transition-colors shrink-0 ${
-                        isActive ? 'text-[#c084fc]' : 'text-slate-400 group-hover:text-slate-200'
+                        isActive 
+                          ? (isLight ? 'text-purple-700' : 'text-[#c084fc]') 
+                          : (isLight ? 'text-slate-500 group-hover:text-slate-900' : 'text-slate-400 group-hover:text-slate-200')
                       }`} />
                       {/* Compact Dot Badge on collapsed desktop */}
                       {isCollapsed && !isMobileOpen && item.badge && (
-                        <span className="absolute -top-1.5 -right-1.5 w-2 h-2 rounded-full bg-purple-400 ring-2 ring-[#0f172a]" />
+                        <span className={`absolute -top-1.5 -right-1.5 w-2 h-2 rounded-full bg-purple-500 ring-2 ${
+                          isLight ? 'ring-white' : 'ring-[#0f172a]'
+                        }`} />
                       )}
                     </div>
                     {(!isCollapsed || isMobileOpen) && (
@@ -213,8 +249,8 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   {(!isCollapsed || isMobileOpen) && item.badge && (
                     <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${
                       isActive 
-                        ? 'bg-[#a078ff] text-white' 
-                        : 'bg-white/10 text-slate-300'
+                        ? (isLight ? 'bg-purple-600 text-white font-bold' : 'bg-[#a078ff] text-white') 
+                        : (isLight ? 'bg-slate-200/80 text-slate-700' : 'bg-white/10 text-slate-300')
                     }`}>
                       {item.badge}
                     </span>
@@ -223,7 +259,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
                 {/* Floating Tooltip for Desktop Collapsed Mode */}
                 {isCollapsed && !isMobileOpen && (
-                  <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1.5 bg-[#1a233a] border border-white/10 text-white text-xs font-semibold rounded-xl shadow-2xl whitespace-nowrap z-50 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-1.5">
+                  <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1.5 bg-[#0f172a] border border-white/10 text-white text-xs font-semibold rounded-xl shadow-2xl whitespace-nowrap z-50 opacity-0 group-hover:opacity-100 transition-opacity duration-150 flex items-center gap-1.5">
                     <span>{item.label}</span>
                     {item.badge && (
                       <span className="bg-purple-500/30 text-purple-200 text-[10px] px-1.5 py-0.2 rounded-full border border-purple-500/30 font-bold">
@@ -238,7 +274,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
         </div>
 
         {/* Bottom Section: Support & Desktop Collapse Toggle */}
-        <div className={`border-t border-white/5 transition-all ${
+        <div className={`border-t transition-all ${
+          isLight ? 'border-slate-200' : 'border-white/5'
+        } ${
           isCollapsed && !isMobileOpen ? 'p-2 space-y-2' : 'p-4 space-y-3'
         }`}>
           {/* Support Card / Icon */}
@@ -247,17 +285,25 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 id="btn-sidebar-support-collapsed"
                 onClick={onOpenSupport}
-                className="w-10 h-10 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/30 flex items-center justify-center transition-all cursor-pointer"
+                className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer border ${
+                  isLight
+                    ? 'bg-purple-50 hover:bg-purple-100 text-purple-700 border-purple-200'
+                    : 'bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border-purple-500/30'
+                }`}
                 title="Contact Support"
               >
                 <HeadphonesIcon className="w-4 h-4" />
               </button>
-              <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1.5 bg-[#1a233a] border border-white/10 text-white text-xs font-semibold rounded-xl shadow-2xl whitespace-nowrap z-50 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+              <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1.5 bg-[#0f172a] border border-white/10 text-white text-xs font-semibold rounded-xl shadow-2xl whitespace-nowrap z-50 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
                 24/7 Support
               </div>
             </div>
           ) : (
-            <div className="p-3.5 rounded-2xl bg-gradient-to-b from-[#1e293b]/80 to-[#131b2e]/90 border border-white/10 text-center relative overflow-hidden shadow-md">
+            <div className={`p-3.5 rounded-2xl border text-center relative overflow-hidden shadow-sm ${
+              isLight
+                ? 'bg-gradient-to-b from-slate-50 to-slate-100 border-slate-200'
+                : 'bg-gradient-to-b from-[#1e293b]/80 to-[#131b2e]/90 border-white/10 shadow-md'
+            }`}>
               <div className="absolute top-0 right-0 w-24 h-24 bg-purple-500/10 rounded-full blur-xl pointer-events-none" />
               <div className="flex items-center gap-3 mb-2.5">
                 <img 
@@ -267,14 +313,22 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   referrerPolicy="no-referrer"
                 />
                 <div className="text-left overflow-hidden">
-                  <p className="text-xs font-semibold text-white truncate">Need Help?</p>
-                  <p className="text-[11px] text-slate-400 truncate">24/7 HRMS Support</p>
+                  <p className={`text-xs font-semibold truncate ${
+                    isLight ? 'text-slate-900' : 'text-white'
+                  }`}>Need Help?</p>
+                  <p className={`text-[11px] truncate ${
+                    isLight ? 'text-slate-500' : 'text-slate-400'
+                  }`}>24/7 HRM Support</p>
                 </div>
               </div>
               <button
                 id="btn-sidebar-support"
                 onClick={onOpenSupport}
-                className="w-full py-1.5 px-3 rounded-lg text-xs font-semibold bg-[#a078ff]/20 hover:bg-[#a078ff]/30 text-purple-200 border border-[#a078ff]/40 flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                className={`w-full py-1.5 px-3 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer border ${
+                  isLight
+                    ? 'bg-purple-600 hover:bg-purple-700 text-white border-transparent shadow-sm'
+                    : 'bg-[#a078ff]/20 hover:bg-[#a078ff]/30 text-purple-200 border-[#a078ff]/40'
+                }`}
               >
                 <HeadphonesIcon className="w-3.5 h-3.5 shrink-0" />
                 <span className="truncate">Contact Support</span>
@@ -289,12 +343,14 @@ export const Sidebar: React.FC<SidebarProps> = ({
                 <button
                   id="btn-sidebar-admin-collapsed"
                   onClick={() => handleItemClick('admin')}
-                  className="w-10 h-10 rounded-xl hover:bg-white/[0.05] text-slate-400 hover:text-white flex items-center justify-center transition-all cursor-pointer"
+                  className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all cursor-pointer ${
+                    isLight ? 'hover:bg-slate-100 text-slate-500 hover:text-slate-900' : 'hover:bg-white/[0.05] text-slate-400 hover:text-white'
+                  }`}
                   title="System Administration"
                 >
-                  <ShieldCheck className="w-4 h-4 text-emerald-400" />
+                  <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
                 </button>
-                <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1.5 bg-[#1a233a] border border-white/10 text-white text-xs font-semibold rounded-xl shadow-2xl whitespace-nowrap z-50 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
+                <div className="pointer-events-none absolute left-full top-1/2 -translate-y-1/2 ml-3 px-2.5 py-1.5 bg-[#0f172a] border border-white/10 text-white text-xs font-semibold rounded-xl shadow-2xl whitespace-nowrap z-50 opacity-0 group-hover:opacity-100 transition-opacity duration-150">
                   System Administration
                 </div>
               </div>
@@ -302,30 +358,38 @@ export const Sidebar: React.FC<SidebarProps> = ({
               <button
                 id="btn-sidebar-admin"
                 onClick={() => handleItemClick('admin')}
-                className="w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-white/[0.04] transition-all cursor-pointer"
+                className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer ${
+                  isLight ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100' : 'text-slate-400 hover:text-white hover:bg-white/[0.04]'
+                }`}
               >
-                <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                <ShieldCheck className="w-4 h-4 text-emerald-500 shrink-0" />
                 <span className="truncate">System Administration</span>
               </button>
             )
           )}
 
           {/* Desktop Collapse / Expand Toggle Button */}
-          <div className="hidden lg:flex items-center justify-center pt-1 border-t border-white/5">
+          <div className={`hidden lg:flex items-center justify-center pt-1 border-t ${
+            isLight ? 'border-slate-200' : 'border-white/5'
+          }`}>
             <button
               id="btn-toggle-sidebar-collapse"
               onClick={onToggleCollapse}
-              className={`flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-medium text-slate-400 hover:text-white hover:bg-white/[0.05] transition-all cursor-pointer ${
+              className={`flex items-center justify-center gap-2 py-2 rounded-xl text-xs font-medium transition-all cursor-pointer ${
+                isLight 
+                  ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100' 
+                  : 'text-slate-400 hover:text-white hover:bg-white/[0.05]'
+              } ${
                 isCollapsed ? 'w-10 h-10' : 'w-full px-3'
               }`}
               title={isCollapsed ? 'Expand Sidebar (Ctrl+\\)' : 'Collapse Sidebar to reclaim space (Ctrl+\\)'}
             >
               {isCollapsed ? (
-                <PanelLeftOpen className="w-4 h-4 text-purple-400" />
+                <PanelLeftOpen className="w-4 h-4 text-purple-600 dark:text-purple-400" />
               ) : (
                 <>
-                  <PanelLeftClose className="w-4 h-4 text-slate-400" />
-                  <span className="text-[11px] text-slate-400 font-medium">Collapse Menu</span>
+                  <PanelLeftClose className={`w-4 h-4 ${isLight ? 'text-slate-500' : 'text-slate-400'}`} />
+                  <span className={`text-[11px] font-medium ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>Collapse Menu</span>
                 </>
               )}
             </button>

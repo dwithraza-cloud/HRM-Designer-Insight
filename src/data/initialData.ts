@@ -1,4 +1,4 @@
-import { Employee, LeaveRequest, AttendanceRecord, JobOpening, UpcomingEvent, ActivityItem, UserProfile, FeedbackItem, NotificationItem, TaskItem } from '../types';
+import { Employee, LeaveRequest, AttendanceRecord, JobOpening, UpcomingEvent, ActivityItem, UserProfile, FeedbackItem, NotificationItem, TaskItem, PayrollRecord, AssetItem, DocumentItem } from '../types';
 
 export const ADMIN_USER: UserProfile = {
   id: 'usr-admin-01',
@@ -447,34 +447,46 @@ export const INITIAL_JOB_OPENINGS: JobOpening[] = [
     id: 'job-1',
     title: 'Senior Frontend Developer',
     department: 'Engineering',
-    location: 'Dhaka, BD (Hybrid)',
+    location: 'Lahore, PK (Hybrid)',
     type: 'Full-time',
     applicantsCount: 48,
     status: 'Active',
     icon: 'Code2',
-    postedDate: '3 days ago'
+    postedDate: '3 days ago',
+    salaryRange: 'Rs. 250,000 – 350,000 PKR / mo',
+    experience: '4+ Years',
+    description: 'We are seeking an experienced Frontend Developer proficient in React, TypeScript, and modern state architectures.',
+    requirements: ['4+ years React & TypeScript', 'State management & SSR experience', 'UI component design system mastery']
   },
   {
     id: 'job-2',
     title: 'UX/UI Product Designer',
     department: 'Design',
-    location: 'Remote',
+    location: 'Karachi, PK (Remote)',
     type: 'Full-time',
     applicantsCount: 64,
     status: 'Active',
     icon: 'Palette',
-    postedDate: '1 week ago'
+    postedDate: '1 week ago',
+    salaryRange: 'Rs. 180,000 – 260,000 PKR / mo',
+    experience: '3+ Years',
+    description: 'Lead end-to-end design sprints, wireframing, interactive prototyping, and cross-platform design libraries.',
+    requirements: ['Figma design systems', 'Usability testing & research', 'Micro-interactions & animation skills']
   },
   {
     id: 'job-3',
     title: 'Growth Marketing Manager',
     department: 'Marketing',
-    location: 'Dhaka, BD (On-site)',
+    location: 'Islamabad, PK (On-site)',
     type: 'Full-time',
     applicantsCount: 22,
     status: 'Active',
     icon: 'Megaphone',
-    postedDate: '2 weeks ago'
+    postedDate: '2 weeks ago',
+    salaryRange: 'Rs. 160,000 – 220,000 PKR / mo',
+    experience: '3+ Years',
+    description: 'Drive high-conversion multi-channel growth campaigns, paid acquisitions, and customer retention funnels.',
+    requirements: ['Performance marketing & SEO', 'Analytics tracking & attribution', 'Copywriting and content leadership']
   },
   {
     id: 'job-4',
@@ -485,18 +497,294 @@ export const INITIAL_JOB_OPENINGS: JobOpening[] = [
     applicantsCount: 15,
     status: 'Active',
     icon: 'BrainCircuit',
-    postedDate: '4 days ago'
+    postedDate: '4 days ago',
+    salaryRange: 'Rs. 320,000 – 450,000 PKR / mo',
+    experience: '5+ Years',
+    description: 'Architect machine learning pipelines, predictive analytics models, and big-data statistical infrastructure.',
+    requirements: ['Python, PyTorch, SQL', 'MLOps & model deployment', 'Predictive modeling and telemetry']
   },
   {
     id: 'job-5',
     title: 'Talent Acquisition Partner',
     department: 'HR',
-    location: 'Dhaka, BD (Hybrid)',
+    location: 'Lahore, PK (Hybrid)',
     type: 'Full-time',
     applicantsCount: 31,
     status: 'Active',
     icon: 'UserPlus',
-    postedDate: '5 days ago'
+    postedDate: '5 days ago',
+    salaryRange: 'Rs. 130,000 – 180,000 PKR / mo',
+    experience: '2+ Years',
+    description: 'Manage executive hiring pipelines, candidate interview rounds, technical assessments, and onboarding.',
+    requirements: ['Tech recruitment experience', 'Candidate sourcing & screening', 'HRIS & applicant tracking mastery']
+  }
+];
+
+export const INITIAL_PAYROLL_RECORDS: PayrollRecord[] = [
+  {
+    id: 'pay-1',
+    empId: 'EMP-0001',
+    employeeName: 'Raja Raza',
+    department: 'Operations',
+    designation: 'HR Director & System Admin',
+    baseSalary: 320000,
+    allowances: 48000,
+    deductions: 25600,
+    netSalary: 342400,
+    status: 'Paid',
+    paymentDate: '28 May 2025',
+    month: 'May 2025',
+    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZQndi0Q67LuyTUAs8C_7ptSSpWoFH67QhVbLxfJfqqymbTF0-ImTvZteCBSvRhku41rEwtRkkZ2yuI6nQmZb0BfCOfoZGNID_PEOn4VWAWuKVpWR7Ik8bXButYDHroiVhejf7BUJNlr5RCQjELnvfecxNjb3pdO-wFiNm8ZRyrk3KjzJktBW6t2HdB8uvLEdFXWKFvdGX3obC3EyYo3QUO3PVDq-c-ap2YZgHP_1pncDG6fIUYwwl',
+    paymentMethod: 'Bank Wire Transfer'
+  },
+  {
+    id: 'pay-2',
+    empId: 'EMP-0142',
+    employeeName: 'Rani',
+    department: 'Design',
+    designation: 'UI/UX Visual Designer',
+    baseSalary: 145000,
+    allowances: 21750,
+    deductions: 11600,
+    netSalary: 155150,
+    status: 'Paid',
+    paymentDate: '28 May 2025',
+    month: 'May 2025',
+    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBSANbGI_8XJwr4JerK2U_S85Z10-Lhe_dnK9SL5j7CA7A78CwnhHQHcY4OfNOr2pDaW9hgOkTqKBCWPZ9PSSR9sfz9ljGdJCaRFTtYFjjW-EeDaH4Lb7pSfNCRoyGbmvg9LYJvJf4XTU2H0-vTX1OncSoyHd9Yq1BjbrpoWB6up8qQOivnc3S9AK11f-bL5xi6YcXHd-lgU3gKTaGFvNAZXYG0H5_OaDSz4Vlg_JLyRbeFO6H7cJrv',
+    paymentMethod: 'Direct Deposit'
+  },
+  {
+    id: 'pay-3',
+    empId: 'EMP-0103',
+    employeeName: 'Aqsa',
+    department: 'Design',
+    designation: 'Design Department Lead',
+    baseSalary: 280000,
+    allowances: 42000,
+    deductions: 22400,
+    netSalary: 299600,
+    status: 'Paid',
+    paymentDate: '28 May 2025',
+    month: 'May 2025',
+    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCrGYbO589VOTATEVvsbR5nyyOSwLBLuKXOxbFTAMEVyEEoVKEAscptTr1Fw8iGYSdAB1g1J5Y2Vx6y8Ypywrc1QuHnwiu6JKqVnuiQ75E-Zl1lklVnZju58LXg4EI6rxi76D29F_QaeZ2oRg09f6FoJmK_QL6Z8b3aMDi0bl53XwFkCgcHB8gkqEbh1qkmBlu_dlAs6b6vNmeVUXXkWqoQmRb8581biV9eH9oJ2xg2_FZghdAbak5L',
+    paymentMethod: 'Direct Deposit'
+  },
+  {
+    id: 'pay-4',
+    empId: 'EMP-0102',
+    employeeName: 'Sumaiya Akter',
+    department: 'HR',
+    designation: 'HR Specialist',
+    baseSalary: 95000,
+    allowances: 14250,
+    deductions: 7600,
+    netSalary: 101650,
+    status: 'Processing',
+    paymentDate: 'Pending',
+    month: 'May 2025',
+    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuADQcAFIWDJ8g7APl2aOjC7M5drmvNeR0adkjwJQVVuoFudHVArwpni00b8CM7KOAHa7oxn4kKlj8AuLw3DQ5q7z72A_M7SyQJfWE_Omi_kh3T0W41JFx5OUziSGWqpzvo0veD9kqf54hae4mDr7abyGMq79swnEo0j598XUbb2OXswI5H1s5qlM86vEdiXh_udAlNHwMxSXuvt-XFNIbqvvlG-ZjCtCUI--j3MBmfhy7XMikuswA27',
+    paymentMethod: 'Direct Deposit'
+  },
+  {
+    id: 'pay-5',
+    empId: 'EMP-0104',
+    employeeName: 'David Rodriguez',
+    department: 'Engineering',
+    designation: 'Chief Technology Officer',
+    baseSalary: 350000,
+    allowances: 52500,
+    deductions: 28000,
+    netSalary: 374500,
+    status: 'Paid',
+    paymentDate: '28 May 2025',
+    month: 'May 2025',
+    avatarInitials: 'DR',
+    paymentMethod: 'Bank Wire Transfer'
+  },
+  {
+    id: 'pay-6',
+    empId: 'EMP-0105',
+    employeeName: 'Sarah Rahman',
+    department: 'Marketing',
+    designation: 'Marketing Director',
+    baseSalary: 130000,
+    allowances: 19500,
+    deductions: 10400,
+    netSalary: 139100,
+    status: 'Paid',
+    paymentDate: '28 May 2025',
+    month: 'May 2025',
+    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA5IchO3RZGm0f-HVXMJ2KxT1l2SPNekW2kVOsggoKpVozxw1zaldbKe88nR15OTuPadqt_G7uE6prssjL5xoTgVCGTpoza8BFq1s1jhzKiaXW7oZKPC9tygDzBzxnsHNiu2qwkIO4zmOCcexW7kiM1D9FmeO5X-YHAWr5NitUEE2fZ6T5TkPRNQb3uPDz0rR1Mnot8atZ8vqQ5D0tFqEAqa-TfiXb4wekFZpoBxlHR6R4nrLDWUoI1',
+    paymentMethod: 'Direct Deposit'
+  },
+  {
+    id: 'pay-7',
+    empId: 'EMP-0106',
+    employeeName: 'Alex Morgan',
+    department: 'Engineering',
+    designation: 'Lead DevOps Architect',
+    baseSalary: 175000,
+    allowances: 26250,
+    deductions: 14000,
+    netSalary: 187250,
+    status: 'On Hold',
+    paymentDate: 'Pending Verification',
+    month: 'May 2025',
+    avatarInitials: 'AM',
+    paymentMethod: 'Bank Wire Transfer'
+  }
+];
+
+export const INITIAL_ASSETS: AssetItem[] = [
+  {
+    id: 'ast-1',
+    name: 'MacBook Pro 16" M3 Max',
+    serialNumber: 'APL-MBP-9921',
+    category: 'Laptop',
+    assignedTo: {
+      id: 'emp-1',
+      name: 'Raja Raza',
+      empId: 'EMP-0001',
+      department: 'Operations',
+      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZQndi0Q67LuyTUAs8C_7ptSSpWoFH67QhVbLxfJfqqymbTF0-ImTvZteCBSvRhku41rEwtRkkZ2yuI6nQmZb0BfCOfoZGNID_PEOn4VWAWuKVpWR7Ik8bXButYDHroiVhejf7BUJNlr5RCQjELnvfecxNjb3pdO-wFiNm8ZRyrk3KjzJktBW6t2HdB8uvLEdFXWKFvdGX3obC3EyYo3QUO3PVDq-c-ap2YZgHP_1pncDG6fIUYwwl'
+    },
+    valuePkr: 890000,
+    purchaseDate: '15 Jan 2024',
+    status: 'Allocated',
+    specs: 'M3 Max 16-Core CPU, 40-Core GPU, 64GB RAM, 2TB SSD'
+  },
+  {
+    id: 'ast-2',
+    name: 'Dell UltraSharp 32" 4K Thunderbolt Monitor',
+    serialNumber: 'DEL-U32-4019',
+    category: 'Display',
+    assignedTo: {
+      id: 'emp-2',
+      name: 'Rani',
+      empId: 'EMP-0142',
+      department: 'Design',
+      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBSANbGI_8XJwr4JerK2U_S85Z10-Lhe_dnK9SL5j7CA7A78CwnhHQHcY4OfNOr2pDaW9hgOkTqKBCWPZ9PSSR9sfz9ljGdJCaRFTtYFjjW-EeDaH4Lb7pSfNCRoyGbmvg9LYJvJf4XTU2H0-vTX1OncSoyHd9Yq1BjbrpoWB6up8qQOivnc3S9AK11f-bL5xi6YcXHd-lgU3gKTaGFvNAZXYG0H5_OaDSz4Vlg_JLyRbeFO6H7cJrv'
+    },
+    valuePkr: 265000,
+    purchaseDate: '20 Feb 2024',
+    status: 'Allocated',
+    specs: 'IPS Black panel, 98% DCI-P3, 90W Power Delivery'
+  },
+  {
+    id: 'ast-3',
+    name: 'MacBook Air 15" M3',
+    serialNumber: 'APL-MBA-3382',
+    category: 'Laptop',
+    assignedTo: {
+      id: 'emp-4',
+      name: 'Aqsa',
+      empId: 'EMP-0103',
+      department: 'Design',
+      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCrGYbO589VOTATEVvsbR5nyyOSwLBLuKXOxbFTAMEVyEEoVKEAscptTr1Fw8iGYSdAB1g1J5Y2Vx6y8Ypywrc1QuHnwiu6JKqVnuiQ75E-Zl1lklVnZju58LXg4EI6rxi76D29F_QaeZ2oRg09f6FoJmK_QL6Z8b3aMDi0bl53XwFkCgcHB8gkqEbh1qkmBlu_dlAs6b6vNmeVUXXkWqoQmRb8581biV9eH9oJ2xg2_FZghdAbak5L'
+    },
+    valuePkr: 440000,
+    purchaseDate: '10 Mar 2024',
+    status: 'Allocated',
+    specs: 'Apple M3 chip, 16GB Unified Memory, 512GB SSD'
+  },
+  {
+    id: 'ast-4',
+    name: 'YubiKey 5C NFC Enterprise Key',
+    serialNumber: 'YUB-5CN-8801',
+    category: 'Security',
+    assignedTo: {
+      id: 'emp-1',
+      name: 'Raja Raza',
+      empId: 'EMP-0001',
+      department: 'Operations'
+    },
+    valuePkr: 18500,
+    purchaseDate: '01 Jan 2024',
+    status: 'Allocated',
+    specs: 'FIDO2 / WebAuthn, U2F, Smart Card hardware 2FA'
+  },
+  {
+    id: 'ast-5',
+    name: 'ThinkPad X1 Carbon Gen 11',
+    serialNumber: 'LEN-X1C-5092',
+    category: 'Laptop',
+    valuePkr: 520000,
+    purchaseDate: '05 Apr 2024',
+    status: 'Available',
+    specs: 'Intel Core i7-1365U vPro, 32GB LPDDR5, 1TB PCIe Gen4 SSD'
+  },
+  {
+    id: 'ast-6',
+    name: 'Herman Miller Aeron Ergonomic Chair',
+    serialNumber: 'HM-AER-1240',
+    category: 'Furniture',
+    valuePkr: 380000,
+    purchaseDate: '12 Nov 2023',
+    status: 'Available',
+    specs: 'Fully adjustable postureFit SL, Forward Tilt, Carbon mesh'
+  }
+];
+
+export const INITIAL_DOCUMENTS: DocumentItem[] = [
+  {
+    id: 'doc-1',
+    name: 'Insight HRM Enterprise Employee Handbook 2025.pdf',
+    tag: 'Policy',
+    size: '4.2 MB',
+    updated: '2 days ago',
+    fileFormat: 'PDF',
+    description: 'Comprehensive code of conduct, remote work ethics, leave policies, and company culture guide.',
+    uploadedBy: 'Raja Raza',
+    restrictedTo: 'all',
+    downloadCount: 482
+  },
+  {
+    id: 'doc-2',
+    name: 'Mutual Confidentiality & Standard NDA Agreement.docx',
+    tag: 'Legal',
+    size: '1.1 MB',
+    updated: '1 week ago',
+    fileFormat: 'DOCX',
+    description: 'Standard proprietary information and invention assignment agreement for all full-time contractors & employees.',
+    uploadedBy: 'Raja Raza',
+    restrictedTo: 'all',
+    downloadCount: 318
+  },
+  {
+    id: 'doc-3',
+    name: 'Comprehensive Health & Life Insurance Policy 2025.pdf',
+    tag: 'Benefits',
+    size: '6.8 MB',
+    updated: 'May 2025',
+    fileFormat: 'PDF',
+    description: 'Corporate hospitalization coverage, outpatient reimbursement limits, and OPD network details in Pakistan.',
+    uploadedBy: 'Sumaiya Akter',
+    restrictedTo: 'all',
+    downloadCount: 654
+  },
+  {
+    id: 'doc-4',
+    name: 'Hybrid & Remote Work Framework & Allowance Guide.pdf',
+    tag: 'Workplace',
+    size: '2.4 MB',
+    updated: 'Apr 2025',
+    fileFormat: 'PDF',
+    description: 'Stipend allocation for home office setup, internet reimbursement rules, and core working hours protocol.',
+    uploadedBy: 'Aqsa',
+    restrictedTo: 'all',
+    downloadCount: 512
+  },
+  {
+    id: 'doc-5',
+    name: 'FBR Tax Withholding & Provident Fund Compliance Matrix.pdf',
+    tag: 'Tax',
+    size: '3.5 MB',
+    updated: 'Mar 2025',
+    fileFormat: 'PDF',
+    description: 'Salary tax calculation brackets under Pakistani tax laws, provident fund deductions, and annual tax certificates.',
+    uploadedBy: 'Raja Raza',
+    restrictedTo: 'admin-manager',
+    downloadCount: 142
   }
 ];
 

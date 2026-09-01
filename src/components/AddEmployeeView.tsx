@@ -291,7 +291,7 @@ export const AddEmployeeView: React.FC<AddEmployeeViewProps> = ({
                 />
               </div>
               <div>
-                <label className="text-xs font-medium text-slate-400 block mb-1.5">Base Monthly Salary (৳)</label>
+                <label className="text-xs font-medium text-slate-400 block mb-1.5">Base Monthly Salary (Rs. / PKR)</label>
                 <input
                   type="number"
                   placeholder="120000"

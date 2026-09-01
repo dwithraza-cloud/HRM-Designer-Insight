@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">
+  <rect width="100" height="100" rx="22" fill="#FF4E00" />
+  <g fill="#FFFFFF">
+    <!-- Outer Right Arc -->
+    <path d="M 50,14 A 36 36 0 0 1 50,86 L 50,78 A 28 28 0 0 0 50,22 Z" />
+    <!-- Middle Left Arc -->
+    <path d="M 50,22 A 28 28 0 0 0 50,78 L 50,70 A 20 20 0 0 1 50,30 Z" />
+    <!-- Inner Right Arc -->
+    <path d="M 50,30 A 20 20 0 0 1 50,70 L 50,62 A 12 12 0 0 0 50,38 Z" />
+    <!-- Center Left Solid Disk -->
+    <path d="M 50,38 A 12 12 0 0 0 50,62 Z" />
+  </g>
+</svg>

@@ -221,7 +221,7 @@ interface SupportModalProps {
 
 export const SupportModal: React.FC<SupportModalProps> = ({ isOpen, onClose }) => {
   const [messages, setMessages] = useState([
-    { from: 'bot', text: 'Hello Ayon! I am your Aura HR Assistant. How can I help you today with payroll, attendance, or policy questions?' }
+    { from: 'bot', text: 'Hello! I am your Insight HRM Assistant. How can I help you today with payroll in PKR, attendance logs, leave balances, or company policies?' }
   ]);
   const [inputMsg, setInputMsg] = useState('');
 
@@ -240,7 +240,7 @@ export const SupportModal: React.FC<SupportModalProps> = ({ isOpen, onClose }) =
         ...prev,
         { 
           from: 'bot', 
-          text: `Thank you! I have logged your inquiry regarding "${userText}". Our HR Operations lead has been notified.` 
+          text: `Thank you! I have logged your inquiry regarding "${userText}". Our HR Operations team has been notified.` 
         }
       ]);
     }, 600);
@@ -255,11 +255,11 @@ export const SupportModal: React.FC<SupportModalProps> = ({ isOpen, onClose }) =
             <img 
               src="https://lh3.googleusercontent.com/aida-public/AB6AXuDZJQuMLWsuKBKmyvnIxfZKY45-SUjoXmLS1yXS98XYHLoEbsxJ_7F4RMkDMRDrQn6Kd5mUz0Uqjwh5f28atr_ooRqS9qRft2fInwFlov2q3_luFyHTdjsOlQMeVCJ65wo5G9f-sHrNLEjqiUcGzIceU95nZ_DyeGjoCIREGM9Bxz9HueMw7W-dWK6T_v_ME3F-RPmfOHbxaIkn6SO2jKhGiRtTOlXKnvxDdtpntRSfDo7MoSD3p8uz"
               alt="Support"
-              className="w-9 h-9 rounded-full object-cover ring-2 ring-purple-400"
+              className="w-9 h-9 rounded-full object-cover ring-2 ring-orange-400"
               referrerPolicy="no-referrer"
             />
             <div>
-              <p className="text-xs font-bold text-white">Aura HR Enterprise Support</p>
+              <p className="text-xs font-bold text-white">Insight HRM Enterprise Support</p>
               <span className="text-[10px] text-emerald-400 flex items-center gap-1 font-semibold">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Online (24/7)
               </span>

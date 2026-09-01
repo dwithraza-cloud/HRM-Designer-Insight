@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { UserProfile, UserRole } from '../types';
 import { authService } from '../services/authService';
+import { InsightLogo } from './InsightLogo';
 
 interface AuthViewProps {
   mode: 'login' | 'signup';
@@ -84,11 +85,9 @@ export const AuthView: React.FC<AuthViewProps> = ({
       <div className="glass-panel w-full max-w-lg p-8 rounded-3xl border border-white/10 relative z-10 shadow-2xl bg-gradient-to-b from-[#131b2e]/95 to-[#0f172a]/95">
         {/* Brand Header */}
         <div className="text-center space-y-2 mb-6">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#7b42f6] to-[#a078ff] flex items-center justify-center shadow-lg shadow-purple-600/30 ring-1 ring-white/20 mx-auto">
-            <Sparkles className="w-6 h-6 text-white" />
-          </div>
+          <InsightLogo className="w-14 h-14 mx-auto" rounded="rounded-2xl" />
           <h1 className="text-2xl font-extrabold text-white tracking-tight font-['Sora']">
-            {mode === 'login' ? 'Sign In to Aura HR' : 'Register Organization Account'}
+            {mode === 'login' ? 'Sign In to Insight HRM' : 'Register Organization Account'}
           </h1>
           <p className="text-xs text-slate-400">
             {mode === 'login' 
@@ -238,10 +237,10 @@ export const AuthView: React.FC<AuthViewProps> = ({
             </p>
           ) : (
             <p>
-              Already registered with Aura HR?{' '}
+              Already registered with Insight HRM?{' '}
               <button
                 onClick={() => onSwitchMode('login')}
-                className="text-purple-300 hover:text-purple-200 font-bold"
+                className="text-orange-400 hover:text-orange-300 font-bold"
               >
                 Sign In to Account
               </button>

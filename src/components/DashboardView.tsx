@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import confetti from 'canvas-confetti';
 import { 
   Users, 
   UserCheck, 
@@ -28,7 +29,15 @@ import {
   Activity,
   CheckCircle2,
   Target,
-  Zap
+  Zap,
+  Cake,
+  Gift,
+  PartyPopper,
+  Send,
+  Heart,
+  Smile,
+  MessageCircle,
+  X
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -41,7 +50,9 @@ import {
   Area,
   CartesianGrid,
   Cell,
-  ReferenceLine
+  ReferenceLine,
+  PieChart,
+  Pie
 } from 'recharts';
 import { Employee, LeaveRequest, UpcomingEvent, ActivityItem, ViewMode, TaskItem } from '../types';
 
@@ -142,6 +153,146 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const totalCompletedWeek = weeklyTaskData.reduce((acc, d) => acc + d.completed, 0);
   const weeklyAvgRate = totalAssignedWeek > 0 ? Math.round((totalCompletedWeek / totalAssignedWeek) * 100) : 0;
   const activeDayData = weeklyTaskData.find(d => d.day === selectedDay) || weeklyTaskData[6];
+
+  // Visual Breakdown Data for Attendance Summary (Recharts Ring Chart)
+  const attendanceBreakdownData = [
+    { name: 'Present', value: 1048, percentage: 84.0, color: '#a078ff', subtext: '32 late clock-ins' },
+    { name: 'On Leave', value: 120, percentage: 9.6, color: '#f59e0b', subtext: `${pendingLeaves.length} pending approvals` },
+    { name: 'Absent', value: 80, percentage: 6.4, color: '#f43f5e', subtext: '14 unnotified absences' },
+  ];
+
+  // Upcoming Birthdays Widget State & Data
+  const [birthdayRange, setBirthdayRange] = useState<'week' | 'month'>('week');
+  const [wishedEmpIds, setWishedEmpIds] = useState<string[]>(['emp-2']);
+  const [activeWishModal, setActiveWishModal] = useState<{
+    id: string;
+    empId: string;
+    name: string;
+    role: string;
+    department: string;
+    avatar?: string;
+    avatarInitials?: string;
+    date: string;
+    dayLabel: string;
+    relativeTime: 'today' | 'tomorrow' | 'this_week' | 'later';
+    defaultWish: string;
+  } | null>(null);
+  const [customWishMsg, setCustomWishMsg] = useState('');
+  const [birthdayToast, setBirthdayToast] = useState<string | null>(null);
+
+  const handleSendWish = (empId: string, empName: string, message?: string) => {
+    if (!wishedEmpIds.includes(empId)) {
+      setWishedEmpIds(prev => [...prev, empId]);
+    }
+    confetti({
+      particleCount: 75,
+      spread: 80,
+      origin: { y: 0.6 }
+    });
+    setBirthdayToast(`🎉 Birthday wishes sent to ${empName}! "${message || 'Happy Birthday! Wishing you an awesome and joyful day!'}"`);
+    setActiveWishModal(null);
+    setCustomWishMsg('');
+    setTimeout(() => {
+      setBirthdayToast(null);
+    }, 4500);
+  };
+
+  const upcomingBirthdays = [
+    {
+      id: 'emp-6',
+      empId: 'EMP-0105',
+      name: 'Sarah Rahman',
+      role: 'Marketing Lead',
+      department: 'Marketing',
+      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA5IchO3RZGm0f-HVXMJ2KxT1l2SPNekW2kVOsggoKpVozxw1zaldbKe88nR15OTuPadqt_G7uE6prssjL5xoTgVCGTpoza8BFq1s1jhzKiaXW7oZKPC9tygDzBzxnsHNiu2qwkIO4zmOCcexW7kiM1D9FmeO5X-YHAWr5NitUEE2fZ6T5TkPRNQb3uPDz0rR1Mnot8atZ8vqQ5D0tFqEAqa-TfiXb4wekFZpoBxlHR6R4nrLDWUoI1',
+      date: 'Today, 18 May',
+      dayLabel: 'Today',
+      relativeTime: 'today' as const,
+      countdown: 'Today 🎉',
+      age: 32,
+      isThisWeek: true,
+      defaultWish: 'Happy Birthday Sarah! Wishing you a fantastic celebration and an amazing year of creativity and leadership! 🎂🎉'
+    },
+    {
+      id: 'emp-5',
+      empId: 'EMP-0104',
+      name: 'David Rodriguez',
+      role: 'Chief Technology Officer',
+      department: 'Engineering',
+      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAxxwgp1S_xgssIZegK3dERGVDZcLI9XQVUUm9It4Wm4oMN4NKizpZSI9fWQibKQdGBAI8RMzHaqD_HL4fSBoylnUj-ucusfkiJ8xXMyzcwvEM_rNaleKTzbfNS6NpSpcOYjnN7_IfN8HwVz4nDrcsjOoNXLw5OjxsykRRqh1lGToOo0hbnOQt7mnj54iEhfAtgCaAsqcivvqhMKtX2XVijkEYYxOy-VtUvvwosmtJodKaQSKIgpOb4',
+      date: 'Tomorrow, 19 May',
+      dayLabel: 'Tomorrow',
+      relativeTime: 'tomorrow' as const,
+      countdown: 'Tomorrow 🎂',
+      age: 40,
+      isThisWeek: true,
+      defaultWish: 'Happy early Birthday David! Thank you for inspiring the tech team every day. Cheers to another great milestone! 🚀✨'
+    },
+    {
+      id: 'emp-2',
+      empId: 'EMP-0142',
+      name: 'Rani',
+      role: 'UI/UX Visual Designer',
+      department: 'Design',
+      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBSANbGI_8XJwr4JerK2U_S85Z10-Lhe_dnK9SL5j7CA7A78CwnhHQHcY4OfNOr2pDaW9hgOkTqKBCWPZ9PSSR9sfz9ljGdJCaRFTtYFjjW-EeDaH4Lb7pSfNCRoyGbmvg9LYJvJf4XTU2H0-vTX1OncSoyHd9Yq1BjbrpoWB6up8qQOivnc3S9AK11f-bL5xi6YcXHd-lgU3gKTaGFvNAZXYG0H5_OaDSz4Vlg_JLyRbeFO6H7cJrv',
+      date: 'Thu, 21 May',
+      dayLabel: 'Thursday',
+      relativeTime: 'this_week' as const,
+      countdown: 'In 3 Days 🎈',
+      age: 33,
+      isThisWeek: true,
+      defaultWish: 'Happy Birthday Rani! Wishing you endless inspiration, joy, and wonderful designs ahead! 🎨🎁'
+    },
+    {
+      id: 'emp-8',
+      empId: 'EMP-0107',
+      name: 'James Wilson',
+      role: 'Financial Analyst',
+      department: 'Finance',
+      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCYuWL1I268A8mrdo_oo6Ogy_tSmASTaEJzJe3YhKGlNgG-oTNLpoHtIfy51vMDxhlTEaMNdg0f8nYuwf5pN1P1s8ipRI8UPvU8ubP4jIzk2XVX6dnAtOqx4Sdgx7ApP-rb9yAJfNQc0srAr64oJ2RuzqXKIX5b5AdPGEulshBmBcxQEgBpu8GVCjNiIbRRMND0n1IrG9SqpcfdNHqJyikzXSu_9Yhs3J1sOs9pR-ahVBP6E3C1G0-m',
+      date: 'Sat, 23 May',
+      dayLabel: 'Saturday',
+      relativeTime: 'this_week' as const,
+      countdown: 'In 5 Days 🎁',
+      age: 34,
+      isThisWeek: true,
+      defaultWish: 'Happy Birthday James! Wishing you great health, happiness, and prosperity in the coming year! 📊🥂'
+    },
+    {
+      id: 'emp-12',
+      empId: 'EMP-0111',
+      name: 'Fatima Zohra',
+      role: 'Content & Copy Lead',
+      department: 'Marketing',
+      avatarInitials: 'FZ',
+      date: 'Tue, 26 May',
+      dayLabel: 'Next Tue',
+      relativeTime: 'later' as const,
+      countdown: 'In 8 Days',
+      age: 29,
+      isThisWeek: false,
+      defaultWish: 'Happy Birthday Fatima! May your day be as vibrant and wonderful as your stories! ✍️🎉'
+    },
+    {
+      id: 'emp-10',
+      empId: 'EMP-0109',
+      name: 'David Chen',
+      role: 'Senior Frontend Engineer',
+      department: 'Engineering',
+      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDCygYhHxrgl5qRtqzjE6Q0wBw0qO07I1AgcE3f7rjT4Kvlk-h2eBlcyXzERuSG8QLwXvTln7dkB0evTz0_8d6XscH6Z-3ZscPI4rvjg4uAo_okgcs6zG4cqq6SF-bGnZraG6xC0yvzBhJ6reIdNoLS3uiyVM70IVXv4NOXel6TAoMvE_fZJ0Fbk50-6GNyyj9xAgi0SThZcppMO1pbPKw8HQ78s8IXlXstNFswBA7TOP-RXosHeF3X',
+      date: 'Sat, 30 May',
+      dayLabel: 'End of Month',
+      relativeTime: 'later' as const,
+      countdown: 'In 12 Days',
+      age: 30,
+      isThisWeek: false,
+      defaultWish: 'Happy Birthday David! Wishing you smooth code and fantastic adventures ahead! 💻🎂'
+    }
+  ];
+
+  const thisWeekBirthdays = upcomingBirthdays.filter(b => b.isThisWeek);
+  const displayedBirthdays = birthdayRange === 'week' ? thisWeekBirthdays : upcomingBirthdays;
+  const todaysBirthday = upcomingBirthdays.find(b => b.relativeTime === 'today');
 
   return (
     <div id="dashboard-view" className="space-y-6 max-w-7xl mx-auto pb-12">
@@ -276,83 +427,103 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* Main Charts & Analytics Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Attendance Donut & Metrics */}
-        <div className="glass-panel p-5 rounded-3xl border border-white/5 flex flex-col justify-between">
-          <div className="flex items-center justify-between mb-4">
+        {/* Attendance Summary Card with Recharts Ring Chart */}
+        <div id="card-attendance-summary" className="glass-panel p-5 rounded-3xl border border-white/5 flex flex-col justify-between relative overflow-hidden">
+          <div className="flex items-center justify-between mb-3">
             <div>
-              <h2 className="text-base font-bold text-white">Attendance Overview</h2>
-              <p className="text-xs text-slate-400">Daily workforce participation</p>
+              <div className="flex items-center gap-2">
+                <h2 className="text-base font-bold text-white">Attendance Summary</h2>
+                <span className="text-[10px] font-bold bg-emerald-500/15 text-emerald-300 px-2 py-0.5 rounded-full border border-emerald-500/20 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" /> Live
+                </span>
+              </div>
+              <p className="text-xs text-slate-400">Workforce presence breakdown</p>
             </div>
             <button 
+              id="btn-attendance-summary-details"
               onClick={() => onNavigate('attendance')}
-              className="text-xs text-purple-400 hover:text-purple-300 font-semibold flex items-center gap-0.5"
+              className="text-xs text-purple-400 hover:text-purple-300 font-semibold flex items-center gap-0.5 transition-colors cursor-pointer group"
+              title="Open full attendance log"
             >
-              Details <ChevronRight className="w-3.5 h-3.5" />
+              <span>Details</span>
+              <ChevronRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
             </button>
           </div>
 
-          {/* Donut Chart Simulation */}
-          <div className="relative py-4 flex items-center justify-center">
-            <div className="relative w-44 h-44">
-              <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
-                {/* Background Ring */}
-                <circle cx="50" cy="50" r="38" className="stroke-slate-800" strokeWidth="12" fill="none" />
-                {/* Present (84%) */}
-                <circle 
-                  cx="50" 
-                  cy="50" 
-                  r="38" 
-                  className="stroke-[#a078ff] transition-all duration-1000" 
-                  strokeWidth="12" 
-                  strokeDasharray="238.76" 
-                  strokeDashoffset="38.2" 
-                  strokeLinecap="round"
-                  fill="none" 
+          {/* Recharts Ring / Donut Chart */}
+          <div className="relative h-44 w-full flex items-center justify-center my-1">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Tooltip
+                  content={({ active, payload }) => {
+                    if (active && payload && payload.length) {
+                      const data = payload[0].payload as { name: string; value: number; percentage: number; color: string; subtext: string };
+                      return (
+                        <div className="bg-[#131b2e]/95 backdrop-blur-md px-3 py-2 rounded-xl border border-white/10 shadow-xl text-xs space-y-0.5 pointer-events-none">
+                          <div className="flex items-center gap-1.5 font-bold text-white">
+                            <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: data.color }} />
+                            <span>{data.name}</span>
+                          </div>
+                          <div className="text-slate-300">
+                            <span className="font-semibold text-white font-['Sora']">{data.value.toLocaleString()}</span> employees ({data.percentage}%)
+                          </div>
+                          <div className="text-[10px] text-slate-400">
+                            {data.subtext}
+                          </div>
+                        </div>
+                      );
+                    }
+                    return null;
+                  }}
                 />
-                {/* On Leave (10%) */}
-                <circle 
-                  cx="50" 
-                  cy="50" 
-                  r="38" 
-                  className="stroke-[#f59e0b] transition-all duration-1000" 
-                  strokeWidth="12" 
-                  strokeDasharray="238.76" 
-                  strokeDashoffset="214.88" 
-                  strokeLinecap="round"
-                  fill="none" 
-                />
-              </svg>
-              {/* Inner Stats */}
-              <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                <span className="text-2xl font-extrabold text-white font-['Sora']">84%</span>
-                <span className="text-[11px] text-slate-400 font-medium">Present Rate</span>
-              </div>
+                <Pie
+                  data={attendanceBreakdownData}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={50}
+                  outerRadius={70}
+                  paddingAngle={4}
+                  cornerRadius={5}
+                  stroke="none"
+                  animationDuration={800}
+                >
+                  {attendanceBreakdownData.map((entry, index) => (
+                    <Cell 
+                      key={`cell-${index}`} 
+                      fill={entry.color}
+                      className="cursor-pointer hover:opacity-85 transition-opacity"
+                    />
+                  ))}
+                </Pie>
+              </PieChart>
+            </ResponsiveContainer>
+
+            {/* Inner Ring Stats Display */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
+              <span className="text-2xl font-extrabold text-white font-['Sora'] leading-tight">84.0%</span>
+              <span className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider">Present</span>
             </div>
           </div>
 
-          {/* Breakdown Legend */}
-          <div className="grid grid-cols-3 gap-2 pt-4 border-t border-white/5 text-center">
-            <div className="p-2 rounded-xl bg-white/[0.02]">
-              <div className="flex items-center justify-center gap-1.5 mb-1">
-                <span className="w-2 h-2 rounded-full bg-[#a078ff]" />
-                <span className="text-[11px] text-slate-400">Present</span>
+          {/* Breakdown Legend Tiles */}
+          <div className="grid grid-cols-3 gap-2 pt-3 border-t border-white/5 text-center">
+            {attendanceBreakdownData.map((item, idx) => (
+              <div 
+                key={idx}
+                onClick={() => onNavigate('attendance')}
+                className="p-2 rounded-xl bg-white/[0.02] hover:bg-white/[0.06] border border-white/5 transition-all cursor-pointer group"
+                title={`View ${item.name} list`}
+              >
+                <div className="flex items-center justify-center gap-1.5 mb-1">
+                  <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
+                  <span className="text-[11px] text-slate-400 group-hover:text-slate-200 transition-colors font-medium truncate">{item.name}</span>
+                </div>
+                <p className="text-sm font-bold text-white font-['Sora']">{item.value.toLocaleString()}</p>
+                <p className="text-[10px] text-slate-500 mt-0.5">{item.percentage}%</p>
               </div>
-              <p className="text-sm font-bold text-white">1,048</p>
-            </div>
-            <div className="p-2 rounded-xl bg-white/[0.02]">
-              <div className="flex items-center justify-center gap-1.5 mb-1">
-                <span className="w-2 h-2 rounded-full bg-amber-400" />
-                <span className="text-[11px] text-slate-400">On Leave</span>
-              </div>
-              <p className="text-sm font-bold text-white">120</p>
-            </div>
-            <div className="p-2 rounded-xl bg-white/[0.02]">
-              <div className="flex items-center justify-center gap-1.5 mb-1">
-                <span className="w-2 h-2 rounded-full bg-rose-400" />
-                <span className="text-[11px] text-slate-400">Absent</span>
-              </div>
-              <p className="text-sm font-bold text-white">80</p>
-            </div>
+            ))}
           </div>
         </div>
 
@@ -465,7 +636,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 May Cycle
               </span>
             </div>
-            <p className="text-lg font-bold text-white font-['Sora']">৳ 28,65,540</p>
+            <p className="text-lg font-bold text-white font-['Sora']">Rs. 2,865,540 <span className="text-xs font-normal text-purple-300">PKR</span></p>
             <p className="text-xs text-slate-400 mt-0.5 mb-3">Total Estimated Payroll Disbursement</p>
           </div>
           <button
@@ -1112,41 +1283,299 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
 
-        {/* Upcoming Events */}
-        <div className="glass-panel p-5 rounded-3xl border border-white/5 space-y-4 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between mb-3">
-              <h2 className="text-base font-bold text-white">Upcoming Events</h2>
-              <span className="text-xs text-purple-400 font-semibold cursor-pointer">View Calendar</span>
+        {/* Right Column: Upcoming Birthdays & Upcoming Events */}
+        <div className="space-y-6 flex flex-col">
+          {/* Upcoming Birthdays Widget */}
+          <div id="widget-upcoming-birthdays" className="glass-panel p-5 rounded-3xl border border-white/5 space-y-4 flex flex-col justify-between relative overflow-hidden bg-gradient-to-b from-white/[0.04] to-white/[0.01]">
+            <div className="space-y-4">
+              {/* Header */}
+              <div className="flex items-center justify-between gap-2 pb-3 border-b border-white/5">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-8 h-8 rounded-xl bg-pink-500/20 text-pink-400 border border-pink-500/30 flex items-center justify-center shadow-lg shadow-pink-500/10">
+                    <Cake className="w-4 h-4" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-base font-bold text-white">Upcoming Birthdays</h2>
+                      <span className="text-[10px] bg-pink-500/20 text-pink-300 font-bold px-2 py-0.5 rounded-full border border-pink-500/30 flex items-center gap-1">
+                        <Sparkles className="w-2.5 h-2.5 text-pink-400" /> {thisWeekBirthdays.length} This Week
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-400">Team milestones & birthday celebrations</p>
+                  </div>
+                </div>
+
+                {/* Week vs Month Switcher */}
+                <div className="flex items-center gap-1 bg-white/[0.04] p-1 rounded-xl border border-white/10 shrink-0">
+                  <button
+                    id="btn-birthdays-week"
+                    onClick={() => setBirthdayRange('week')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                      birthdayRange === 'week'
+                        ? 'bg-pink-600 text-white shadow-md shadow-pink-600/30'
+                        : 'text-slate-400 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    This Week
+                  </button>
+                  <button
+                    id="btn-birthdays-month"
+                    onClick={() => setBirthdayRange('month')}
+                    className={`px-2.5 py-1 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                      birthdayRange === 'month'
+                        ? 'bg-pink-600 text-white shadow-md shadow-pink-600/30'
+                        : 'text-slate-400 hover:text-white hover:bg-white/5'
+                    }`}
+                  >
+                    Month
+                  </button>
+                </div>
+              </div>
+
+              {/* Today's Birthday Spotlight Banner (if active) */}
+              {todaysBirthday && (
+                <div className="p-3.5 rounded-2xl bg-gradient-to-r from-pink-950/40 via-purple-950/30 to-amber-950/20 border border-pink-500/30 shadow-lg shadow-pink-950/20 relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 transform translate-x-3 -translate-y-3 w-20 h-20 bg-pink-500/10 rounded-full blur-xl pointer-events-none" />
+                  <div className="flex items-center justify-between gap-3 relative z-10">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="relative shrink-0">
+                        {todaysBirthday.avatar ? (
+                          <img
+                            src={todaysBirthday.avatar}
+                            alt={todaysBirthday.name}
+                            className="w-11 h-11 rounded-full object-cover ring-2 ring-pink-400/80 shadow-md shadow-pink-500/20"
+                            referrerPolicy="no-referrer"
+                          />
+                        ) : (
+                          <div className="w-11 h-11 rounded-full bg-pink-600/30 border border-pink-400 text-pink-200 font-bold flex items-center justify-center text-sm">
+                            {todaysBirthday.name.substring(0, 2).toUpperCase()}
+                          </div>
+                        )}
+                        <span className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-pink-500 text-white flex items-center justify-center text-[10px] shadow-sm border border-slate-900">
+                          🎂
+                        </span>
+                      </div>
+
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span className="text-[10px] uppercase font-bold tracking-wider text-pink-300 bg-pink-500/20 px-1.5 py-0.5 rounded border border-pink-500/30 flex items-center gap-1">
+                            <PartyPopper className="w-2.5 h-2.5" /> TODAY'S BIRTHDAY
+                          </span>
+                          <span className="text-[10px] text-amber-300 font-semibold">Turning {todaysBirthday.age}</span>
+                        </div>
+                        <p className="text-xs font-bold text-white truncate mt-0.5">{todaysBirthday.name}</p>
+                        <p className="text-[11px] text-slate-300 truncate">{todaysBirthday.role} • {todaysBirthday.department}</p>
+                      </div>
+                    </div>
+
+                    <button
+                      id={`btn-wish-today-${todaysBirthday.id}`}
+                      onClick={() => {
+                        if (wishedEmpIds.includes(todaysBirthday.id)) {
+                          handleSendWish(todaysBirthday.id, todaysBirthday.name, 'Sending extra birthday love! 💖🎉');
+                        } else {
+                          setActiveWishModal({
+                            id: todaysBirthday.id,
+                            empId: todaysBirthday.empId,
+                            name: todaysBirthday.name,
+                            role: todaysBirthday.role,
+                            department: todaysBirthday.department,
+                            avatar: todaysBirthday.avatar,
+                            date: todaysBirthday.date,
+                            dayLabel: todaysBirthday.dayLabel,
+                            relativeTime: todaysBirthday.relativeTime,
+                            defaultWish: todaysBirthday.defaultWish
+                          });
+                          setCustomWishMsg(todaysBirthday.defaultWish);
+                        }
+                      }}
+                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
+                        wishedEmpIds.includes(todaysBirthday.id)
+                          ? 'bg-pink-500/20 text-pink-300 border border-pink-500/40 hover:bg-pink-500/30'
+                          : 'bg-gradient-to-r from-pink-500 to-purple-600 hover:from-pink-400 hover:to-purple-500 text-white shadow-md shadow-pink-500/30'
+                      }`}
+                    >
+                      {wishedEmpIds.includes(todaysBirthday.id) ? (
+                        <>
+                          <Heart className="w-3.5 h-3.5 fill-pink-400 text-pink-400" />
+                          <span>Wished 🎉</span>
+                        </>
+                      ) : (
+                        <>
+                          <Gift className="w-3.5 h-3.5" />
+                          <span>Send Wish 🎈</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Birthday List Items */}
+              <div className="space-y-2.5 max-h-[260px] overflow-y-auto pr-1">
+                {displayedBirthdays.length === 0 ? (
+                  <div className="text-center py-6 rounded-2xl bg-white/[0.02] border border-white/5">
+                    <Cake className="w-6 h-6 text-slate-500 mx-auto mb-1.5 opacity-60" />
+                    <p className="text-xs text-slate-400 font-medium">No other birthdays this week.</p>
+                    <p className="text-[11px] text-slate-500 mt-0.5">Check the monthly view for upcoming dates.</p>
+                  </div>
+                ) : (
+                  displayedBirthdays
+                    .filter(b => b.relativeTime !== 'today' || displayedBirthdays.length === 1)
+                    .map((item) => {
+                      const isWished = wishedEmpIds.includes(item.id);
+                      return (
+                        <div
+                          key={item.id}
+                          id={`birthday-item-${item.id}`}
+                          className={`p-2.5 rounded-2xl border transition-all flex items-center justify-between gap-3 group ${
+                            item.isThisWeek
+                              ? 'bg-white/[0.03] hover:bg-white/[0.06] border-white/5 hover:border-pink-500/20'
+                              : 'bg-white/[0.015] hover:bg-white/[0.04] border-white/5'
+                          }`}
+                        >
+                          <div className="flex items-center gap-3 min-w-0 flex-1">
+                            {/* Avatar */}
+                            <div className="relative shrink-0">
+                              {item.avatar ? (
+                                <img
+                                  src={item.avatar}
+                                  alt={item.name}
+                                  className="w-9 h-9 rounded-full object-cover ring-1 ring-white/10 group-hover:ring-pink-400/50 transition-all"
+                                  referrerPolicy="no-referrer"
+                                />
+                              ) : (
+                                <div className="w-9 h-9 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-300 font-bold flex items-center justify-center text-xs">
+                                  {item.avatarInitials || item.name.substring(0, 2).toUpperCase()}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Details */}
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <p className="text-xs font-bold text-white truncate group-hover:text-pink-300 transition-colors">
+                                  {item.name}
+                                </p>
+                                <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded border ${
+                                  item.relativeTime === 'today'
+                                    ? 'bg-pink-500/20 text-pink-300 border-pink-500/30'
+                                    : item.relativeTime === 'tomorrow'
+                                    ? 'bg-purple-500/20 text-purple-300 border-purple-500/30'
+                                    : item.isThisWeek
+                                    ? 'bg-amber-500/15 text-amber-300 border-amber-500/25'
+                                    : 'bg-slate-500/15 text-slate-400 border-slate-500/20'
+                                }`}>
+                                  {item.countdown}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-2 text-[11px] text-slate-400 mt-0.5">
+                                <span className="text-slate-300 font-medium">{item.date}</span>
+                                <span>•</span>
+                                <span className="truncate">{item.department}</span>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Action Button */}
+                          <div className="shrink-0">
+                            <button
+                              id={`btn-wish-emp-${item.id}`}
+                              onClick={() => {
+                                if (isWished) {
+                                  handleSendWish(item.id, item.name, 'Sending extra celebration wishes! 💖');
+                                } else {
+                                  setActiveWishModal({
+                                    id: item.id,
+                                    empId: item.empId,
+                                    name: item.name,
+                                    role: item.role,
+                                    department: item.department,
+                                    avatar: item.avatar,
+                                    avatarInitials: item.avatarInitials,
+                                    date: item.date,
+                                    dayLabel: item.dayLabel,
+                                    relativeTime: item.relativeTime,
+                                    defaultWish: item.defaultWish
+                                  });
+                                  setCustomWishMsg(item.defaultWish);
+                                }
+                              }}
+                              className={`p-2 rounded-xl text-xs font-semibold transition-all cursor-pointer flex items-center gap-1.5 ${
+                                isWished
+                                  ? 'bg-pink-500/15 text-pink-300 border border-pink-500/30 hover:bg-pink-500/25'
+                                  : 'bg-white/[0.04] hover:bg-pink-600/20 text-slate-300 hover:text-pink-300 border border-white/5 hover:border-pink-500/30'
+                              }`}
+                              title={isWished ? 'Wished! Click to send another cheer' : `Send Birthday Wishes to ${item.name}`}
+                            >
+                              {isWished ? (
+                                <Heart className="w-3.5 h-3.5 fill-pink-400 text-pink-400" />
+                              ) : (
+                                <Gift className="w-3.5 h-3.5 text-pink-400" />
+                              )}
+                              <span className="hidden sm:inline text-[11px] font-medium">
+                                {isWished ? 'Wished' : 'Wish'}
+                              </span>
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+                )}
+              </div>
             </div>
 
-            <div className="space-y-3">
-              {upcomingEvents.map((evt) => (
-                <div key={evt.id} className="p-3 rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/5 flex items-center gap-3.5 transition-colors">
-                  <div className="w-12 h-12 rounded-xl bg-purple-500/20 border border-purple-500/30 flex flex-col items-center justify-center shrink-0">
-                    <span className="text-[9px] font-bold text-purple-300 uppercase">{evt.month}</span>
-                    <span className="text-base font-extrabold text-white font-['Sora'] leading-none mt-0.5">{evt.date}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-xs font-bold text-white truncate">{evt.title}</p>
-                    <p className="text-[11px] text-slate-400 truncate mt-0.5">{evt.subtitle}</p>
-                  </div>
-                  {evt.avatar && (
-                    <img 
-                      src={evt.avatar} 
-                      alt="Event Person" 
-                      className="w-8 h-8 rounded-full object-cover ring-1 ring-white/20 shrink-0"
-                      referrerPolicy="no-referrer"
-                    />
-                  )}
-                </div>
-              ))}
+            {/* Birthday Footer */}
+            <div className="pt-3 border-t border-white/5 text-xs text-slate-400 flex items-center justify-between">
+              <span className="flex items-center gap-1.5">
+                <Cake className="w-3.5 h-3.5 text-pink-400" />
+                <span>{upcomingBirthdays.length} birthdays in May</span>
+              </span>
+              <button
+                onClick={() => onNavigate('employees')}
+                className="text-pink-400 hover:text-pink-300 font-semibold cursor-pointer transition-colors"
+              >
+                View Directory →
+              </button>
             </div>
           </div>
 
-          <div className="pt-3 border-t border-white/5 text-xs text-slate-400 flex items-center justify-between">
-            <span>4 events in the next 30 days</span>
-            <span className="text-purple-400 font-semibold cursor-pointer">+ Sync Calendar</span>
+          {/* Upcoming Events */}
+          <div id="widget-upcoming-events" className="glass-panel p-5 rounded-3xl border border-white/5 space-y-4 flex flex-col justify-between">
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-base font-bold text-white">Upcoming Events</h2>
+                <span className="text-xs text-purple-400 font-semibold cursor-pointer">View Calendar</span>
+              </div>
+
+              <div className="space-y-3">
+                {upcomingEvents.map((evt) => (
+                  <div key={evt.id} className="p-3 rounded-2xl bg-white/[0.03] hover:bg-white/[0.06] border border-white/5 flex items-center gap-3.5 transition-colors">
+                    <div className="w-12 h-12 rounded-xl bg-purple-500/20 border border-purple-500/30 flex flex-col items-center justify-center shrink-0">
+                      <span className="text-[9px] font-bold text-purple-300 uppercase">{evt.month}</span>
+                      <span className="text-base font-extrabold text-white font-['Sora'] leading-none mt-0.5">{evt.date}</span>
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-white truncate">{evt.title}</p>
+                      <p className="text-[11px] text-slate-400 truncate mt-0.5">{evt.subtitle}</p>
+                    </div>
+                    {evt.avatar && (
+                      <img 
+                        src={evt.avatar} 
+                        alt="Event Person" 
+                        className="w-8 h-8 rounded-full object-cover ring-1 ring-white/20 shrink-0"
+                        referrerPolicy="no-referrer"
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="pt-3 border-t border-white/5 text-xs text-slate-400 flex items-center justify-between">
+              <span>4 events in the next 30 days</span>
+              <span className="text-purple-400 font-semibold cursor-pointer">+ Sync Calendar</span>
+            </div>
           </div>
         </div>
       </div>
@@ -1211,6 +1640,134 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Birthday Celebration Toast Notification */}
+      {birthdayToast && (
+        <div className="fixed bottom-6 right-6 z-50 max-w-md bg-[#131b2e]/95 backdrop-blur-md border border-pink-500/40 text-white p-4 rounded-2xl shadow-2xl shadow-pink-900/30 flex items-start gap-3 animate-in fade-in slide-in-from-bottom-5 duration-300">
+          <div className="w-9 h-9 rounded-xl bg-pink-500/20 text-pink-300 border border-pink-500/30 flex items-center justify-center shrink-0 text-base">
+            🎂
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-xs font-bold text-pink-300 flex items-center gap-1.5">
+              <Sparkles className="w-3.5 h-3.5 text-pink-400" /> Birthday Greeting Broadcasted
+            </p>
+            <p className="text-xs text-slate-200 mt-0.5 leading-relaxed">{birthdayToast}</p>
+          </div>
+          <button
+            onClick={() => setBirthdayToast(null)}
+            className="text-slate-400 hover:text-white p-1 rounded-lg transition-colors cursor-pointer"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Interactive Birthday Greeting Modal */}
+      {activeWishModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-[#131b2e] border border-pink-500/30 rounded-3xl p-6 max-w-md w-full shadow-2xl shadow-pink-900/30 relative overflow-hidden space-y-4">
+            <div className="absolute top-0 right-0 -mr-12 -mt-12 w-36 h-36 bg-pink-500/15 rounded-full blur-2xl pointer-events-none" />
+            
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-white/10">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-pink-500/20 border border-pink-500/30 text-pink-400 flex items-center justify-center text-lg">
+                  🎉
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-white">Send Birthday Wishes</h3>
+                  <p className="text-xs text-slate-400">Share team celebration cheer</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setActiveWishModal(null)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            {/* Recipient Card */}
+            <div className="p-3.5 rounded-2xl bg-white/[0.03] border border-white/10 flex items-center gap-3.5">
+              {activeWishModal.avatar ? (
+                <img
+                  src={activeWishModal.avatar}
+                  alt={activeWishModal.name}
+                  className="w-12 h-12 rounded-full object-cover ring-2 ring-pink-400/60"
+                  referrerPolicy="no-referrer"
+                />
+              ) : (
+                <div className="w-12 h-12 rounded-full bg-pink-500/20 border border-pink-400 text-pink-200 font-bold flex items-center justify-center text-sm">
+                  {activeWishModal.avatarInitials || activeWishModal.name.substring(0, 2).toUpperCase()}
+                </div>
+              )}
+              <div className="min-w-0 flex-1">
+                <h4 className="text-sm font-bold text-white">{activeWishModal.name}</h4>
+                <p className="text-xs text-slate-300">{activeWishModal.role} • {activeWishModal.department}</p>
+                <span className="text-[10px] text-pink-300 font-semibold mt-1 inline-flex items-center gap-1 bg-pink-500/10 px-2 py-0.5 rounded border border-pink-500/20">
+                  <Cake className="w-2.5 h-2.5" /> Birthday: {activeWishModal.date}
+                </span>
+              </div>
+            </div>
+
+            {/* Preset Wish Chips */}
+            <div>
+              <label className="text-xs font-semibold text-slate-300 block mb-2">Choose Quick Wish or Customize:</label>
+              <div className="space-y-1.5">
+                {[
+                  `🎉 Happy Birthday ${activeWishModal.name}! Wishing you a wonderful year of success and happiness! 🎂`,
+                  `🌟 Hope you have an incredible celebration today! Cheers from the team! 🚀🥂`,
+                  `🎂 Wishing you health, joy, and wonderful moments ahead! Have a fantastic day! 🎈✨`
+                ].map((preset, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setCustomWishMsg(preset)}
+                    className={`w-full text-left p-2.5 rounded-xl text-xs transition-all border cursor-pointer ${
+                      customWishMsg === preset
+                        ? 'bg-pink-500/20 border-pink-500/50 text-pink-200'
+                        : 'bg-white/[0.02] hover:bg-white/[0.05] border-white/5 text-slate-300'
+                    }`}
+                  >
+                    {preset}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Custom Message Area */}
+            <div>
+              <label className="text-xs font-semibold text-slate-300 block mb-1.5">Personalized Greeting:</label>
+              <textarea
+                value={customWishMsg}
+                onChange={(e) => setCustomWishMsg(e.target.value)}
+                placeholder="Write your custom birthday greeting..."
+                rows={3}
+                className="w-full bg-white/[0.04] border border-white/10 rounded-xl p-3 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-pink-500 focus:ring-1 focus:ring-pink-500 transition-all resize-none"
+              />
+            </div>
+
+            {/* Actions */}
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setActiveWishModal(null)}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-300 hover:text-white hover:bg-white/5 border border-white/10 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSendWish(activeWishModal.id, activeWishModal.name, customWishMsg)}
+                className="px-5 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-pink-500 via-purple-600 to-indigo-600 hover:from-pink-400 hover:to-purple-500 shadow-lg shadow-pink-500/30 flex items-center gap-1.5 transition-all cursor-pointer"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>Send Birthday Wishes 🎉</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,4 +1,4 @@
-import { UserProfile, UserRole } from '../types';
+import { UserProfile, UserRole, ThemeMode } from '../types';
 import { ADMIN_USER, MANAGER_USER, EMPLOYEE_USER } from '../data/initialData';
 
 export interface UserAccount {
@@ -8,6 +8,7 @@ export interface UserAccount {
   passwordHash: string; // Stored password
   roleType: UserRole;
   profile: UserProfile;
+  themePreference?: ThemeMode;
   createdAt: string;
   lastUpdated?: string;
 }
@@ -20,7 +21,8 @@ export const INITIAL_USER_ACCOUNTS: UserAccount[] = [
     email: 'rajaraza300@gmail.com',
     passwordHash: 'raza12345',
     roleType: 'admin',
-    profile: ADMIN_USER,
+    profile: { ...ADMIN_USER, themePreference: 'dark' },
+    themePreference: 'dark',
     createdAt: '2021-01-15T08:00:00.000Z'
   },
   {
@@ -29,7 +31,8 @@ export const INITIAL_USER_ACCOUNTS: UserAccount[] = [
     email: 'aqsa@designerinsight.online',
     passwordHash: 'aqsa12345',
     roleType: 'manager',
-    profile: MANAGER_USER,
+    profile: { ...MANAGER_USER, themePreference: 'dark' },
+    themePreference: 'dark',
     createdAt: '2019-03-12T08:00:00.000Z'
   },
   {
@@ -38,7 +41,8 @@ export const INITIAL_USER_ACCOUNTS: UserAccount[] = [
     email: 'Rani@designerinsight.online',
     passwordHash: 'rani12345',
     roleType: 'employee',
-    profile: EMPLOYEE_USER,
+    profile: { ...EMPLOYEE_USER, themePreference: 'dark' },
+    themePreference: 'dark',
     createdAt: '2020-02-10T08:00:00.000Z'
   },
   {
@@ -54,8 +58,10 @@ export const INITIAL_USER_ACCOUNTS: UserAccount[] = [
       email: 'sumaiya.akter@aurahrms.io',
       role: 'HR Specialist',
       department: 'HR',
-      empId: 'EMP-0102'
+      empId: 'EMP-0102',
+      themePreference: 'dark'
     },
+    themePreference: 'dark',
     createdAt: '2021-06-18T08:00:00.000Z'
   },
   {
@@ -71,14 +77,16 @@ export const INITIAL_USER_ACCOUNTS: UserAccount[] = [
       email: 'david.rodriguez@aurahrms.io',
       role: 'Engineering Lead',
       department: 'Engineering',
-      empId: 'EMP-0112'
+      empId: 'EMP-0112',
+      themePreference: 'dark'
     },
+    themePreference: 'dark',
     createdAt: '2019-11-04T08:00:00.000Z'
   }
 ];
 
-const STORAGE_KEY_ACCOUNTS = 'aura_hrm_accounts_db_v2';
-const STORAGE_KEY_SESSION = 'aura_hrm_active_session_v2';
+const STORAGE_KEY_ACCOUNTS = 'insight_hrm_accounts_db_v3';
+const STORAGE_KEY_SESSION = 'insight_hrm_active_session_v3';
 
 class AuthService {
   private accounts: UserAccount[];
@@ -102,11 +110,16 @@ class AuthService {
             if (idx === -1) {
               parsed.unshift(def);
             } else {
-              // Ensure profile & role are up-to-date
+              // Ensure profile & role are up-to-date while preserving user's saved themePreference
+              const savedTheme = parsed[idx].themePreference || parsed[idx].profile?.themePreference || 'dark';
               parsed[idx].email = def.email;
               parsed[idx].name = def.name;
               parsed[idx].roleType = def.roleType;
-              parsed[idx].profile = def.profile;
+              parsed[idx].profile = {
+                ...def.profile,
+                themePreference: savedTheme
+              };
+              parsed[idx].themePreference = savedTheme;
               if (!parsed[idx].passwordHash) {
                 parsed[idx].passwordHash = def.passwordHash;
               }
@@ -131,7 +144,7 @@ class AuthService {
 
   /**
    * Authenticate a user by email and password.
-   * Permanently returns the user's fixed role from the database.
+   * Permanently returns the user's fixed role and saved user-specific theme from the database.
    */
   public authenticate(email: string, password?: string): { success: boolean; user?: UserProfile; error?: string } {
     const normalizedEmail = email.trim().toLowerCase();
@@ -142,10 +155,10 @@ class AuthService {
     if (!account) {
       // Fallback for special quick prefixes if not registered
       if (normalizedEmail.includes('admin')) {
-        return { success: true, user: ADMIN_USER };
+        return { success: true, user: { ...ADMIN_USER, themePreference: 'dark' } };
       }
       if (normalizedEmail.includes('manager') || normalizedEmail.includes('lead')) {
-        return { success: true, user: MANAGER_USER };
+        return { success: true, user: { ...MANAGER_USER, themePreference: 'dark' } };
       }
       return {
         success: false,
@@ -162,6 +175,11 @@ class AuthService {
         };
       }
     }
+
+    // Load theme preference specific to this account
+    const userTheme = account.themePreference || account.profile.themePreference || 'dark';
+    account.themePreference = userTheme;
+    account.profile.themePreference = userTheme;
 
     // Set secure session in storage
     try {
@@ -184,22 +202,75 @@ class AuthService {
       const stored = localStorage.getItem(STORAGE_KEY_SESSION);
       if (stored) {
         const user: UserProfile = JSON.parse(stored);
-        // Verify user exists in database and has valid fixed role
+        // Verify user exists in database and has valid fixed role and saved user-specific theme
         const exists = this.accounts.find(a => a.id === user.id || a.email.toLowerCase() === (user.email || '').toLowerCase());
         if (exists) {
+          const userTheme = exists.themePreference || exists.profile?.themePreference || user.themePreference || 'dark';
           return {
             ...user,
             email: exists.email,
             name: exists.name || user.name,
-            roleType: exists.roleType // Always enforce role directly from database record
+            roleType: exists.roleType, // Always enforce role directly from database record
+            themePreference: userTheme
           };
         }
-        return user;
+        return {
+          ...user,
+          themePreference: user.themePreference || 'dark'
+        };
       }
     } catch {
       // Fallback
     }
     return null;
+  }
+
+  /**
+   * Update theme preference for a specific user account.
+   * Persists to permanent accounts database and active session.
+   */
+  public updateThemePreference(
+    userIdOrEmail: string,
+    theme: ThemeMode
+  ): { success: boolean; updatedProfile?: UserProfile } {
+    const searchKey = userIdOrEmail.trim().toLowerCase();
+    const accountIndex = this.accounts.findIndex(
+      a => a.id.toLowerCase() === searchKey || a.email.toLowerCase() === searchKey
+    );
+
+    if (accountIndex === -1) {
+      // If not in accounts array, update active session directly
+      const active = this.getActiveSession();
+      if (active) {
+        active.themePreference = theme;
+        try {
+          localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(active));
+        } catch {}
+        return { success: true, updatedProfile: active };
+      }
+      return { success: false };
+    }
+
+    const account = this.accounts[accountIndex];
+    account.themePreference = theme;
+    account.profile.themePreference = theme;
+    account.lastUpdated = new Date().toISOString();
+    this.accounts[accountIndex] = account;
+    this.saveAccounts();
+
+    // If active session belongs to this user, update active session
+    const active = this.getActiveSession();
+    if (active && (active.id === account.id || active.email.toLowerCase() === account.email.toLowerCase())) {
+      active.themePreference = theme;
+      try {
+        localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(account.profile));
+      } catch {}
+    }
+
+    return {
+      success: true,
+      updatedProfile: account.profile
+    };
   }
 
   /**

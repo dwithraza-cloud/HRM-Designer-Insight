@@ -869,7 +869,7 @@ export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
               </div>
               {canViewSalary ? (
                 <div>
-                  <p className="text-2xl font-bold text-white font-['Sora']">৳ {(employee.baseSalary || 145000).toLocaleString()}</p>
+                  <p className="text-2xl font-bold text-white font-['Sora']">Rs. {(employee.baseSalary || 145000).toLocaleString()} <span className="text-xs font-normal text-purple-300">PKR</span></p>
                   <p className="text-xs text-purple-300 font-semibold mt-1">Base Monthly Salary</p>
                   {isAdmin && (
                     <button 
@@ -1252,26 +1252,26 @@ export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
               Payroll & Compensation Details
             </h3>
             <span className="text-xs text-purple-300 font-mono font-bold bg-purple-500/20 px-3 py-1 rounded-full border border-purple-500/30">
-              Monthly Base: ৳ {(employee.baseSalary || 145000).toLocaleString()}
+              Monthly Base: Rs. {(employee.baseSalary || 145000).toLocaleString()} PKR
             </span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
             <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5">
               <span className="text-slate-400 block mb-1">Basic Salary (60%)</span>
-              <p className="text-base font-bold text-white">৳ {Math.round((employee.baseSalary || 145000) * 0.6).toLocaleString()}</p>
+              <p className="text-base font-bold text-white">Rs. {Math.round((employee.baseSalary || 145000) * 0.6).toLocaleString()}</p>
             </div>
             <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5">
               <span className="text-slate-400 block mb-1">House Rent (25%)</span>
-              <p className="text-base font-bold text-white">৳ {Math.round((employee.baseSalary || 145000) * 0.25).toLocaleString()}</p>
+              <p className="text-base font-bold text-white">Rs. {Math.round((employee.baseSalary || 145000) * 0.25).toLocaleString()}</p>
             </div>
             <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5">
               <span className="text-slate-400 block mb-1">Medical Allowance (10%)</span>
-              <p className="text-base font-bold text-white">৳ {Math.round((employee.baseSalary || 145000) * 0.1).toLocaleString()}</p>
+              <p className="text-base font-bold text-white">Rs. {Math.round((employee.baseSalary || 145000) * 0.1).toLocaleString()}</p>
             </div>
             <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5">
               <span className="text-slate-400 block mb-1">Conveyance (5%)</span>
-              <p className="text-base font-bold text-white">৳ {Math.round((employee.baseSalary || 145000) * 0.05).toLocaleString()}</p>
+              <p className="text-base font-bold text-white">Rs. {Math.round((employee.baseSalary || 145000) * 0.05).toLocaleString()}</p>
             </div>
           </div>
         </div>
@@ -1626,7 +1626,7 @@ export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
                     {/* Salary Field: Admin editable or Self visible */}
                     <div>
                       <label className="text-slate-300 font-semibold mb-1.5 flex items-center justify-between">
-                        <span>Base Monthly Salary (৳)</span>
+                        <span>Base Monthly Salary (Rs. / PKR)</span>
                         {!isAdmin && <span className="text-[10px] text-slate-500">Read-only for staff</span>}
                       </label>
                       <input
