@@ -16,11 +16,14 @@ import {
   Trash2
 } from 'lucide-react';
 import { AttendanceRecord, ViewMode, UserProfile } from '../types';
+import { dbService } from '../services/dbService';
 
 interface AttendanceViewProps {
   attendanceRecords: AttendanceRecord[];
   currentUser: UserProfile;
   onUpdateRecords?: (records: AttendanceRecord[]) => void;
+  onSaveRecord?: (record: AttendanceRecord) => void;
+  onDeleteRecord?: (id: string) => void;
   onNavigate: (view: ViewMode) => void;
   showToast?: (msg: string) => void;
 }
@@ -29,6 +32,8 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   attendanceRecords,
   currentUser,
   onUpdateRecords,
+  onSaveRecord,
+  onDeleteRecord,
   onNavigate,
   showToast
 }) => {
@@ -130,7 +135,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   }, [attendanceRecords]);
 
   // Manual Clock In / Clock Out Handler
-  const handleManualClockToggle = () => {
+  const handleManualClockToggle = async () => {
     const now = new Date();
     const timeFormatted = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
@@ -145,26 +150,19 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       setClockOutTimestamp(null);
 
       // Check if user already has an existing record today to prevent duplicates
-      const existingIndex = records.findIndex(r => r.empId === currentUser.empId);
-      let updatedList: AttendanceRecord[];
+      const existingRecord = records.find(r => r.empId === currentUser.empId);
+      let recordToSave: AttendanceRecord;
 
-      if (existingIndex >= 0) {
-        // Update existing record
-        updatedList = records.map((rec, idx) => {
-          if (idx === existingIndex) {
-            return {
-              ...rec,
-              clockIn: timeFormatted,
-              clockOut: '--:--',
-              status: newStatus,
-              totalHrs: 'In Progress'
-            };
-          }
-          return rec;
-        });
+      if (existingRecord) {
+        recordToSave = {
+          ...existingRecord,
+          clockIn: timeFormatted,
+          clockOut: '--:--',
+          status: newStatus,
+          totalHrs: 'In Progress'
+        };
       } else {
-        // Insert new record at the top
-        const newRecord: AttendanceRecord = {
+        recordToSave = {
           id: `att-${Date.now()}`,
           empId: currentUser.empId,
           employeeName: currentUser.name,
@@ -177,11 +175,25 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
           status: newStatus,
           date: `Today, ${now.toLocaleDateString([], { day: 'numeric', month: 'short' })}`
         };
-        updatedList = [newRecord, ...records];
       }
+
+      const updatedList = existingRecord
+        ? records.map(r => r.id === recordToSave.id ? recordToSave : r)
+        : [recordToSave, ...records];
 
       setRecords(updatedList);
       if (onUpdateRecords) onUpdateRecords(updatedList);
+
+      try {
+        if (onSaveRecord) {
+          onSaveRecord(recordToSave);
+        } else {
+          await dbService.saveItem('attendance', recordToSave);
+        }
+      } catch (err: any) {
+        console.error('Error persisting attendance:', err);
+      }
+
       if (showToast) showToast(`✓ Clocked In successfully at ${timeFormatted} (${newStatus})`);
 
     } else {
@@ -190,25 +202,33 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       setIsOnBreak(false);
       setClockOutTimestamp(timeFormatted);
 
-      // Compute rough total hours
       let calculatedHrs = '8h 00m';
       if (clockInTimestamp) {
         calculatedHrs = '7h 45m';
       }
 
-      const updatedList = records.map(r => {
-        if (r.empId === currentUser.empId) {
-          return {
-            ...r,
-            clockOut: timeFormatted,
-            totalHrs: calculatedHrs
-          };
-        }
-        return r;
-      });
+      const existingRecord = records.find(r => r.empId === currentUser.empId);
+      if (existingRecord) {
+        const recordToSave: AttendanceRecord = {
+          ...existingRecord,
+          clockOut: timeFormatted,
+          totalHrs: calculatedHrs
+        };
+        const updatedList = records.map(r => r.id === recordToSave.id ? recordToSave : r);
+        setRecords(updatedList);
+        if (onUpdateRecords) onUpdateRecords(updatedList);
 
-      setRecords(updatedList);
-      if (onUpdateRecords) onUpdateRecords(updatedList);
+        try {
+          if (onSaveRecord) {
+            onSaveRecord(recordToSave);
+          } else {
+            await dbService.saveItem('attendance', recordToSave);
+          }
+        } catch (err: any) {
+          console.error('Error persisting attendance:', err);
+        }
+      }
+
       if (showToast) showToast(`✓ Clocked Out successfully at ${timeFormatted}. Total: ${calculatedHrs}`);
     }
   };
@@ -245,7 +265,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
 
   const isAdmin = currentUser.roleType === 'admin';
 
-  const handleDeleteRecord = (id: string, name: string) => {
+  const handleDeleteRecord = async (id: string, name: string) => {
     if (!isAdmin) {
       if (showToast) showToast('⚠️ Access Denied (403): Only Admins can remove attendance log entries.');
       return;
@@ -253,7 +273,17 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     const updated = records.filter(r => r.id !== id);
     setRecords(updated);
     if (onUpdateRecords) onUpdateRecords(updated);
-    if (showToast) showToast(`✓ Attendance log removed for ${name}.`);
+
+    try {
+      if (onDeleteRecord) {
+        onDeleteRecord(id);
+      } else {
+        await dbService.deleteItem('attendance', id);
+      }
+      if (showToast) showToast(`✓ Attendance log removed for ${name}.`);
+    } catch (err: any) {
+      if (showToast) showToast(`❌ Failed to delete record: ${err.message || err}`);
+    }
   };
 
   const filteredRecords = records.filter(r => {

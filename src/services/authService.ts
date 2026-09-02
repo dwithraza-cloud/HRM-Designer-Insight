@@ -6,7 +6,7 @@ export interface UserAccount {
   id: string;
   name: string;
   email: string;
-  passwordHash: string; // Stored password
+  passwordHash: string;
   roleType: UserRole;
   profile: UserProfile;
   themePreference?: ThemeMode;
@@ -14,7 +14,6 @@ export interface UserAccount {
   lastUpdated?: string;
 }
 
-// Permanent database of user accounts with fixed server-enforced roles
 export const INITIAL_USER_ACCOUNTS: UserAccount[] = [
   {
     id: 'usr-admin-01',
@@ -86,22 +85,21 @@ export const INITIAL_USER_ACCOUNTS: UserAccount[] = [
   }
 ];
 
-const STORAGE_KEY_ACCOUNTS = 'insight_hrm_accounts_db_v3';
-const STORAGE_KEY_SESSION = 'insight_hrm_active_session_v3';
+const STORAGE_KEY_ACCOUNTS = 'insight_hrm_accounts_db_v4';
+const STORAGE_KEY_SESSION = 'insight_hrm_active_session_v4';
 
 class AuthService {
   private accounts: UserAccount[];
 
   constructor() {
     this.accounts = this.loadAccounts();
-    // Background init with Firestore database
     this.syncFromFirestore();
   }
 
   public async syncFromFirestore(): Promise<void> {
     try {
       const dbAccounts = await dbService.loadOrSeedCollection<UserAccount>('user_accounts', INITIAL_USER_ACCOUNTS);
-      if (dbAccounts && dbAccounts.length > 0) {
+      if (dbAccounts && Array.isArray(dbAccounts) && dbAccounts.length > 0) {
         this.accounts = dbAccounts;
         this.saveAccounts();
       }
@@ -116,28 +114,6 @@ class AuthService {
       if (stored) {
         const parsed: UserAccount[] = JSON.parse(stored);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const primaryDefaults = INITIAL_USER_ACCOUNTS.slice(0, 3);
-          primaryDefaults.forEach(def => {
-            const idx = parsed.findIndex(
-              a => a.email.toLowerCase() === def.email.toLowerCase() || a.id === def.id
-            );
-            if (idx === -1) {
-              parsed.unshift(def);
-            } else {
-              const savedTheme = parsed[idx].themePreference || parsed[idx].profile?.themePreference || 'dark';
-              parsed[idx].email = def.email;
-              parsed[idx].name = def.name;
-              parsed[idx].roleType = def.roleType;
-              parsed[idx].profile = {
-                ...def.profile,
-                themePreference: savedTheme
-              };
-              parsed[idx].themePreference = savedTheme;
-              if (!parsed[idx].passwordHash) {
-                parsed[idx].passwordHash = def.passwordHash;
-              }
-            }
-          });
           return parsed;
         }
       }
@@ -155,7 +131,7 @@ class AuthService {
     }
   }
 
-  private async persistAccountToDB(account: UserAccount): Promise<void> {
+  public async persistAccountToDB(account: UserAccount): Promise<void> {
     this.saveAccounts();
     try {
       await dbService.saveItem('user_accounts', account);
@@ -164,18 +140,27 @@ class AuthService {
     }
   }
 
+  public async removeAccountFromDB(accountId: string): Promise<void> {
+    this.accounts = this.accounts.filter(a => a.id !== accountId);
+    this.saveAccounts();
+    try {
+      await dbService.deleteItem('user_accounts', accountId);
+    } catch (e) {
+      console.error('Failed to delete account from Firestore:', e);
+    }
+  }
+
   /**
    * Authenticate a user by email and password.
-   * Permanently returns the user's fixed role and saved user-specific theme from the database.
    */
   public authenticate(email: string, password?: string): { success: boolean; user?: UserProfile; error?: string } {
     const normalizedEmail = email.trim().toLowerCase();
     
-    // Look up user in permanent database
+    // Look up user in permanent accounts database
     const account = this.accounts.find(a => a.email.toLowerCase() === normalizedEmail);
 
     if (!account) {
-      // Fallback for special quick prefixes if not registered
+      // Fallback for special quick demo prefixes if needed
       if (normalizedEmail.includes('admin')) {
         return { success: true, user: { ...ADMIN_USER, themePreference: 'dark' } };
       }
@@ -188,7 +173,7 @@ class AuthService {
       };
     }
 
-    // Optional password verification
+    // Password verification
     if (password && password.length > 0 && password !== '••••••••••••') {
       if (account.passwordHash && account.passwordHash !== password && password !== 'password' && password !== 'admin123' && password !== 'manager123' && password !== 'employee123') {
         return {
@@ -198,12 +183,10 @@ class AuthService {
       }
     }
 
-    // Load theme preference specific to this account
     const userTheme = account.themePreference || account.profile.themePreference || 'dark';
     account.themePreference = userTheme;
     account.profile.themePreference = userTheme;
 
-    // Set secure session in storage
     try {
       localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(account.profile));
     } catch {
@@ -224,7 +207,6 @@ class AuthService {
       const stored = localStorage.getItem(STORAGE_KEY_SESSION);
       if (stored) {
         const user: UserProfile = JSON.parse(stored);
-        // Verify user exists in database and has valid fixed role and saved user-specific theme
         const exists = this.accounts.find(a => a.id === user.id || a.email.toLowerCase() === (user.email || '').toLowerCase());
         if (exists) {
           const userTheme = exists.themePreference || exists.profile?.themePreference || user.themePreference || 'dark';
@@ -232,7 +214,7 @@ class AuthService {
             ...user,
             email: exists.email,
             name: exists.name || user.name,
-            roleType: exists.roleType, // Always enforce role directly from database record
+            roleType: exists.roleType,
             themePreference: userTheme
           };
         }
@@ -249,7 +231,6 @@ class AuthService {
 
   /**
    * Update theme preference for a specific user account.
-   * Persists to permanent accounts database and active session.
    */
   public updateThemePreference(
     userIdOrEmail: string,
@@ -261,7 +242,6 @@ class AuthService {
     );
 
     if (accountIndex === -1) {
-      // If not in accounts array, update active session directly
       const active = this.getActiveSession();
       if (active) {
         active.themePreference = theme;
@@ -280,7 +260,6 @@ class AuthService {
     this.accounts[accountIndex] = account;
     this.persistAccountToDB(account);
 
-    // If active session belongs to this user, update active session
     const active = this.getActiveSession();
     if (active && (active.id === account.id || active.email.toLowerCase() === account.email.toLowerCase())) {
       active.themePreference = theme;
@@ -295,9 +274,6 @@ class AuthService {
     };
   }
 
-  /**
-   * End session
-   */
   public signOut(): void {
     try {
       localStorage.removeItem(STORAGE_KEY_SESSION);
@@ -328,7 +304,6 @@ class AuthService {
 
     const account = this.accounts[accountIndex];
 
-    // If changing password and current password provided, verify it
     if (data.newPassword && data.currentPassword) {
       const validPass =
         account.passwordHash === data.currentPassword ||
@@ -342,7 +317,6 @@ class AuthService {
       }
     }
 
-    // If email is changing
     if (data.newEmail && data.newEmail.trim().toLowerCase() !== account.email.toLowerCase()) {
       const normalizedNewEmail = data.newEmail.trim().toLowerCase();
       
@@ -361,7 +335,6 @@ class AuthService {
       account.profile.email = normalizedNewEmail;
     }
 
-    // If password is changing
     if (data.newPassword && data.newPassword.trim().length > 0) {
       if (data.newPassword.trim().length < 4) {
         return { success: false, error: 'Password must be at least 4 characters long.' };
@@ -373,7 +346,6 @@ class AuthService {
     this.accounts[accountIndex] = account;
     this.persistAccountToDB(account);
 
-    // Update active session
     const updatedProfile: UserProfile = {
       ...account.profile,
       email: account.email
@@ -392,7 +364,7 @@ class AuthService {
   }
 
   /**
-   * Admin-Only: Change email, password, or role of ANY employee or manager
+   * Admin-Only: Change email, password, or role of ANY user
    */
   public adminUpdateUserCredentials(
     adminRole: UserRole,
@@ -407,7 +379,7 @@ class AuthService {
     if (adminRole !== 'admin') {
       return {
         success: false,
-        error: '403 Forbidden: Only System Administrators have permission to modify employee credentials.'
+        error: '403 Forbidden: Only System Administrators have permission to modify credentials.'
       };
     }
 
@@ -421,7 +393,6 @@ class AuthService {
 
     const account = this.accounts[accountIndex];
 
-    // Update email if provided
     if (data.newEmail && data.newEmail.trim().toLowerCase() !== account.email.toLowerCase()) {
       const normalizedNewEmail = data.newEmail.trim().toLowerCase();
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedNewEmail)) {
@@ -439,7 +410,6 @@ class AuthService {
       account.profile.email = normalizedNewEmail;
     }
 
-    // Update password if provided
     if (data.newPassword && data.newPassword.trim().length > 0) {
       if (data.newPassword.trim().length < 4) {
         return { success: false, error: 'Password must be at least 4 characters long.' };
@@ -447,13 +417,11 @@ class AuthService {
       account.passwordHash = data.newPassword.trim();
     }
 
-    // Update role if provided
     if (data.newRole) {
       account.roleType = data.newRole;
       account.profile.roleType = data.newRole;
     }
 
-    // Update name if provided
     if (data.newName && data.newName.trim().length > 0) {
       account.name = data.newName.trim();
       account.profile.name = data.newName.trim();
@@ -463,7 +431,6 @@ class AuthService {
     this.accounts[accountIndex] = account;
     this.persistAccountToDB(account);
 
-    // If the active session is this user, update active session
     const currentSession = this.getActiveSession();
     if (currentSession && (currentSession.id === account.id || currentSession.email.toLowerCase() === account.email.toLowerCase())) {
       try {
@@ -497,7 +464,7 @@ class AuthService {
     if (creatorRole !== 'admin') {
       return {
         success: false,
-        error: '403 Forbidden: Only authorized System Administrators can create new accounts and assign roles.'
+        error: '403 Forbidden: Only System Administrators can create accounts and assign roles.'
       };
     }
 
@@ -518,21 +485,21 @@ class AuthService {
       avatar: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(newAccount.name)}`,
       department: newAccount.department,
       empId: `EMP-${Math.floor(1000 + Math.random() * 9000)}`,
-      location: 'Dhaka, Bangladesh',
-      phone: '+880 1700-000000',
-      address: 'Dhaka, Bangladesh',
-      gender: 'Other',
+      location: 'Lahore, Pakistan',
+      phone: '+92 300 0000000',
+      address: 'Lahore, Pakistan',
+      gender: 'Male',
       dob: '01 Jan 1995',
       bloodGroup: 'B+ Positive',
       maritalStatus: 'Single',
-      nationality: 'Bangladeshi',
+      nationality: 'Pakistani',
       joiningDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
       reportingManager: {
-        name: newAccount.roleType === 'employee' ? 'Sarah Jenkins' : 'Ayon Ahmed',
-        role: newAccount.roleType === 'employee' ? 'Design Department Lead' : 'HR Director',
-        avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80'
+        name: 'Raja Raza',
+        role: 'Director & System Admin',
+        avatar: '/raja_raza.jpg'
       },
-      baseSalary: newAccount.baseSalary || 85000,
+      baseSalary: newAccount.baseSalary || 150000,
       status: 'Active'
     };
 
@@ -601,21 +568,21 @@ class AuthService {
         avatar: emp.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(emp.name)}`,
         department: emp.department || 'General',
         empId: emp.empId || 'EMP-1001',
-        location: 'Dhaka, Bangladesh',
-        phone: emp.phone || '+880 1700-000000',
-        address: 'Dhaka, Bangladesh',
-        gender: 'Other',
+        location: 'Lahore, Pakistan',
+        phone: emp.phone || '+92 300 0000000',
+        address: 'Lahore, Pakistan',
+        gender: 'Male',
         dob: '01 Jan 1995',
         bloodGroup: 'B+ Positive',
         maritalStatus: 'Single',
-        nationality: 'Bangladeshi',
+        nationality: 'Pakistani',
         joiningDate: emp.joiningDate || '15 Jan 2022',
         reportingManager: {
-          name: 'Sarah Jenkins',
-          role: 'Design Department Lead',
-          avatar: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=256&q=80'
+          name: 'Raja Raza',
+          role: 'Director & System Admin',
+          avatar: '/raja_raza.jpg'
         },
-        baseSalary: emp.salary || 65000,
+        baseSalary: emp.salary || 120000,
         status: emp.status || 'Active'
       },
       createdAt: new Date().toISOString()
@@ -632,5 +599,3 @@ class AuthService {
 }
 
 export const authService = new AuthService();
-
-

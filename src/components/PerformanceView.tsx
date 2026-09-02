@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Award, 
   Star, 
@@ -15,11 +15,17 @@ import {
   X
 } from 'lucide-react';
 import { TOP_PERFORMERS, RECENT_FEEDBACK } from '../data/initialData';
-import { ViewMode, UserProfile, Employee, TopPerformer } from '../types';
+import { ViewMode, UserProfile, Employee, TopPerformer, FeedbackItem } from '../types';
+import { dbService } from '../services/dbService';
 
 interface PerformanceViewProps {
   currentUser?: UserProfile;
   employees?: Employee[];
+  topPerformers?: TopPerformer[];
+  feedbackList?: FeedbackItem[];
+  onAddTopPerformer?: (performer: TopPerformer) => void;
+  onRemoveTopPerformer?: (id: string) => void;
+  onAddFeedback?: (item: FeedbackItem) => void;
   onNavigate: (view: ViewMode) => void;
   showToast?: (msg: string) => void;
 }
@@ -27,21 +33,38 @@ interface PerformanceViewProps {
 export const PerformanceView: React.FC<PerformanceViewProps> = ({ 
   currentUser,
   employees = [],
+  topPerformers: propTopPerformers,
+  feedbackList: propFeedbackList,
+  onAddTopPerformer,
+  onRemoveTopPerformer,
+  onAddFeedback,
   onNavigate,
   showToast
 }) => {
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedbackText, setFeedbackText] = useState('');
   const [feedbackRecipient, setFeedbackRecipient] = useState('Ayon Ahmed');
-  const [feedbackList, setFeedbackList] = useState(RECENT_FEEDBACK);
+  const [feedbackList, setFeedbackList] = useState<FeedbackItem[]>(propFeedbackList || RECENT_FEEDBACK);
 
   // Top Performers State
-  const [topPerformers, setTopPerformers] = useState<TopPerformer[]>(TOP_PERFORMERS);
+  const [topPerformers, setTopPerformers] = useState<TopPerformer[]>(propTopPerformers || TOP_PERFORMERS);
   const [showAddPerformerModal, setShowAddPerformerModal] = useState(false);
   const [selectedEmpId, setSelectedEmpId] = useState(employees[0]?.empId || '');
   const [performerScore, setPerformerScore] = useState<number>(96);
   const [performerStars, setPerformerStars] = useState<number>(5);
   const [performerTag, setPerformerTag] = useState<string>('Sprint Champion');
+
+  useEffect(() => {
+    if (propTopPerformers) {
+      setTopPerformers(propTopPerformers);
+    }
+  }, [propTopPerformers]);
+
+  useEffect(() => {
+    if (propFeedbackList) {
+      setFeedbackList(propFeedbackList);
+    }
+  }, [propFeedbackList]);
 
   const isAdmin = currentUser?.roleType === 'admin';
 
@@ -49,27 +72,36 @@ export const PerformanceView: React.FC<PerformanceViewProps> = ({
     employees.length === 0 || employees.some(e => e.empId === p.empId || e.name.toLowerCase() === p.name.toLowerCase())
   );
 
-  const handlePostFeedback = (e: React.FormEvent) => {
+  const handlePostFeedback = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!feedbackText) return;
 
-    setFeedbackList([
-      {
-        id: `fb-${Date.now()}`,
-        fromName: currentUser?.name || 'Ayon Ahmed',
-        toName: feedbackRecipient,
-        avatar: currentUser?.avatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZQndi0Q67LuyTUAs8C_7ptSSpWoFH67QhVbLxfJfqqymbTF0-ImTvZteCBSvRhku41rEwtRkkZ2yuI6nQmZb0BfCOfoZGNID_PEOn4VWAWuKVpWR7Ik8bXButYDHroiVhejf7BUJNlr5RCQjELnvfecxNjb3pdO-wFiNm8ZRyrk3KjzJktBW6t2HdB8uvLEdFXWKFvdGX3obC3EyYo3QUO3PVDq-c-ap2YZgHP_1pncDG6fIUYwwl',
-        timeAgo: 'Just now',
-        comment: feedbackText
-      },
-      ...feedbackList
-    ]);
+    const newFeedback: FeedbackItem = {
+      id: `fb-${Date.now()}`,
+      fromName: currentUser?.name || 'Raja Raza',
+      toName: feedbackRecipient,
+      avatar: currentUser?.avatar || '/raja_raza.jpg',
+      timeAgo: 'Just now',
+      comment: feedbackText
+    };
+
+    setFeedbackList(prev => [newFeedback, ...prev]);
     setFeedbackText('');
     setShowFeedbackModal(false);
-    if (showToast) showToast(`✓ 360 Feedback submitted for ${feedbackRecipient}.`);
+
+    try {
+      if (onAddFeedback) {
+        onAddFeedback(newFeedback);
+      } else {
+        await dbService.saveItem('performance_feedback', newFeedback);
+      }
+      if (showToast) showToast(`✓ 360 Feedback submitted for ${feedbackRecipient}.`);
+    } catch (err: any) {
+      console.error('Failed to save feedback:', err);
+    }
   };
 
-  const handleAddTopPerformer = (e: React.FormEvent) => {
+  const handleAddTopPerformer = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!isAdmin) {
       if (showToast) showToast('⚠️ Access Denied (403): Only Admins can add top performers.');
@@ -79,7 +111,6 @@ export const PerformanceView: React.FC<PerformanceViewProps> = ({
     const emp = employees.find(e => e.empId === selectedEmpId) || employees[0];
     if (!emp) return;
 
-    // Check if already in top performers
     const existingIndex = topPerformers.findIndex(p => p.empId === emp.empId || p.name.toLowerCase() === emp.name.toLowerCase());
 
     const newPerformer: TopPerformer = {
@@ -103,16 +134,36 @@ export const PerformanceView: React.FC<PerformanceViewProps> = ({
       if (showToast) showToast(`✓ Added ${emp.name} to Top Performers (${performerScore}%).`);
     }
 
+    try {
+      if (onAddTopPerformer) {
+        onAddTopPerformer(newPerformer);
+      } else {
+        await dbService.saveItem('top_performers', newPerformer);
+      }
+    } catch (err: any) {
+      console.error('Failed to save top performer:', err);
+    }
+
     setShowAddPerformerModal(false);
   };
 
-  const handleRemoveTopPerformer = (id: string, name: string) => {
+  const handleRemoveTopPerformer = async (id: string, name: string) => {
     if (!isAdmin) {
       if (showToast) showToast('⚠️ Access Denied (403): Only Admins can remove top performers.');
       return;
     }
     setTopPerformers(prev => prev.filter(p => p.id !== id));
-    if (showToast) showToast(`✓ Removed ${name} from Top Performers.`);
+
+    try {
+      if (onRemoveTopPerformer) {
+        onRemoveTopPerformer(id);
+      } else {
+        await dbService.deleteItem('top_performers', id);
+      }
+      if (showToast) showToast(`✓ Removed ${name} from Top Performers.`);
+    } catch (err: any) {
+      console.error('Failed to delete top performer:', err);
+    }
   };
 
   return (

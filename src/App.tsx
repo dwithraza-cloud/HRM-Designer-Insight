@@ -36,7 +36,11 @@ import {
   UPCOMING_EVENTS, 
   RECENT_ACTIVITIES, 
   NOTIFICATIONS,
-  INITIAL_TASKS
+  INITIAL_TASKS,
+  TOP_PERFORMERS,
+  RECENT_FEEDBACK,
+  INITIAL_ACTIVE_INTERVIEWS,
+  INITIAL_HIRING_VELOCITY
 } from './data/initialData';
 import { 
   ViewMode, 
@@ -52,7 +56,11 @@ import {
   AttendanceRecord,
   ThemeMode,
   ActivityItem,
-  NotificationItem
+  NotificationItem,
+  TopPerformer,
+  FeedbackItem,
+  ActiveInterview,
+  HiringVelocityMetric
 } from './types';
 import { authService } from './services/authService';
 import { dbService } from './services/dbService';
@@ -101,6 +109,10 @@ export function App() {
   const [upcomingEvents] = useState(UPCOMING_EVENTS);
   const [activities, setActivities] = useState(() => loadStoredData('insight_hrm_activities', RECENT_ACTIVITIES));
   const [notifications, setNotifications] = useState(() => loadStoredData('insight_hrm_notifications', NOTIFICATIONS));
+  const [topPerformers, setTopPerformers] = useState<TopPerformer[]>(() => loadStoredData('insight_hrm_top_performers', TOP_PERFORMERS));
+  const [feedbackList, setFeedbackList] = useState<FeedbackItem[]>(() => loadStoredData('insight_hrm_feedback', RECENT_FEEDBACK));
+  const [interviews, setInterviews] = useState<ActiveInterview[]>(() => loadStoredData('insight_hrm_interviews', INITIAL_ACTIVE_INTERVIEWS));
+  const [velocities, setVelocities] = useState<HiringVelocityMetric[]>(() => loadStoredData('insight_hrm_velocities', INITIAL_HIRING_VELOCITY));
 
   // Sync state to Firestore Production Database & Realtime Listeners
   useEffect(() => {
@@ -139,6 +151,18 @@ export function App() {
         const loadedNotifs = await dbService.loadOrSeedCollection('notifications', NOTIFICATIONS);
         setNotifications(loadedNotifs);
 
+        const loadedPerformers = await dbService.loadOrSeedCollection('top_performers', TOP_PERFORMERS);
+        setTopPerformers(loadedPerformers);
+
+        const loadedFeedback = await dbService.loadOrSeedCollection('performance_feedback', RECENT_FEEDBACK);
+        setFeedbackList(loadedFeedback);
+
+        const loadedInterviews = await dbService.loadOrSeedCollection('interviews', INITIAL_ACTIVE_INTERVIEWS);
+        setInterviews(loadedInterviews);
+
+        const loadedVelocities = await dbService.loadOrSeedCollection('hiring_velocity', INITIAL_HIRING_VELOCITY);
+        setVelocities(loadedVelocities);
+
         // Realtime Firestore subscriptions
         unsubscribes.push(dbService.subscribeToCollection<Employee>('employees', items => setEmployees(items)));
         unsubscribes.push(dbService.subscribeToCollection<LeaveRequest>('leave_requests', items => setLeaveRequests(items)));
@@ -150,6 +174,10 @@ export function App() {
         unsubscribes.push(dbService.subscribeToCollection<DocumentItem>('documents', items => setDocuments(items)));
         unsubscribes.push(dbService.subscribeToCollection<ActivityItem>('activities', items => setActivities(items)));
         unsubscribes.push(dbService.subscribeToCollection<NotificationItem>('notifications', items => setNotifications(items)));
+        unsubscribes.push(dbService.subscribeToCollection<TopPerformer>('top_performers', items => setTopPerformers(items)));
+        unsubscribes.push(dbService.subscribeToCollection<FeedbackItem>('performance_feedback', items => setFeedbackList(items)));
+        unsubscribes.push(dbService.subscribeToCollection<ActiveInterview>('interviews', items => setInterviews(items)));
+        unsubscribes.push(dbService.subscribeToCollection<HiringVelocityMetric>('hiring_velocity', items => setVelocities(items)));
       } catch (err) {
         console.error('Error initializing Firestore database:', err);
       }
@@ -405,7 +433,7 @@ export function App() {
     }
   };
 
-  // --- RECRUITMENT CRUD HANDLERS ---
+  // --- RECRUITMENT & INTERVIEW CRUD HANDLERS ---
   const handleAddJob = async (job: JobOpening) => {
     if (currentUser.roleType !== 'admin' && currentUser.roleType !== 'manager') {
       showToast('⚠️ Access Denied (403): Unauthorized operation.');
@@ -443,6 +471,88 @@ export function App() {
       await dbService.deleteItem('job_openings', id);
       setJobOpenings(prev => prev.filter(j => j.id !== id));
       showToast(`✓ Job opening removed.`);
+    } catch (err: any) {
+      showToast(`❌ Database error: ${err.message || err}`);
+    }
+  };
+
+  const handleAddInterview = async (interview: ActiveInterview) => {
+    try {
+      await dbService.saveItem('interviews', interview);
+      setInterviews(prev => [interview, ...prev.filter(i => i.id !== interview.id)]);
+    } catch (err: any) {
+      showToast(`❌ Database error: ${err.message || err}`);
+    }
+  };
+
+  const handleEditInterview = async (interview: ActiveInterview) => {
+    try {
+      await dbService.saveItem('interviews', interview);
+      setInterviews(prev => prev.map(i => i.id === interview.id ? interview : i));
+    } catch (err: any) {
+      showToast(`❌ Database error: ${err.message || err}`);
+    }
+  };
+
+  const handleDeleteInterview = async (id: string) => {
+    try {
+      await dbService.deleteItem('interviews', id);
+      setInterviews(prev => prev.filter(i => i.id !== id));
+    } catch (err: any) {
+      showToast(`❌ Database error: ${err.message || err}`);
+    }
+  };
+
+  const handleAddVelocity = async (velocity: HiringVelocityMetric) => {
+    try {
+      await dbService.saveItem('hiring_velocity', velocity);
+      setVelocities(prev => [velocity, ...prev.filter(v => v.id !== velocity.id)]);
+    } catch (err: any) {
+      showToast(`❌ Database error: ${err.message || err}`);
+    }
+  };
+
+  const handleEditVelocity = async (velocity: HiringVelocityMetric) => {
+    try {
+      await dbService.saveItem('hiring_velocity', velocity);
+      setVelocities(prev => prev.map(v => v.id === velocity.id ? velocity : v));
+    } catch (err: any) {
+      showToast(`❌ Database error: ${err.message || err}`);
+    }
+  };
+
+  const handleDeleteVelocity = async (id: string) => {
+    try {
+      await dbService.deleteItem('hiring_velocity', id);
+      setVelocities(prev => prev.filter(v => v.id !== id));
+    } catch (err: any) {
+      showToast(`❌ Database error: ${err.message || err}`);
+    }
+  };
+
+  // --- PERFORMANCE HANDLERS ---
+  const handleAddTopPerformer = async (performer: TopPerformer) => {
+    try {
+      await dbService.saveItem('top_performers', performer);
+      setTopPerformers(prev => [performer, ...prev.filter(p => p.id !== performer.id)]);
+    } catch (err: any) {
+      showToast(`❌ Database error: ${err.message || err}`);
+    }
+  };
+
+  const handleRemoveTopPerformer = async (id: string) => {
+    try {
+      await dbService.deleteItem('top_performers', id);
+      setTopPerformers(prev => prev.filter(p => p.id !== id));
+    } catch (err: any) {
+      showToast(`❌ Database error: ${err.message || err}`);
+    }
+  };
+
+  const handleAddFeedback = async (feedback: FeedbackItem) => {
+    try {
+      await dbService.saveItem('performance_feedback', feedback);
+      setFeedbackList(prev => [feedback, ...prev.filter(f => f.id !== feedback.id)]);
     } catch (err: any) {
       showToast(`❌ Database error: ${err.message || err}`);
     }
@@ -893,9 +1003,17 @@ export function App() {
           <RecruitmentView
             jobOpenings={jobOpenings}
             currentUser={currentUser}
+            interviews={interviews}
+            velocities={velocities}
             onAddJob={handleAddJob}
             onEditJob={handleEditJob}
             onDeleteJob={handleDeleteJob}
+            onAddInterview={handleAddInterview}
+            onEditInterview={handleEditInterview}
+            onDeleteInterview={handleDeleteInterview}
+            onAddVelocity={handleAddVelocity}
+            onEditVelocity={handleEditVelocity}
+            onDeleteVelocity={handleDeleteVelocity}
             onNavigate={setCurrentView}
             showToast={showToast}
           />
@@ -942,6 +1060,11 @@ export function App() {
           <PerformanceView 
             currentUser={currentUser}
             employees={employees}
+            topPerformers={topPerformers}
+            feedbackList={feedbackList}
+            onAddTopPerformer={handleAddTopPerformer}
+            onRemoveTopPerformer={handleRemoveTopPerformer}
+            onAddFeedback={handleAddFeedback}
             onNavigate={setCurrentView}
             showToast={showToast}
           />

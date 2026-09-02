@@ -30,13 +30,22 @@ import {
 } from 'lucide-react';
 import { JobOpening, ViewMode, UserProfile, ActiveInterview, HiringVelocityMetric } from '../types';
 import { INITIAL_ACTIVE_INTERVIEWS, INITIAL_HIRING_VELOCITY } from '../data/initialData';
+import { dbService } from '../services/dbService';
 
 interface RecruitmentViewProps {
   jobOpenings: JobOpening[];
   currentUser: UserProfile;
+  interviews?: ActiveInterview[];
+  velocities?: HiringVelocityMetric[];
   onAddJob: (job: JobOpening) => void;
   onEditJob: (job: JobOpening) => void;
   onDeleteJob: (id: string) => void;
+  onAddInterview?: (interview: ActiveInterview) => void;
+  onEditInterview?: (interview: ActiveInterview) => void;
+  onDeleteInterview?: (id: string) => void;
+  onAddVelocity?: (velocity: HiringVelocityMetric) => void;
+  onEditVelocity?: (velocity: HiringVelocityMetric) => void;
+  onDeleteVelocity?: (id: string) => void;
   onNavigate: (view: ViewMode) => void;
   showToast?: (msg: string) => void;
 }
@@ -44,9 +53,17 @@ interface RecruitmentViewProps {
 export const RecruitmentView: React.FC<RecruitmentViewProps> = ({
   jobOpenings,
   currentUser,
+  interviews: propInterviews,
+  velocities: propVelocities,
   onAddJob,
   onEditJob,
   onDeleteJob,
+  onAddInterview,
+  onEditInterview,
+  onDeleteInterview,
+  onAddVelocity,
+  onEditVelocity,
+  onDeleteVelocity,
   onNavigate,
   showToast
 }) => {
@@ -62,16 +79,28 @@ export const RecruitmentView: React.FC<RecruitmentViewProps> = ({
   const [selectedJobForCandidates, setSelectedJobForCandidates] = useState<JobOpening | null>(null);
 
   // Active Interviews State & Modals
-  const [interviews, setInterviews] = useState<ActiveInterview[]>(INITIAL_ACTIVE_INTERVIEWS);
+  const [interviews, setInterviews] = useState<ActiveInterview[]>(propInterviews || INITIAL_ACTIVE_INTERVIEWS);
   const [showInterviewModal, setShowInterviewModal] = useState(false);
   const [editingInterview, setEditingInterview] = useState<ActiveInterview | null>(null);
   const [deletingInterviewId, setDeletingInterviewId] = useState<string | null>(null);
 
   // Hiring Velocity State & Modals
-  const [velocities, setVelocities] = useState<HiringVelocityMetric[]>(INITIAL_HIRING_VELOCITY);
+  const [velocities, setVelocities] = useState<HiringVelocityMetric[]>(propVelocities || INITIAL_HIRING_VELOCITY);
   const [showVelocityModal, setShowVelocityModal] = useState(false);
   const [editingVelocity, setEditingVelocity] = useState<HiringVelocityMetric | null>(null);
   const [deletingVelocityId, setDeletingVelocityId] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    if (propInterviews) {
+      setInterviews(propInterviews);
+    }
+  }, [propInterviews]);
+
+  React.useEffect(() => {
+    if (propVelocities) {
+      setVelocities(propVelocities);
+    }
+  }, [propVelocities]);
 
   // Form State for Job Add / Edit
   const [formTitle, setFormTitle] = useState('');
@@ -260,7 +289,7 @@ export const RecruitmentView: React.FC<RecruitmentViewProps> = ({
     setShowInterviewModal(true);
   };
 
-  const handleSaveInterviewForm = (e: React.FormEvent) => {
+  const handleSaveInterviewForm = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canManageRecruitment) {
       if (showToast) showToast('⚠️ Access Denied (403): Unauthorized operation.');
@@ -289,6 +318,17 @@ export const RecruitmentView: React.FC<RecruitmentViewProps> = ({
       setInterviews(prev => prev.map(i => i.id === updated.id ? updated : i));
       setEditingInterview(null);
       setShowInterviewModal(false);
+
+      try {
+        if (onEditInterview) {
+          onEditInterview(updated);
+        } else {
+          await dbService.saveItem('interviews', updated);
+        }
+      } catch (err) {
+        console.error('Failed to save interview:', err);
+      }
+
       if (showToast) showToast(`Interview for ${updated.candidateName} updated.`);
     } else {
       const newInt: ActiveInterview = {
@@ -307,17 +347,39 @@ export const RecruitmentView: React.FC<RecruitmentViewProps> = ({
       };
       setInterviews(prev => [newInt, ...prev]);
       setShowInterviewModal(false);
+
+      try {
+        if (onAddInterview) {
+          onAddInterview(newInt);
+        } else {
+          await dbService.saveItem('interviews', newInt);
+        }
+      } catch (err) {
+        console.error('Failed to save interview:', err);
+      }
+
       if (showToast) showToast(`Interview scheduled with ${newInt.candidateName}.`);
     }
   };
 
-  const handleConfirmDeleteInterview = (id: string) => {
+  const handleConfirmDeleteInterview = async (id: string) => {
     if (!canManageRecruitment) {
       if (showToast) showToast('⚠️ Access Denied (403): Only Admins and Managers can remove interviews.');
       return;
     }
     setInterviews(prev => prev.filter(i => i.id !== id));
     setDeletingInterviewId(null);
+
+    try {
+      if (onDeleteInterview) {
+        onDeleteInterview(id);
+      } else {
+        await dbService.deleteItem('interviews', id);
+      }
+    } catch (err) {
+      console.error('Failed to delete interview:', err);
+    }
+
     if (showToast) showToast('Interview removed from schedule.');
   };
 
@@ -352,7 +414,7 @@ export const RecruitmentView: React.FC<RecruitmentViewProps> = ({
     setShowVelocityModal(true);
   };
 
-  const handleSaveVelocityForm = (e: React.FormEvent) => {
+  const handleSaveVelocityForm = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canManageRecruitment) {
       if (showToast) showToast('⚠️ Access Denied (403): Unauthorized operation.');
@@ -372,6 +434,17 @@ export const RecruitmentView: React.FC<RecruitmentViewProps> = ({
       setVelocities(prev => prev.map(v => v.id === updated.id ? updated : v));
       setEditingVelocity(null);
       setShowVelocityModal(false);
+
+      try {
+        if (onEditVelocity) {
+          onEditVelocity(updated);
+        } else {
+          await dbService.saveItem('hiring_velocity', updated);
+        }
+      } catch (err) {
+        console.error('Failed to save velocity:', err);
+      }
+
       if (showToast) showToast(`Velocity metric for ${updated.department} updated.`);
     } else {
       const newVel: HiringVelocityMetric = {
@@ -385,17 +458,39 @@ export const RecruitmentView: React.FC<RecruitmentViewProps> = ({
       };
       setVelocities(prev => [...prev, newVel]);
       setShowVelocityModal(false);
+
+      try {
+        if (onAddVelocity) {
+          onAddVelocity(newVel);
+        } else {
+          await dbService.saveItem('hiring_velocity', newVel);
+        }
+      } catch (err) {
+        console.error('Failed to save velocity:', err);
+      }
+
       if (showToast) showToast(`New velocity metric for ${newVel.department} added.`);
     }
   };
 
-  const handleConfirmDeleteVelocity = (id: string) => {
+  const handleConfirmDeleteVelocity = async (id: string) => {
     if (!canManageRecruitment) {
       if (showToast) showToast('⚠️ Access Denied (403): Only Admins and Managers can remove velocity metrics.');
       return;
     }
     setVelocities(prev => prev.filter(v => v.id !== id));
     setDeletingVelocityId(null);
+
+    try {
+      if (onDeleteVelocity) {
+        onDeleteVelocity(id);
+      } else {
+        await dbService.deleteItem('hiring_velocity', id);
+      }
+    } catch (err) {
+      console.error('Failed to delete velocity:', err);
+    }
+
     if (showToast) showToast('Velocity metric removed.');
   };
 
