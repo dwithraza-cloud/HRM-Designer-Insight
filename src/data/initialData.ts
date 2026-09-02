@@ -1049,31 +1049,76 @@ export const NOTIFICATIONS: NotificationItem[] = [
     message: 'Rahim Uddin submitted a Casual Leave request (3 Days)',
     time: '10 min ago',
     read: false,
-    type: 'leave'
+    type: 'leave',
+    createdAt: new Date(Date.now() - 10 * 60000).toISOString(),
+    recipientRole: 'admin',
+    linkView: 'leave'
   },
   {
     id: 'notif-2',
-    title: 'New Employee Profile',
-    message: 'Fatima Zohra was added to the Marketing team',
-    time: '1 hour ago',
+    title: 'Task Due Soon',
+    message: 'Task "Design System v2.0 UI Specs" is due in 24 hours',
+    time: '25 min ago',
     read: false,
-    type: 'employee'
+    type: 'task',
+    createdAt: new Date(Date.now() - 25 * 60000).toISOString(),
+    recipientRole: 'all',
+    linkView: 'tasks'
   },
   {
     id: 'notif-3',
-    title: 'Payroll Disbursed',
-    message: 'Monthly payroll run for May 2025 is ready for review',
-    time: '3 hours ago',
+    title: '360 Peer Feedback Received',
+    message: 'Sarah Jenkins left you a 360 peer feedback review note',
+    time: '1 hour ago',
     read: false,
-    type: 'payroll'
+    type: 'performance',
+    createdAt: new Date(Date.now() - 60 * 60000).toISOString(),
+    recipientRole: 'all',
+    linkView: 'performance'
   },
   {
     id: 'notif-4',
-    title: 'Performance Review Due',
-    message: 'Q2 Performance reviews are now open for all department leads',
+    title: 'New Candidate Application',
+    message: 'Zubair Ahmed applied for Senior Frontend Developer role',
+    time: '2 hours ago',
+    read: false,
+    type: 'recruitment',
+    createdAt: new Date(Date.now() - 120 * 60000).toISOString(),
+    recipientRole: 'admin',
+    linkView: 'recruitment'
+  },
+  {
+    id: 'notif-5',
+    title: 'Payroll Disbursed',
+    message: 'Monthly payslip for May 2025 is ready for download',
+    time: '3 hours ago',
+    read: false,
+    type: 'payroll',
+    createdAt: new Date(Date.now() - 180 * 60000).toISOString(),
+    recipientRole: 'all',
+    linkView: 'payroll'
+  },
+  {
+    id: 'notif-6',
+    title: 'Hardware Asset Allocated',
+    message: 'MacBook Pro M3 Max (Serial #APP-MBP-9901) assigned to your profile',
     time: 'Yesterday',
     read: true,
-    type: 'alert'
+    type: 'asset',
+    createdAt: new Date(Date.now() - 86400000).toISOString(),
+    recipientRole: 'all',
+    linkView: 'assets'
+  },
+  {
+    id: 'notif-7',
+    title: 'Company Policy Updated',
+    message: 'Updated Hybrid & Remote Work Framework 2025 is now available',
+    time: '2 days ago',
+    read: true,
+    type: 'system',
+    createdAt: new Date(Date.now() - 172800000).toISOString(),
+    recipientRole: 'all',
+    linkView: 'documents'
   }
 ];
 

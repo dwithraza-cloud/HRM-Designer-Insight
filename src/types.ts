@@ -349,5 +349,11 @@ export interface NotificationItem {
   message: string;
   time: string;
   read: boolean;
-  type: 'leave' | 'employee' | 'payroll' | 'alert';
+  type: 'leave' | 'employee' | 'payroll' | 'alert' | 'attendance' | 'task' | 'performance' | 'recruitment' | 'asset' | 'system';
+  createdAt?: string;
+  recipientRole?: 'all' | 'admin' | 'manager' | 'employee';
+  recipientId?: string;
+  recipientEmpId?: string;
+  senderName?: string;
+  linkView?: ViewMode;
 }

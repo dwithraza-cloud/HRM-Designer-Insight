@@ -64,6 +64,7 @@ import {
 } from './types';
 import { authService } from './services/authService';
 import { dbService } from './services/dbService';
+import { notificationService } from './services/notificationService';
 import { 
   getPKTDate, 
   getPKTDateISO, 
@@ -400,6 +401,17 @@ export function App() {
         timestamp: 'Just now'
       };
       await dbService.saveItem('activities', act);
+
+      // Automated Realtime Notification
+      await notificationService.sendNotification({
+        title: 'New Leave Request',
+        message: `${newLeave.employeeName} submitted a ${newLeave.leaveType} (${newLeave.duration})`,
+        type: 'leave',
+        recipientRole: 'admin',
+        senderName: newLeave.employeeName,
+        linkView: 'leave'
+      });
+
       showToast(`Leave application submitted for approval.`);
     } catch (err: any) {
       showToast(`❌ Database error: ${err.message || err}`);
@@ -419,6 +431,19 @@ export function App() {
     try {
       await dbService.updateItemFields('leave_requests', id, { status: 'Approved' });
       setLeaveRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'Approved' } : r));
+
+      if (targetLeave) {
+        await notificationService.sendNotification({
+          title: 'Leave Approved',
+          message: `Your ${targetLeave.leaveType} (${targetLeave.startDate} - ${targetLeave.endDate}) was approved by ${currentUser.name}`,
+          type: 'leave',
+          recipientRole: 'employee',
+          recipientId: targetLeave.employeeName,
+          senderName: currentUser.name,
+          linkView: 'leave'
+        });
+      }
+
       confetti({ particleCount: 50, spread: 60, origin: { y: 0.7 } });
       showToast(`Leave request approved.`);
     } catch (err: any) {
@@ -431,9 +456,23 @@ export function App() {
       showToast('⚠️ Access Denied (403): Employees cannot reject leave requests.');
       return;
     }
+    const targetLeave = leaveRequests.find(r => r.id === id);
     try {
       await dbService.updateItemFields('leave_requests', id, { status: 'Rejected' });
       setLeaveRequests(prev => prev.map(r => r.id === id ? { ...r, status: 'Rejected' } : r));
+
+      if (targetLeave) {
+        await notificationService.sendNotification({
+          title: 'Leave Request Rejected',
+          message: `Your ${targetLeave.leaveType} (${targetLeave.startDate} - ${targetLeave.endDate}) was rejected by ${currentUser.name}`,
+          type: 'leave',
+          recipientRole: 'employee',
+          recipientId: targetLeave.employeeName,
+          senderName: currentUser.name,
+          linkView: 'leave'
+        });
+      }
+
       showToast(`Leave request rejected.`);
     } catch (err: any) {
       showToast(`❌ Database error: ${err.message || err}`);
@@ -560,6 +599,17 @@ export function App() {
     try {
       await dbService.saveItem('performance_feedback', feedback);
       setFeedbackList(prev => [feedback, ...prev.filter(f => f.id !== feedback.id)]);
+
+      // Automated Realtime Notification
+      await notificationService.sendNotification({
+        title: '360 Peer Feedback Received',
+        message: `${feedback.fromName} posted 360 peer feedback for ${feedback.toName}`,
+        type: 'performance',
+        recipientRole: 'all',
+        recipientId: feedback.toName,
+        senderName: feedback.fromName,
+        linkView: 'performance'
+      });
     } catch (err: any) {
       showToast(`❌ Database error: ${err.message || err}`);
     }
@@ -574,6 +624,19 @@ export function App() {
     try {
       await dbService.saveItem('payroll_records', record);
       setPayrollRecords(prev => [record, ...prev.filter(p => p.id !== record.id)]);
+
+      // Automated Realtime Notification
+      await notificationService.sendNotification({
+        title: 'Payslip Disbursed',
+        message: `Payslip for ${record.month} (Rs. ${record.netSalary.toLocaleString()} PKR) generated for ${record.employeeName}`,
+        type: 'payroll',
+        recipientRole: 'employee',
+        recipientEmpId: record.empId,
+        recipientId: record.employeeName,
+        senderName: 'Finance Dept',
+        linkView: 'payroll'
+      });
+
       showToast(`✓ Payroll record added for ${record.employeeName}. Net: Rs. ${record.netSalary.toLocaleString()} PKR`);
     } catch (err: any) {
       showToast(`❌ Database error: ${err.message || err}`);
@@ -617,6 +680,19 @@ export function App() {
     try {
       await dbService.saveItem('assets', asset);
       setAssets(prev => [asset, ...prev.filter(a => a.id !== asset.id)]);
+
+      if (asset.assignedTo) {
+        await notificationService.sendNotification({
+          title: 'Hardware Asset Allocated',
+          message: `Asset "${asset.name}" (${asset.serialNumber}) was assigned to ${asset.assignedTo.name}`,
+          type: 'asset',
+          recipientRole: 'all',
+          recipientId: asset.assignedTo.name,
+          senderName: currentUser.name,
+          linkView: 'assets'
+        });
+      }
+
       showToast(`✓ Hardware asset "${asset.name}" (${asset.serialNumber}) registered.`);
     } catch (err: any) {
       showToast(`❌ Database error: ${err.message || err}`);
@@ -660,6 +736,17 @@ export function App() {
     try {
       await dbService.saveItem('documents', doc);
       setDocuments(prev => [doc, ...prev.filter(d => d.id !== doc.id)]);
+
+      // Automated Realtime Notification
+      await notificationService.sendNotification({
+        title: 'New Company Document',
+        message: `Document "${doc.name}" was uploaded by ${doc.uploadedBy || currentUser.name}`,
+        type: 'system',
+        recipientRole: 'all',
+        senderName: currentUser.name,
+        linkView: 'documents'
+      });
+
       showToast(`✓ Document "${doc.name}" uploaded successfully.`);
     } catch (err: any) {
       showToast(`❌ Database error: ${err.message || err}`);
@@ -699,6 +786,19 @@ export function App() {
     try {
       await dbService.saveItem('tasks', newTask);
       setTasks(prev => [newTask, ...prev.filter(t => t.id !== newTask.id)]);
+
+      // Automated Realtime Notification
+      await notificationService.sendNotification({
+        title: 'New Task Assigned',
+        message: `${currentUser.name} assigned task: "${newTask.title}"`,
+        type: 'task',
+        recipientRole: 'employee',
+        recipientId: newTask.assignedTo?.name || newTask.assignedTo?.id,
+        recipientEmpId: newTask.assignedTo?.id,
+        senderName: currentUser.name,
+        linkView: 'tasks'
+      });
+
       showToast(`Task "${newTask.title}" assigned successfully!`);
     } catch (err: any) {
       showToast(`❌ Database error: ${err.message || err}`);
@@ -707,9 +807,21 @@ export function App() {
 
   const handleUpdateTaskStatus = async (id: string, status: TaskItem['status']) => {
     const completed = status === 'Completed';
+    const targetTask = tasks.find(t => t.id === id);
     try {
       await dbService.updateItemFields('tasks', id, { status, completed });
       setTasks(prev => prev.map(t => t.id === id ? { ...t, status, completed } : t));
+
+      if (targetTask) {
+        await notificationService.sendNotification({
+          title: 'Task Status Updated',
+          message: `Task "${targetTask.title}" changed status to ${status}`,
+          type: 'task',
+          recipientRole: 'all',
+          senderName: currentUser.name,
+          linkView: 'tasks'
+        });
+      }
     } catch (err: any) {
       showToast(`❌ Database error: ${err.message || err}`);
     }
@@ -1228,6 +1340,30 @@ export function App() {
     }
   };
 
+  // Notification handlers
+  const handleMarkAsReadNotification = async (id: string) => {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+    await notificationService.markAsRead(id, notifications);
+  };
+
+  const handleMarkAllAsReadNotifications = async () => {
+    const userNotifs = notificationService.filterForUser(notifications, currentUser);
+    setNotifications(prev => prev.map(n => {
+      if (userNotifs.some(un => un.id === n.id)) {
+        return { ...n, read: true };
+      }
+      return n;
+    }));
+    await notificationService.markAllAsRead(userNotifs);
+  };
+
+  const handleClearAllNotifications = async () => {
+    const userNotifs = notificationService.filterForUser(notifications, currentUser);
+    const idsToRemove = new Set(userNotifs.map(n => n.id));
+    setNotifications(prev => prev.filter(n => !idsToRemove.has(n.id)));
+    await notificationService.clearAll(userNotifs);
+  };
+
   // If viewing Auth screens or unauthenticated
   if (!isAuthenticated || currentView === 'auth-login' || currentView === 'auth-signup') {
     return (
@@ -1274,13 +1410,15 @@ export function App() {
           currentTheme={currentUser.themePreference || 'dark'}
           onToggleTheme={handleToggleTheme}
           onOpenReportModal={() => setIsDownloadReportOpen(true)}
-          onOpenNotifications={() => {}}
           onNavigate={setCurrentView}
           onOpenSearch={() => setIsSearchOpen(true)}
           onSignOut={handleSignOut}
           onToggleMobileSidebar={() => setIsMobileSidebarOpen(prev => !prev)}
           isSidebarCollapsed={isSidebarCollapsed}
           onToggleSidebarCollapse={() => setIsSidebarCollapsed(prev => !prev)}
+          onMarkAsRead={handleMarkAsReadNotification}
+          onMarkAllAsRead={handleMarkAllAsReadNotifications}
+          onClearAllNotifications={handleClearAllNotifications}
         />
 
         {/* Dynamic Page Views Container with RBAC Guarding */}
