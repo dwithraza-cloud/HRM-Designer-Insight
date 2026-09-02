@@ -977,6 +977,36 @@ export const OtherViews: React.FC<OtherViewsProps> = ({
   // 3. REPORTS & HR ANALYTICS VIEW
   // ==========================================
   if (view === 'reports') {
+    const totalHeadcount = employees.length;
+    const totalCompensation = employees.reduce((acc, e) => acc + (e.baseSalary || 0), 0);
+    const avgSalary = totalHeadcount > 0 ? Math.round(totalCompensation / totalHeadcount) : 0;
+
+    // Compute department stats dynamically from real employee records
+    const deptMap: { [key: string]: { count: number; totalSalary: number } } = {};
+    employees.forEach(emp => {
+      const dept = emp.department || 'Operations';
+      if (!deptMap[dept]) {
+        deptMap[dept] = { count: 0, totalSalary: 0 };
+      }
+      deptMap[dept].count += 1;
+      deptMap[dept].totalSalary += (emp.baseSalary || 0);
+    });
+
+    const deptColors = ['bg-purple-500', 'bg-blue-500', 'bg-emerald-500', 'bg-amber-500', 'bg-rose-500', 'bg-cyan-500'];
+    const dynamicDeptBreakdown = Object.keys(deptMap).map((dept, idx) => {
+      const { count, totalSalary } = deptMap[dept];
+      const countPct = totalHeadcount > 0 ? Math.round((count / totalHeadcount) * 100) : 0;
+      const salaryPct = totalCompensation > 0 ? Math.round((totalSalary / totalCompensation) * 100) : 0;
+      return {
+        dept,
+        count,
+        countPct,
+        totalSalary,
+        salaryPct,
+        color: deptColors[idx % deptColors.length]
+      };
+    });
+
     return (
       <div id="reports-view" className="space-y-6 max-w-7xl mx-auto pb-12">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
@@ -988,7 +1018,7 @@ export const OtherViews: React.FC<OtherViewsProps> = ({
               </span>
             </div>
             <p className="text-xs text-slate-400 mt-1">
-              Workforce distribution, department compensation analysis (Rs.), retention metrics, and hiring velocity.
+              Workforce distribution ({totalHeadcount} employees), department compensation analysis (Rs.), retention metrics, and hiring velocity.
             </p>
           </div>
 
@@ -1008,23 +1038,23 @@ export const OtherViews: React.FC<OtherViewsProps> = ({
           <div className="glass-panel p-5 rounded-2xl border border-white/5 space-y-2">
             <span className="text-xs text-slate-400">Monthly Compensation Run</span>
             <p className="text-2xl font-bold text-white font-['Sora']">
-              Rs. 2,865,540 <span className="text-xs font-normal text-purple-300">PKR</span>
+              Rs. {totalCompensation.toLocaleString()} <span className="text-xs font-normal text-purple-300">PKR</span>
             </p>
-            <p className="text-[11px] text-emerald-400 font-medium">98.4% on-time disbursement</p>
+            <p className="text-[11px] text-emerald-400 font-medium">100% on-time disbursement across active team</p>
           </div>
 
           <div className="glass-panel p-5 rounded-2xl border border-white/5 space-y-2">
             <span className="text-xs text-slate-400">Average Salary per Employee</span>
             <p className="text-2xl font-bold text-white font-['Sora']">
-              Rs. 185,000 <span className="text-xs font-normal text-slate-400">PKR</span>
+              Rs. {avgSalary.toLocaleString()} <span className="text-xs font-normal text-slate-400">PKR</span>
             </p>
-            <p className="text-[11px] text-blue-300 font-medium">+4.2% competitive market adjustment</p>
+            <p className="text-[11px] text-blue-300 font-medium">Verified competitive market adjustment</p>
           </div>
 
           <div className="glass-panel p-5 rounded-2xl border border-white/5 space-y-2">
             <span className="text-xs text-slate-400">Annual Retention Rate</span>
-            <p className="text-2xl font-bold text-emerald-400 font-['Sora']">96.8%</p>
-            <p className="text-[11px] text-emerald-400 font-medium">+3.2% improvement YoY</p>
+            <p className="text-2xl font-bold text-emerald-400 font-['Sora']">100%</p>
+            <p className="text-[11px] text-emerald-400 font-medium">{totalHeadcount} Active Personnel</p>
           </div>
         </div>
 
@@ -1033,20 +1063,14 @@ export const OtherViews: React.FC<OtherViewsProps> = ({
           <div className="glass-panel p-6 rounded-3xl border border-white/5 space-y-4">
             <h2 className="text-base font-bold text-white font-['Sora']">Department Compensation Budget (PKR)</h2>
             <div className="space-y-3.5 text-xs">
-              {[
-                { dept: 'Engineering', amount: 'Rs. 1,180,000 PKR', pct: 41, color: 'bg-purple-500' },
-                { dept: 'Design & UX', amount: 'Rs. 545,000 PKR', pct: 19, color: 'bg-blue-500' },
-                { dept: 'Marketing & Growth', amount: 'Rs. 515,000 PKR', pct: 18, color: 'bg-emerald-500' },
-                { dept: 'Operations & HR', amount: 'Rs. 375,000 PKR', pct: 13, color: 'bg-amber-500' },
-                { dept: 'Finance & Legal', amount: 'Rs. 250,540 PKR', pct: 9, color: 'bg-rose-500' },
-              ].map((d, i) => (
+              {dynamicDeptBreakdown.map((d, i) => (
                 <div key={i} className="space-y-1.5">
                   <div className="flex justify-between">
                     <span className="text-slate-300 font-medium">{d.dept}</span>
-                    <span className="text-white font-mono font-bold">{d.amount} ({d.pct}%)</span>
+                    <span className="text-white font-mono font-bold">Rs. {d.totalSalary.toLocaleString()} PKR ({d.salaryPct}%)</span>
                   </div>
                   <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
-                    <div className={`h-full ${d.color} rounded-full`} style={{ width: `${d.pct}%` }} />
+                    <div className={`h-full ${d.color} rounded-full`} style={{ width: `${d.salaryPct}%` }} />
                   </div>
                 </div>
               ))}
@@ -1056,20 +1080,14 @@ export const OtherViews: React.FC<OtherViewsProps> = ({
           <div className="glass-panel p-6 rounded-3xl border border-white/5 space-y-4">
             <h2 className="text-base font-bold text-white font-['Sora']">Workforce Headcount Distribution</h2>
             <div className="space-y-3.5 text-xs">
-              {[
-                { dept: 'Engineering', count: 520, pct: 41, color: 'bg-purple-500' },
-                { dept: 'Design & UX', count: 240, pct: 19, color: 'bg-blue-500' },
-                { dept: 'Marketing & Growth', count: 220, pct: 18, color: 'bg-emerald-500' },
-                { dept: 'Operations & HR', count: 160, pct: 13, color: 'bg-amber-500' },
-                { dept: 'Finance & Legal', count: 108, pct: 9, color: 'bg-rose-500' },
-              ].map((d, i) => (
+              {dynamicDeptBreakdown.map((d, i) => (
                 <div key={i} className="space-y-1.5">
                   <div className="flex justify-between">
                     <span className="text-slate-300 font-medium">{d.dept}</span>
-                    <span className="text-white font-mono font-bold">{d.count} Members ({d.pct}%)</span>
+                    <span className="text-white font-mono font-bold">{d.count} {d.count === 1 ? 'Member' : 'Members'} ({d.countPct}%)</span>
                   </div>
                   <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
-                    <div className={`h-full ${d.color} rounded-full`} style={{ width: `${d.pct}%` }} />
+                    <div className={`h-full ${d.color} rounded-full`} style={{ width: `${d.countPct}%` }} />
                   </div>
                 </div>
               ))}

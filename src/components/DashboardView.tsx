@@ -54,12 +54,14 @@ import {
   PieChart,
   Pie
 } from 'recharts';
-import { Employee, LeaveRequest, UpcomingEvent, ActivityItem, ViewMode, TaskItem, JobOpening, PayrollRecord, UserProfile } from '../types';
+import { Employee, LeaveRequest, UpcomingEvent, ActivityItem, ViewMode, TaskItem, JobOpening, PayrollRecord, UserProfile, AttendanceRecord } from '../types';
+import { calculateTodayAttendanceKPIs } from '../utils/attendanceUtils';
 
 interface DashboardViewProps {
   currentUser: UserProfile;
   employees: Employee[];
   leaveRequests: LeaveRequest[];
+  attendanceRecords?: AttendanceRecord[];
   jobOpenings: JobOpening[];
   payrollRecords: PayrollRecord[];
   upcomingEvents: UpcomingEvent[];
@@ -77,6 +79,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   currentUser,
   employees,
   leaveRequests,
+  attendanceRecords = [],
   jobOpenings,
   payrollRecords,
   upcomingEvents,
@@ -90,19 +93,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onOpenApplyLeave
 }) => {
   const totalEmps = employees.length;
-  const approvedLeaves = leaveRequests.filter(r => r.status === 'Approved').length;
   const pendingLeaves = leaveRequests.filter(r => r.status === 'Pending');
-  const presentCount = Math.max(0, Math.round(totalEmps * 0.85));
-  const leaveCount = Math.max(0, approvedLeaves + Math.min(pendingLeaves.length, totalEmps));
-  const absentCount = Math.max(0, totalEmps - presentCount - leaveCount);
-  const presentPercent = totalEmps > 0 ? Math.round((presentCount / totalEmps) * 100) : 0;
+
+  // Compute strictly from live database records
+  const todayKPIs = calculateTodayAttendanceKPIs(employees, attendanceRecords, leaveRequests);
+  const presentCount = todayKPIs.totalPresent;
+  const leaveCount = todayKPIs.onApprovedLeave;
+  const absentCount = todayKPIs.unnotifiedAbsent;
+  const presentPercent = todayKPIs.presentPercent;
   const leavePercent = totalEmps > 0 ? Math.round((leaveCount / totalEmps) * 100) : 0;
   const absentPercent = totalEmps > 0 ? Math.round((absentCount / totalEmps) * 100) : 0;
 
   const attendanceBreakdownData = [
-    { name: 'Present', value: presentCount, percentage: presentPercent, color: '#a078ff', subtext: `${Math.round(presentCount * 0.1)} late clock-ins` },
-    { name: 'On Leave', value: leaveCount, percentage: leavePercent, color: '#f59e0b', subtext: `${pendingLeaves.length} pending approvals` },
-    { name: 'Absent', value: absentCount, percentage: absentPercent, color: '#f43f5e', subtext: 'Unnotified absences' },
+    { name: 'Present', value: presentCount, percentage: presentPercent, color: '#10b981', subtext: `${todayKPIs.lateArrivals} late clock-ins` },
+    { name: 'On Leave', value: leaveCount, percentage: leavePercent, color: '#a855f7', subtext: `${pendingLeaves.length} pending requests` },
+    { name: 'Absent / Pending', value: absentCount, percentage: absentPercent, color: '#f43f5e', subtext: 'Not clocked in today' },
   ];
 
   const activeJobCount = jobOpenings.length;

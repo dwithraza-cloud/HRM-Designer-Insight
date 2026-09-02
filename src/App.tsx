@@ -948,6 +948,7 @@ export function App() {
             currentUser={currentUser}
             employees={employees}
             leaveRequests={leaveRequests}
+            attendanceRecords={attendanceRecords}
             jobOpenings={jobOpenings}
             payrollRecords={payrollRecords}
             upcomingEvents={upcomingEvents}
@@ -1024,6 +1025,8 @@ export function App() {
           <AttendanceView
             attendanceRecords={attendanceRecords}
             currentUser={currentUser}
+            employees={employees}
+            leaveRequests={leaveRequests}
             onUpdateRecords={setAttendanceRecords}
             onNavigate={setCurrentView}
             showToast={showToast}

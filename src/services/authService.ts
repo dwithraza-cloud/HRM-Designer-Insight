@@ -46,42 +46,70 @@ export const INITIAL_USER_ACCOUNTS: UserAccount[] = [
     createdAt: '2020-02-10T08:00:00.000Z'
   },
   {
-    id: 'usr-emp-03',
-    name: 'Sumaiya Akter',
-    email: 'sumaiya.akter@aurahrms.io',
-    passwordHash: 'password',
+    id: 'usr-emp-02',
+    name: 'Iqra Pervaiz',
+    email: 'iqrapervaiz123@gmail.com',
+    passwordHash: 'iqra12345',
     roleType: 'employee',
     profile: {
       ...EMPLOYEE_USER,
-      id: 'usr-emp-03',
-      name: 'Sumaiya Akter',
-      email: 'sumaiya.akter@aurahrms.io',
-      role: 'HR Specialist',
-      department: 'HR',
-      empId: 'EMP-0102',
+      id: 'usr-emp-02',
+      name: 'Iqra Pervaiz',
+      email: 'iqrapervaiz123@gmail.com',
+      role: 'Full Stack Engineer',
+      roleType: 'employee',
+      department: 'Engineering',
+      empId: 'EMP-0143',
+      avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=256&q=80',
+      avatarInitials: 'IP',
       themePreference: 'dark'
     },
     themePreference: 'dark',
     createdAt: '2021-06-18T08:00:00.000Z'
   },
   {
-    id: 'usr-emp-04',
-    name: 'David Rodriguez',
-    email: 'david.rodriguez@aurahrms.io',
-    passwordHash: 'password',
-    roleType: 'manager',
+    id: 'usr-emp-03',
+    name: 'Asim Khan',
+    email: 'asim.khan@aurahrms.io',
+    passwordHash: 'asim12345',
+    roleType: 'employee',
     profile: {
-      ...MANAGER_USER,
-      id: 'usr-emp-04',
-      name: 'David Rodriguez',
-      email: 'david.rodriguez@aurahrms.io',
-      role: 'Engineering Lead',
-      department: 'Engineering',
-      empId: 'EMP-0112',
+      ...EMPLOYEE_USER,
+      id: 'usr-emp-03',
+      name: 'Asim Khan',
+      email: 'asim.khan@aurahrms.io',
+      role: 'Growth Marketing Lead',
+      roleType: 'employee',
+      department: 'Marketing',
+      empId: 'EMP-0144',
+      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=256&q=80',
+      avatarInitials: 'AK',
       themePreference: 'dark'
     },
     themePreference: 'dark',
-    createdAt: '2019-11-04T08:00:00.000Z'
+    createdAt: '2022-01-10T08:00:00.000Z'
+  },
+  {
+    id: 'usr-emp-04',
+    name: 'Saba',
+    email: 'saba@aurahrms.io',
+    passwordHash: 'saba12345',
+    roleType: 'employee',
+    profile: {
+      ...EMPLOYEE_USER,
+      id: 'usr-emp-04',
+      name: 'Saba',
+      email: 'saba@aurahrms.io',
+      role: 'Performance Marketing Specialist',
+      roleType: 'employee',
+      department: 'Marketing',
+      empId: 'EMP-0145',
+      avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=256&q=80',
+      avatarInitials: 'SB',
+      themePreference: 'dark'
+    },
+    themePreference: 'dark',
+    createdAt: '2022-04-15T08:00:00.000Z'
   }
 ];
 

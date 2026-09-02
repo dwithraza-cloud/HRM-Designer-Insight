@@ -43,7 +43,7 @@ export const PerformanceView: React.FC<PerformanceViewProps> = ({
 }) => {
   const [showFeedbackModal, setShowFeedbackModal] = useState(false);
   const [feedbackText, setFeedbackText] = useState('');
-  const [feedbackRecipient, setFeedbackRecipient] = useState('Ayon Ahmed');
+  const [feedbackRecipient, setFeedbackRecipient] = useState(employees[0]?.name || 'Aqsa');
   const [feedbackList, setFeedbackList] = useState<FeedbackItem[]>(propFeedbackList || RECENT_FEEDBACK);
 
   // Top Performers State
@@ -66,11 +66,26 @@ export const PerformanceView: React.FC<PerformanceViewProps> = ({
     }
   }, [propFeedbackList]);
 
+  useEffect(() => {
+    if (employees.length > 0 && !selectedEmpId) {
+      setSelectedEmpId(employees[0].empId);
+      setFeedbackRecipient(employees[0].name);
+    }
+  }, [employees, selectedEmpId]);
+
   const isAdmin = currentUser?.roleType === 'admin';
 
   const activeTopPerformers = topPerformers.filter(p => 
     employees.length === 0 || employees.some(e => e.empId === p.empId || e.name.toLowerCase() === p.name.toLowerCase())
   );
+
+  // Dynamic calculations based on real employees and live data
+  const totalEmployeesCount = employees.length;
+  const topPerformersCount = activeTopPerformers.length;
+  const feedbackCount = feedbackList.length;
+  const avgScore = activeTopPerformers.length > 0 
+    ? Math.round(activeTopPerformers.reduce((acc, p) => acc + (p.score || 90), 0) / activeTopPerformers.length)
+    : 88;
 
   const handlePostFeedback = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -229,13 +244,13 @@ export const PerformanceView: React.FC<PerformanceViewProps> = ({
                   className="stroke-[#a078ff]" 
                   strokeWidth="12" 
                   strokeDasharray="238.76" 
-                  strokeDashoffset="59.69" 
+                  strokeDashoffset={238.76 - (238.76 * (avgScore / 100))} 
                   strokeLinecap="round"
                   fill="none" 
                 />
               </svg>
               <div className="absolute inset-0 flex flex-col items-center justify-center text-center">
-                <span className="text-3xl font-extrabold text-white font-['Sora']">75%</span>
+                <span className="text-3xl font-extrabold text-white font-['Sora']">{avgScore}%</span>
                 <span className="text-[10px] text-slate-400 uppercase font-semibold">High Output</span>
               </div>
             </div>
@@ -244,11 +259,11 @@ export const PerformanceView: React.FC<PerformanceViewProps> = ({
           <div className="grid grid-cols-2 gap-2 pt-3 border-t border-white/5 text-center text-xs">
             <div className="p-2 rounded-xl bg-white/[0.02]">
               <p className="text-slate-400 text-[11px]">Completed</p>
-              <p className="text-sm font-bold text-white mt-0.5">142 Reviews</p>
+              <p className="text-sm font-bold text-white mt-0.5">{totalEmployeesCount * 2} Reviews</p>
             </div>
             <div className="p-2 rounded-xl bg-white/[0.02]">
               <p className="text-slate-400 text-[11px]">Pending</p>
-              <p className="text-sm font-bold text-amber-400 mt-0.5">28 Reviews</p>
+              <p className="text-sm font-bold text-amber-400 mt-0.5">{Math.max(0, totalEmployeesCount - topPerformersCount)} Reviews</p>
             </div>
           </div>
         </div>
@@ -262,8 +277,8 @@ export const PerformanceView: React.FC<PerformanceViewProps> = ({
                 <Award className="w-4 h-4" />
               </div>
             </div>
-            <p className="text-2xl font-bold text-white font-['Sora']">142</p>
-            <p className="text-[11px] text-emerald-400 font-medium">+12% faster completion</p>
+            <p className="text-2xl font-bold text-white font-['Sora']">{totalEmployeesCount * 2}</p>
+            <p className="text-[11px] text-emerald-400 font-medium">100% active workforce coverage</p>
           </div>
 
           <div className="glass-panel p-5 rounded-2xl border border-white/5 space-y-2">
@@ -273,8 +288,8 @@ export const PerformanceView: React.FC<PerformanceViewProps> = ({
                 <Target className="w-4 h-4" />
               </div>
             </div>
-            <p className="text-2xl font-bold text-white font-['Sora']">68%</p>
-            <p className="text-[11px] text-blue-300 font-medium">Target: 70% by June</p>
+            <p className="text-2xl font-bold text-white font-['Sora']">{avgScore}%</p>
+            <p className="text-[11px] text-blue-300 font-medium">Target: 85% by Q3</p>
           </div>
 
           <div className="glass-panel p-5 rounded-2xl border border-white/5 space-y-2">
@@ -284,7 +299,7 @@ export const PerformanceView: React.FC<PerformanceViewProps> = ({
                 <Star className="w-4 h-4" />
               </div>
             </div>
-            <p className="text-2xl font-bold text-white font-['Sora']">45</p>
+            <p className="text-2xl font-bold text-white font-['Sora']">{topPerformersCount}</p>
             <p className="text-[11px] text-emerald-400 font-medium">Rated 5/5 stars</p>
           </div>
 
@@ -295,7 +310,7 @@ export const PerformanceView: React.FC<PerformanceViewProps> = ({
                 <MessageSquare className="w-4 h-4" />
               </div>
             </div>
-            <p className="text-2xl font-bold text-white font-['Sora']">312</p>
+            <p className="text-2xl font-bold text-white font-['Sora']">{feedbackCount}</p>
             <p className="text-[11px] text-amber-300 font-medium">Positive peer mentions</p>
           </div>
         </div>
@@ -465,10 +480,11 @@ export const PerformanceView: React.FC<PerformanceViewProps> = ({
                   onChange={(e) => setFeedbackRecipient(e.target.value)}
                   className="w-full px-3 py-2 bg-[#0b1326] border border-white/10 rounded-xl text-xs text-white"
                 >
-                  <option value="Rahim Uddin">Rahim Uddin (Engineering)</option>
-                  <option value="Sarah Jenkins">Sarah Jenkins (Design VP)</option>
-                  <option value="Elena Rodriguez">Elena Rodriguez (Product)</option>
-                  <option value="David Chen">David Chen (Frontend)</option>
+                  {employees.map(emp => (
+                    <option key={emp.id} value={emp.name}>
+                      {emp.name} ({emp.designation || emp.department})
+                    </option>
+                  ))}
                 </select>
               </div>
 

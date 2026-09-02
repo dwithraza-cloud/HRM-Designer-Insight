@@ -46,6 +46,7 @@ export interface UserProfile {
   };
   baseSalary: number;
   status: 'Active' | 'On Leave' | 'Inactive';
+  avatarInitials?: string;
   themePreference?: ThemeMode;
 }
 
@@ -88,6 +89,16 @@ export interface LeaveRequest {
   appliedDate: string;
 }
 
+export type AttendanceStatus = 
+  | 'Present' 
+  | 'Late' 
+  | 'Absent' 
+  | 'On Leave' 
+  | 'Half Day' 
+  | 'Working' 
+  | 'Weekend' 
+  | 'Holiday';
+
 export interface AttendanceRecord {
   id: string;
   empId: string;
@@ -95,11 +106,51 @@ export interface AttendanceRecord {
   department: string;
   avatarInitials?: string;
   avatar?: string;
+  date: string; // ISO date 'YYYY-MM-DD' or formatted '02 Sep 2026'
+  displayDate?: string; // e.g. '02 Sep 2026'
+  dayName?: string; // e.g. 'Wednesday'
+  shift?: string; // e.g. 'Regular (09:00 AM – 06:00 PM)'
+  clockIn: string; // e.g. '09:07 AM' or '--:--'
+  clockOut: string; // e.g. '06:13 PM' or '--:--'
+  breakMinutes?: number; // Break time in minutes e.g. 45
+  totalHrs: string; // e.g. '9h 06m' or 'In Progress' / 'Working'
+  overtime?: string; // e.g. '1h 06m' or '0h 00m'
+  status: AttendanceStatus;
+  lateDuration?: string; // e.g. '15 min' or '--'
+  remarks?: string; // e.g. 'Manual correction by Admin'
+  recordedBy?: string; // e.g. 'Self' | 'Admin'
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface DailyAttendanceRow {
+  date: string; // YYYY-MM-DD
+  dayLabel: string; // e.g. '02 Sep'
+  dayOfWeek: string; // e.g. 'Wednesday'
   clockIn: string;
   clockOut: string;
   totalHrs: string;
-  status: 'Present' | 'Late' | 'Absent' | 'On Leave' | 'Half Day';
-  date: string;
+  overtime: string;
+  status: AttendanceStatus;
+  lateDuration: string;
+  shift: string;
+  remarks?: string;
+  recordId?: string;
+  isToday?: boolean;
+  isWeekend?: boolean;
+}
+
+export interface EmployeeMonthlySummary {
+  employee: Employee;
+  presentDays: number;
+  lateDays: number;
+  absentDays: number;
+  leaveDays: number;
+  totalWorkingMinutes: number;
+  totalWorkingHoursFormatted: string;
+  totalOvertimeMinutes: number;
+  totalOvertimeFormatted: string;
+  dailyRows: DailyAttendanceRow[];
 }
 
 export interface JobOpening {
