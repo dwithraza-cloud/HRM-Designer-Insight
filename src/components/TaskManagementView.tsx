@@ -8,6 +8,7 @@ import {
   Clock, 
   Pin, 
   Trash2, 
+  Edit3,
   CheckCircle2, 
   AlertCircle, 
   Sparkles, 
@@ -76,9 +77,11 @@ interface TaskManagementViewProps {
   employees: Employee[];
   currentUser: UserProfile;
   onAddTask: (task: Partial<TaskItem>) => void;
+  onEditTask?: (task: TaskItem) => void;
   onToggleTask: (id: string) => void;
   onTogglePinTask: (id: string) => void;
   onDeleteTask: (id: string) => void;
+  onClearAllTasks?: () => void;
   onUpdateTaskStatus?: (id: string, status: TaskItem['status']) => void;
   onAddAttachment?: (taskId: string, attachment: TaskAttachment) => void;
   onRemoveAttachment?: (taskId: string, attachmentId: string) => void;
@@ -90,9 +93,11 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
   employees,
   currentUser,
   onAddTask,
+  onEditTask,
   onToggleTask,
   onTogglePinTask,
   onDeleteTask,
+  onClearAllTasks,
   onUpdateTaskStatus,
   onAddAttachment,
   onRemoveAttachment,
@@ -117,6 +122,7 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
   // Modal & Drawer States
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
   const [selectedTaskForDetails, setSelectedTaskForDetails] = useState<TaskItem | null>(null);
+  const [editingTaskModal, setEditingTaskModal] = useState<TaskItem | null>(null);
 
   // Attachment State & Camera Capture in TaskDetailModal
   const [isCameraActive, setIsCameraActive] = useState(false);
@@ -1571,6 +1577,23 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
                 Reset Filters
               </button>
             )}
+
+            {userRole !== 'employee' && tasks.length > 0 && onClearAllTasks && (
+              <button
+                id="btn-clear-all-tasks"
+                type="button"
+                onClick={() => {
+                  if (window.confirm(`Are you sure you want to remove ALL ${tasks.length} tasks permanently from the database?`)) {
+                    onClearAllTasks();
+                  }
+                }}
+                className="text-[11px] text-rose-400 hover:text-rose-300 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 px-2.5 py-1 rounded-lg font-semibold flex items-center gap-1 transition-colors cursor-pointer ml-auto"
+                title="Permanently remove all tasks"
+              >
+                <Trash2 className="w-3 h-3" />
+                <span>Clear All Tasks</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -1772,6 +1795,18 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
                       >
                         <Eye className="w-3.5 h-3.5" />
                       </button>
+
+                      {/* Edit Task button */}
+                      {(userRole === 'admin' || canDelete) && (
+                        <button
+                          id={`btn-edit-task-${task.id}`}
+                          onClick={() => setEditingTaskModal(task)}
+                          title="Edit task"
+                          className="w-7 h-7 rounded-lg flex items-center justify-center text-slate-500 hover:text-purple-300 hover:bg-purple-500/10 transition-all cursor-pointer"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
 
                       {/* Delete button (Admin or Assigner only) */}
                       {canDelete && (
@@ -2501,7 +2536,41 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
             </div>
 
             {/* Footer */}
-            <div className="flex items-center justify-end pt-3 border-t border-white/10">
+            <div className="flex items-center justify-between pt-3 border-t border-white/10">
+              <div className="flex items-center gap-2">
+                {userRole !== 'employee' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const taskToEdit = selectedTaskForDetails;
+                      handleStopCamera();
+                      setSelectedTaskForDetails(null);
+                      setEditingTaskModal(taskToEdit);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/20 text-xs font-semibold transition-colors cursor-pointer"
+                  >
+                    <Edit3 className="w-3.5 h-3.5" />
+                    <span>Edit Task</span>
+                  </button>
+                )}
+                {userRole !== 'employee' && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (window.confirm(`Delete task "${selectedTaskForDetails.title}"?`)) {
+                        const id = selectedTaskForDetails.id;
+                        handleStopCamera();
+                        setSelectedTaskForDetails(null);
+                        onDeleteTask(id);
+                      }
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/20 text-xs font-semibold transition-colors cursor-pointer"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" />
+                    <span>Delete</span>
+                  </button>
+                )}
+              </div>
               <button
                 onClick={() => {
                   handleStopCamera();
@@ -2741,6 +2810,226 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
           </div>
         </div>
       )}
+      {/* 9. EDIT TASK MODAL */}
+      {editingTaskModal && (
+        <EditTaskModal
+          task={editingTaskModal}
+          employees={employees}
+          eligibleAssignees={eligibleAssignees}
+          onClose={() => setEditingTaskModal(null)}
+          onSave={(updated) => {
+            if (onEditTask) {
+              onEditTask(updated);
+            } else {
+              onAddTask(updated);
+            }
+            setEditingTaskModal(null);
+          }}
+        />
+      )}
+    </div>
+  );
+};
+
+interface EditTaskModalProps {
+  task: TaskItem;
+  employees: Employee[];
+  eligibleAssignees: Employee[];
+  onClose: () => void;
+  onSave: (task: TaskItem) => void;
+}
+
+const EditTaskModal: React.FC<EditTaskModalProps> = ({
+  task,
+  employees,
+  eligibleAssignees,
+  onClose,
+  onSave
+}) => {
+  const [title, setTitle] = useState(task.title);
+  const [description, setDescription] = useState(task.description || '');
+  const [assigneeId, setAssigneeId] = useState(task.assignedTo?.id || (employees[0]?.id ?? ''));
+  const [category, setCategory] = useState(task.category || 'General');
+  const [priority, setPriority] = useState<TaskItem['priority']>(task.priority || 'medium');
+  const [dueDate, setDueDate] = useState(task.dueDate || 'Flexible');
+  const [status, setStatus] = useState<TaskItem['status']>(task.status || (task.completed ? 'Completed' : 'Pending'));
+  const [tags, setTags] = useState((task.tags || []).join(', '));
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!title.trim()) return;
+
+    const assignedEmp = employees.find(e => e.id === assigneeId || e.empId === assigneeId);
+    const updatedTask: TaskItem = {
+      ...task,
+      title: title.trim(),
+      description: description.trim(),
+      priority,
+      category,
+      dueDate,
+      status,
+      completed: status === 'Completed',
+      tags: tags.split(',').map(t => t.trim()).filter(Boolean),
+      assignedTo: assignedEmp ? {
+        id: assignedEmp.id,
+        name: assignedEmp.name,
+        role: assignedEmp.designation,
+        avatar: assignedEmp.avatar
+      } : task.assignedTo
+    };
+
+    onSave(updatedTask);
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-in fade-in">
+      <div className="glass-panel w-full max-w-lg rounded-3xl border border-white/10 bg-[#131b2e] shadow-2xl p-6 space-y-5 animate-in zoom-in-95 max-h-[90vh] overflow-y-auto">
+        <div className="flex items-center justify-between border-b border-white/10 pb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-purple-600/20 border border-purple-500/30 flex items-center justify-center text-purple-300">
+              <Edit3 className="w-5 h-5" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-white">Edit Task</h3>
+              <p className="text-[11px] text-slate-400">Modify task attributes, status, and assignment</p>
+            </div>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-8 h-8 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-400 hover:text-white"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-300">Task Title *</label>
+            <input
+              type="text"
+              required
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full bg-white/[0.04] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-purple-500"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-300">Description</label>
+            <textarea
+              rows={3}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              className="w-full bg-white/[0.04] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-purple-500 resize-none"
+            />
+          </div>
+
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-300">Assign To</label>
+            <select
+              value={assigneeId}
+              onChange={(e) => setAssigneeId(e.target.value)}
+              className="w-full bg-[#1e293b] border border-white/10 rounded-xl px-3.5 py-2.5 text-xs text-white focus:outline-none focus:border-purple-500 cursor-pointer"
+            >
+              {eligibleAssignees.map(emp => (
+                <option key={emp.id} value={emp.id}>
+                  {emp.name} — {emp.designation} ({emp.department})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-300">Category</label>
+              <select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+                className="w-full bg-[#1e293b] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500"
+              >
+                <option value="General">General</option>
+                <option value="Leave">Leave</option>
+                <option value="Performance">Performance</option>
+                <option value="Payroll">Payroll</option>
+                <option value="Recruitment">Recruitment</option>
+                <option value="Onboarding">Onboarding</option>
+                <option value="Compliance">Compliance</option>
+                <option value="Design">Design</option>
+                <option value="Engineering">Engineering</option>
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-300">Priority</label>
+              <select
+                value={priority}
+                onChange={(e) => setPriority(e.target.value as any)}
+                className="w-full bg-[#1e293b] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500"
+              >
+                <option value="urgent">Urgent</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-300">Status</label>
+              <select
+                value={status}
+                onChange={(e) => setStatus(e.target.value as any)}
+                className="w-full bg-[#1e293b] border border-white/10 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-purple-500"
+              >
+                <option value="Pending">Pending</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Under Review">Under Review</option>
+                <option value="Completed">Completed</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-300">Due Date</label>
+              <input
+                type="text"
+                value={dueDate}
+                onChange={(e) => setDueDate(e.target.value)}
+                placeholder="e.g. Tomorrow, This Friday, 2026-09-10"
+                className="w-full bg-white/[0.04] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-purple-500"
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-slate-300">Tags (comma-separated)</label>
+              <input
+                type="text"
+                value={tags}
+                onChange={(e) => setTags(e.target.value)}
+                placeholder="e.g. Audit, Priority, Compliance"
+                className="w-full bg-white/[0.04] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-purple-500"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-400 hover:text-white hover:bg-white/5 transition-all cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="brand-gradient-btn px-5 py-2.5 rounded-xl text-xs font-bold text-white shadow-lg shadow-purple-600/30 cursor-pointer flex items-center gap-1.5"
+            >
+              <Check className="w-3.5 h-3.5" />
+              <span>Save Changes</span>
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 };

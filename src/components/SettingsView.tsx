@@ -25,7 +25,8 @@ import {
   Sun,
   Moon,
   Laptop,
-  CheckCheck
+  CheckCheck,
+  Trash2
 } from 'lucide-react';
 import { UserProfile, UserRole, Employee, ViewMode, ThemeMode } from '../types';
 import { authService, UserAccount } from '../services/authService';
@@ -252,6 +253,20 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         setAdminEditError(result.error || 'Failed to update credentials.');
       }
     }, 350);
+  };
+
+  // Handler: Admin Delete User Account Credentials
+  const handleDeleteAccountCredentials = async (accountId: string, nameOrEmail: string) => {
+    if (!isAdmin) {
+      showToast('⚠️ Access Denied (403): Only Admins can remove user credentials.');
+      return;
+    }
+
+    if (window.confirm(`Are you sure you want to permanently remove credentials for "${nameOrEmail}"? This user will no longer be able to log in.`)) {
+      await authService.removeAccountFromDB(accountId);
+      showToast(`✓ Removed credentials for ${nameOrEmail}`);
+      refreshAccounts();
+    }
   };
 
   // Filtered accounts for Admin table
@@ -716,14 +731,27 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                         </td>
 
                         <td className="py-3.5 px-4 text-right">
-                          <button
-                            id={`btn-edit-user-${acc.id}`}
-                            onClick={() => handleOpenAdminEdit(acc)}
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-300 font-semibold transition-all hover:scale-105 cursor-pointer"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                            <span>Edit Email & Password</span>
-                          </button>
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              id={`btn-edit-user-${acc.id}`}
+                              onClick={() => handleOpenAdminEdit(acc)}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 text-purple-300 font-semibold transition-all hover:scale-105 cursor-pointer"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                              <span>Edit</span>
+                            </button>
+                            {!isSelf && (
+                              <button
+                                id={`btn-delete-user-${acc.id}`}
+                                onClick={() => handleDeleteAccountCredentials(acc.id, acc.name || acc.email)}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 text-rose-300 font-semibold transition-all hover:scale-105 cursor-pointer"
+                                title="Remove User Credentials"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>Remove</span>
+                              </button>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );

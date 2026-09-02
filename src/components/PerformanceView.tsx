@@ -12,7 +12,8 @@ import {
   ChevronRight,
   Trash2,
   UserPlus,
-  X
+  X,
+  Edit3
 } from 'lucide-react';
 import { TOP_PERFORMERS, RECENT_FEEDBACK } from '../data/initialData';
 import { ViewMode, UserProfile, Employee, TopPerformer, FeedbackItem } from '../types';
@@ -74,6 +75,57 @@ export const PerformanceView: React.FC<PerformanceViewProps> = ({
   }, [employees, selectedEmpId]);
 
   const isAdmin = currentUser?.roleType === 'admin';
+  const isManager = currentUser?.roleType === 'manager';
+  const canManageFeedback = isAdmin || isManager;
+
+  const [editingFeedback, setEditingFeedback] = useState<FeedbackItem | null>(null);
+  const [editFeedbackText, setEditFeedbackText] = useState('');
+
+  const handleOpenEditFeedback = (fb: FeedbackItem) => {
+    if (!canManageFeedback) {
+      if (showToast) showToast('⚠️ Access Denied (403): Only Admins and Managers can edit feedback.');
+      return;
+    }
+    setEditingFeedback(fb);
+    setEditFeedbackText(fb.comment);
+  };
+
+  const handleSaveEditFeedback = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingFeedback || !canManageFeedback) return;
+
+    const updated = {
+      ...editingFeedback,
+      comment: editFeedbackText.trim()
+    };
+
+    setFeedbackList(prev => prev.map(f => f.id === updated.id ? updated : f));
+    setEditingFeedback(null);
+
+    try {
+      await dbService.saveItem('performance_feedback', updated);
+      if (showToast) showToast('✓ 360 Peer Feedback updated successfully.');
+    } catch (err: any) {
+      console.error('Failed to update feedback:', err);
+    }
+  };
+
+  const handleDeleteFeedback = async (id: string) => {
+    if (!canManageFeedback) {
+      if (showToast) showToast('⚠️ Access Denied (403): Only Admins and Managers can delete feedback.');
+      return;
+    }
+
+    if (window.confirm('Are you sure you want to delete this peer feedback note?')) {
+      setFeedbackList(prev => prev.filter(f => f.id !== id));
+      try {
+        await dbService.deleteItem('performance_feedback', id);
+        if (showToast) showToast('✓ 360 Peer Feedback deleted.');
+      } catch (err: any) {
+        console.error('Failed to delete feedback:', err);
+      }
+    }
+  };
 
   const activeTopPerformers = topPerformers.filter(p => 
     employees.length === 0 || employees.some(e => e.empId === p.empId || e.name.toLowerCase() === p.name.toLowerCase())
@@ -434,10 +486,15 @@ export const PerformanceView: React.FC<PerformanceViewProps> = ({
 
       {/* 360 Feedback Stream */}
       <div className="glass-panel p-6 rounded-3xl border border-white/5 space-y-4">
-        <h2 className="text-base font-bold text-white">Recent 360 Peer Feedback</h2>
+        <div className="flex items-center justify-between">
+          <h2 className="text-base font-bold text-white">Recent 360 Peer Feedback</h2>
+          <span className="text-xs text-slate-400">
+            {canManageFeedback ? 'Admin/Manager Controls Active' : 'Read Only'}
+          </span>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {feedbackList.map((fb) => (
-            <div key={fb.id} className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
+            <div key={fb.id} className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3 relative group">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
                   <img 
@@ -453,7 +510,29 @@ export const PerformanceView: React.FC<PerformanceViewProps> = ({
                     <p className="text-[10px] text-slate-500">{fb.timeAgo}</p>
                   </div>
                 </div>
-                <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+                <div className="flex items-center gap-2">
+                  <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+                  {canManageFeedback && (
+                    <div className="flex items-center gap-1 ml-2">
+                      <button
+                        id={`btn-edit-feedback-${fb.id}`}
+                        onClick={() => handleOpenEditFeedback(fb)}
+                        title="Edit Feedback Note"
+                        className="p-1 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/20 transition-colors cursor-pointer"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        id={`btn-delete-feedback-${fb.id}`}
+                        onClick={() => handleDeleteFeedback(fb.id)}
+                        title="Delete Feedback Note"
+                        className="p-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/20 transition-colors cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+                </div>
               </div>
               <p className="text-xs text-slate-300 italic leading-relaxed">
                 "{fb.comment}"
@@ -606,6 +685,49 @@ export const PerformanceView: React.FC<PerformanceViewProps> = ({
                   className="brand-gradient-btn px-5 py-2 rounded-xl text-xs font-bold text-white shadow-md shadow-purple-600/30 cursor-pointer"
                 >
                   Add Top Performer
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Modal for Editing 360 Feedback (Admin/Manager) */}
+      {editingFeedback && (
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+          <div className="glass-panel p-6 rounded-3xl border border-white/10 max-w-md w-full space-y-4 bg-[#131b2e] shadow-2xl">
+            <div className="flex items-center justify-between border-b border-white/5 pb-3">
+              <div>
+                <h3 className="text-base font-bold text-white">Edit 360 Feedback</h3>
+                <p className="text-xs text-slate-400 mt-0.5">From {editingFeedback.fromName} to {editingFeedback.toName}</p>
+              </div>
+              <button onClick={() => setEditingFeedback(null)} className="text-slate-400 hover:text-white">✕</button>
+            </div>
+
+            <form onSubmit={handleSaveEditFeedback} className="space-y-4 text-xs">
+              <div>
+                <label className="text-slate-300 font-semibold block mb-1">Feedback / Praise Note</label>
+                <textarea
+                  rows={4}
+                  required
+                  value={editFeedbackText}
+                  onChange={(e) => setEditFeedbackText(e.target.value)}
+                  className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500/50 font-sans"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-white/5">
+                <button
+                  type="button"
+                  onClick={() => setEditingFeedback(null)}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold bg-white/[0.05] text-slate-300"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="brand-gradient-btn px-5 py-2 rounded-xl text-xs font-bold text-white shadow-md shadow-purple-600/30 cursor-pointer"
+                >
+                  Save Changes
                 </button>
               </div>
             </form>

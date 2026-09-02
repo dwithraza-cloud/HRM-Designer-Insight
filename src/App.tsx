@@ -64,6 +64,13 @@ import {
 } from './types';
 import { authService } from './services/authService';
 import { dbService } from './services/dbService';
+import { 
+  getPKTDate, 
+  getPKTDateISO, 
+  formatPKTDateDisplay, 
+  formatPKTTime, 
+  determinePunctuality 
+} from './utils/attendanceUtils';
 
 function loadStoredData<T>(key: string, fallback: T): T {
   try {
@@ -742,7 +749,35 @@ export function App() {
     try {
       await dbService.deleteItem('tasks', id);
       setTasks(prev => prev.filter(t => t.id !== id));
-      showToast(`Task deleted.`);
+      showToast(`Task deleted permanently.`);
+    } catch (err: any) {
+      showToast(`❌ Database error: ${err.message || err}`);
+    }
+  };
+
+  const handleEditTask = async (updatedTask: TaskItem) => {
+    try {
+      await dbService.saveItem('tasks', updatedTask);
+      setTasks(prev => prev.map(t => t.id === updatedTask.id ? updatedTask : t));
+      showToast(`Task "${updatedTask.title}" updated.`);
+    } catch (err: any) {
+      showToast(`❌ Database error: ${err.message || err}`);
+    }
+  };
+
+  const handleClearAllTasks = async () => {
+    try {
+      for (const t of tasks) {
+        await dbService.deleteItem('tasks', t.id);
+      }
+      await dbService.clearCollection('tasks');
+      setTasks([]);
+      try {
+        localStorage.setItem('insight_hrm_tasks', JSON.stringify([]));
+      } catch (e) {
+        console.error(e);
+      }
+      showToast(`All tasks removed permanently.`);
     } catch (err: any) {
       showToast(`❌ Database error: ${err.message || err}`);
     }
@@ -881,6 +916,51 @@ export function App() {
     setCurrentView('dashboard');
     const roleTitle = (activeUser.roleType || 'user').toUpperCase();
     showToast(`Signed in as ${roleTitle} (${activeUser.email || activeUser.name})`);
+
+    // Automatic Attendance Clock-In on Login (Auto-Punch)
+    try {
+      const todayISO = getPKTDateISO();
+      const existingAtt = attendanceRecords.find(
+        r => (r.empId === activeUser.empId || r.employeeName.toLowerCase() === activeUser.name.toLowerCase()) &&
+             (r.date === todayISO || r.date === '2026-09-01' || r.date.includes('Today'))
+      );
+
+      if (!existingAtt || !existingAtt.clockIn || existingAtt.clockIn === '--:--' || existingAtt.status === 'Absent') {
+        const nowPKT = getPKTDate();
+        const clockInTimeStr = formatPKTTime(nowPKT);
+        const punctuality = determinePunctuality(clockInTimeStr, '09:00 AM', 15);
+        const dayName = nowPKT.toLocaleDateString('en-US', { weekday: 'long' });
+
+        const autoRecord: AttendanceRecord = {
+          id: `att-${activeUser.empId || 'USR'}-${todayISO}`,
+          empId: activeUser.empId || 'EMP-0001',
+          employeeName: activeUser.name,
+          department: activeUser.department || 'Operations',
+          avatar: activeUser.avatar,
+          avatarInitials: activeUser.name.split(' ').map(n => n[0]).join('').substring(0, 2),
+          date: todayISO,
+          displayDate: formatPKTDateDisplay(todayISO),
+          dayName,
+          shift: 'Regular (09:00 AM – 06:00 PM)',
+          clockIn: clockInTimeStr,
+          clockOut: '--:--',
+          breakMinutes: 0,
+          totalHrs: 'Working (0h 01m)',
+          overtime: '0h 00m',
+          status: punctuality.status,
+          lateDuration: punctuality.lateDuration,
+          remarks: 'Automatic attendance punch on login',
+          recordedBy: 'Auto-Login System',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+
+        dbService.saveItem('attendance', autoRecord).catch(console.error);
+        setAttendanceRecords(prev => [autoRecord, ...prev.filter(r => r.empId !== autoRecord.empId || (r.date !== todayISO && r.date !== '2026-09-01'))]);
+      }
+    } catch (err) {
+      console.error('Error auto-clocking attendance on login:', err);
+    }
   };
 
   // User-Specific Theme Toggle Handler
@@ -1080,9 +1160,11 @@ export function App() {
             employees={employees}
             currentUser={currentUser}
             onAddTask={handleAddTask}
+            onEditTask={handleEditTask}
             onToggleTask={handleToggleTask}
             onTogglePinTask={handleTogglePinTask}
             onDeleteTask={handleDeleteTask}
+            onClearAllTasks={handleClearAllTasks}
             onUpdateTaskStatus={handleUpdateTaskStatus}
             onAddAttachment={handleAddAttachment}
             onRemoveAttachment={handleRemoveAttachment}
