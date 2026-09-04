@@ -48,6 +48,7 @@ export interface UserProfile {
   status: 'Active' | 'On Leave' | 'Inactive';
   avatarInitials?: string;
   themePreference?: ThemeMode;
+  shift?: string;
 }
 
 export interface Employee {
@@ -60,6 +61,7 @@ export interface Employee {
   phone: string;
   status: 'Active' | 'On Leave' | 'Inactive';
   joiningDate: string;
+  shift?: string;
   avatar?: string;
   avatarInitials?: string;
   gender?: string;

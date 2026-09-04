@@ -6,7 +6,9 @@ import {
   determinePunctuality, 
   formatPKTDateDisplay, 
   formatPKTDateShort,
-  getPKTDateISO 
+  getPKTDateISO,
+  WORKFORCE_SHIFTS,
+  DEFAULT_SHIFT_LABEL
 } from '../../utils/attendanceUtils';
 
 interface EditAttendanceModalProps {
@@ -39,7 +41,7 @@ export const EditAttendanceModal: React.FC<EditAttendanceModalProps> = ({
   });
 
   const [shift, setShift] = useState<string>(() => {
-    return initialRecord?.shift || 'Regular (09:00 AM – 06:00 PM)';
+    return initialRecord?.shift || DEFAULT_SHIFT_LABEL;
   });
 
   const [clockIn, setClockIn] = useState<string>(() => {
@@ -70,7 +72,7 @@ export const EditAttendanceModal: React.FC<EditAttendanceModalProps> = ({
     if (initialRecord) {
       setSelectedEmpId(initialRecord.empId);
       setDate(initialRecord.date || getPKTDateISO());
-      setShift(initialRecord.shift || 'Regular (09:00 AM – 06:00 PM)');
+      setShift(initialRecord.shift || DEFAULT_SHIFT_LABEL);
       setClockIn(initialRecord.clockIn && initialRecord.clockIn !== '--:--' ? initialRecord.clockIn : '09:00 AM');
       setClockOut(initialRecord.clockOut && initialRecord.clockOut !== '--:--' ? initialRecord.clockOut : '06:00 PM');
       setBreakMinutes(initialRecord.breakMinutes !== undefined ? initialRecord.breakMinutes : 60);
@@ -79,7 +81,7 @@ export const EditAttendanceModal: React.FC<EditAttendanceModalProps> = ({
     } else {
       setSelectedEmpId(defaultEmployeeId || employees[0]?.empId || '');
       setDate(selectedDate || getPKTDateISO());
-      setShift('Regular (09:00 AM – 06:00 PM)');
+      setShift(DEFAULT_SHIFT_LABEL);
       setClockIn('09:00 AM');
       setClockOut('06:00 PM');
       setBreakMinutes(60);
@@ -91,13 +93,21 @@ export const EditAttendanceModal: React.FC<EditAttendanceModalProps> = ({
 
   // Recalculate working hours live preview
   const hoursCalc = calculateAttendanceHours(clockIn, clockOut, breakMinutes);
-  const punctuality = determinePunctuality(clockIn, shift.includes('08:00') ? '08:00 AM' : '09:00 AM');
+  const punctuality = determinePunctuality(clockIn, shift);
 
   // Automatically update status if user is modifying clock-in unless set to Absent/Leave
   const handleClockInChange = (newVal: string) => {
     setClockIn(newVal);
     if (status !== 'Absent' && status !== 'On Leave' && status !== 'Half Day') {
-      const punct = determinePunctuality(newVal, shift.includes('08:00') ? '08:00 AM' : '09:00 AM');
+      const punct = determinePunctuality(newVal, shift);
+      setStatus(punct.status);
+    }
+  };
+
+  const handleShiftChange = (newShift: string) => {
+    setShift(newShift);
+    if (status !== 'Absent' && status !== 'On Leave' && status !== 'Half Day') {
+      const punct = determinePunctuality(clockIn, newShift);
       setStatus(punct.status);
     }
   };
@@ -125,7 +135,7 @@ export const EditAttendanceModal: React.FC<EditAttendanceModalProps> = ({
 
       const lateInfo = status === 'Absent' || status === 'On Leave'
         ? { lateDuration: '--' }
-        : determinePunctuality(clockIn, shift.includes('08:00') ? '08:00 AM' : '09:00 AM');
+        : determinePunctuality(clockIn, shift);
 
       const recordToSave: AttendanceRecord = {
         id: initialRecord?.id || `att-${emp.empId}-${date}`,
@@ -236,13 +246,14 @@ export const EditAttendanceModal: React.FC<EditAttendanceModalProps> = ({
               </label>
               <select
                 value={shift}
-                onChange={(e) => setShift(e.target.value)}
+                onChange={(e) => handleShiftChange(e.target.value)}
                 className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-white focus:outline-none focus:border-purple-500/50"
               >
-                <option value="Regular (09:00 AM – 06:00 PM)" className="bg-[#131b2e]">Regular (09:00 AM – 06:00 PM)</option>
-                <option value="Morning (08:00 AM – 05:00 PM)" className="bg-[#131b2e]">Morning (08:00 AM – 05:00 PM)</option>
-                <option value="Night (06:00 PM – 03:00 AM)" className="bg-[#131b2e]">Night (06:00 PM – 03:00 AM)</option>
-                <option value="Flexible (8 Hours)" className="bg-[#131b2e]">Flexible (8 Hours)</option>
+                {WORKFORCE_SHIFTS.map(s => (
+                  <option key={s.id} value={s.label} className="bg-[#131b2e]">
+                    {s.label}
+                  </option>
+                ))}
               </select>
             </div>
           </div>

@@ -38,7 +38,10 @@ import {
   determinePunctuality,
   calculateTodayAttendanceKPIs,
   generateEmployeeMonthlyRoster,
-  isDateCoveredByApprovedLeave
+  isDateCoveredByApprovedLeave,
+  WORKFORCE_SHIFTS,
+  DEFAULT_SHIFT_LABEL,
+  getShiftStartTime
 } from '../utils/attendanceUtils';
 import { dbService } from '../services/dbService';
 import { EditAttendanceModal } from './attendance/EditAttendanceModal';
@@ -61,6 +64,8 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   currentUser,
   employees = [],
   leaveRequests = [],
+  onUpdateRecords,
+  onNavigate,
   showToast
 }) => {
   const isAdmin = currentUser.roleType === 'admin';
@@ -120,41 +125,17 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     });
   }, [attendanceRecords, currentUser, todayISO, todayDisplay]);
 
-  // Auto-attendance check-in for current active session
+  // Active shift selection for current user
+  const [selectedShift, setSelectedShift] = useState<string>(() => {
+    return myTodayRecord?.shift || currentUser.shift || DEFAULT_SHIFT_LABEL;
+  });
+
+  // Keep selectedShift synced if user profile or existing record provides it
   useEffect(() => {
-    if (!myTodayRecord || !myTodayRecord.clockIn || myTodayRecord.clockIn === '--:--' || myTodayRecord.status === 'Absent') {
-      const nowPKT = getPKTDate();
-      const clockInTimeStr = formatPKTTime(nowPKT);
-      const punctuality = determinePunctuality(clockInTimeStr, '09:00 AM', 15);
-      const dayName = nowPKT.toLocaleDateString('en-US', { weekday: 'long' });
-
-      const autoRecord: AttendanceRecord = {
-        id: `att-${currentUser.empId}-${todayISO}`,
-        empId: currentUser.empId,
-        employeeName: currentUser.name,
-        department: currentUser.department,
-        avatar: currentUser.avatar,
-        avatarInitials: currentUser.name.split(' ').map(n => n[0]).join('').substring(0, 2),
-        date: todayISO,
-        displayDate: formatPKTDateDisplay(todayISO),
-        dayName,
-        shift: 'Regular (09:00 AM – 06:00 PM)',
-        clockIn: clockInTimeStr,
-        clockOut: '--:--',
-        breakMinutes: 0,
-        totalHrs: 'Working (0h 01m)',
-        overtime: '0h 00m',
-        status: punctuality.status,
-        lateDuration: punctuality.lateDuration,
-        remarks: 'Automatic attendance punch on user session',
-        recordedBy: 'Auto-Login System',
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString()
-      };
-
-      dbService.saveItem('attendance', autoRecord).catch(console.error);
+    if (myTodayRecord?.shift) {
+      setSelectedShift(myTodayRecord.shift);
     }
-  }, [currentUser.empId, currentUser.name, currentUser.department, currentUser.avatar, todayISO, myTodayRecord]);
+  }, [myTodayRecord?.shift]);
 
   // Is current user clocked in today?
   const isClockedIn = !!(myTodayRecord && myTodayRecord.clockIn && myTodayRecord.clockIn !== '--:--' && (!myTodayRecord.clockOut || myTodayRecord.clockOut === '--:--'));
@@ -188,11 +169,12 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     try {
       const nowPKT = getPKTDate();
       const clockInTimeStr = formatPKTTime(nowPKT);
-      const punctuality = determinePunctuality(clockInTimeStr, '09:00 AM', 15);
+      const shiftStartTime = getShiftStartTime(selectedShift);
+      const punctuality = determinePunctuality(clockInTimeStr, shiftStartTime, 15);
       const dayName = nowPKT.toLocaleDateString('en-US', { weekday: 'long' });
 
       const newRecord: AttendanceRecord = {
-        id: `att-${currentUser.empId}-${todayISO}`,
+        id: `att-${currentUser.empId}-${todayISO}-${Date.now()}`,
         empId: currentUser.empId,
         employeeName: currentUser.name,
         department: currentUser.department,
@@ -201,7 +183,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
         date: todayISO,
         displayDate: formatPKTDateDisplay(todayISO),
         dayName,
-        shift: 'Regular (09:00 AM – 06:00 PM)',
+        shift: selectedShift,
         clockIn: clockInTimeStr,
         clockOut: '--:--',
         breakMinutes: 0,
@@ -217,9 +199,16 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
 
       await dbService.saveItem('attendance', newRecord);
       
+      if (onUpdateRecords) {
+        onUpdateRecords([
+          newRecord,
+          ...attendanceRecords.filter(r => !(r.empId === currentUser.empId && (r.date === todayISO || r.date === '2026-09-01')))
+        ]);
+      }
+
       if (showToast) {
         showToast(
-          `✓ Clocked In successfully at ${clockInTimeStr} (${punctuality.status === 'Late' ? 'Late: ' + punctuality.lateDuration : 'Present & On Time'})`,
+          `✓ Clocked In successfully at ${clockInTimeStr} for ${selectedShift} (${punctuality.status === 'Late' ? 'Late: ' + punctuality.lateDuration : 'Present & On Time'})`,
           punctuality.status === 'Late' ? 'info' : 'success'
         );
       }
@@ -251,6 +240,9 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       };
 
       await dbService.saveItem('attendance', updatedRecord);
+      if (onUpdateRecords) {
+        onUpdateRecords(attendanceRecords.map(r => r.id === updatedRecord.id ? updatedRecord : r));
+      }
       setIsOnBreak(false);
 
       if (showToast) {
@@ -286,6 +278,9 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       };
 
       await dbService.saveItem('attendance', updatedRecord);
+      if (onUpdateRecords) {
+        onUpdateRecords(attendanceRecords.map(r => r.id === updatedRecord.id ? updatedRecord : r));
+      }
       setIsOnBreak(false);
       setBreakStartTime(null);
       if (showToast) showToast(`✓ Break ended (${elapsedBreakMins} min added to break time)`, 'success');
@@ -309,6 +304,14 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   // Save Record (Create or Edit)
   const handleSaveRecord = async (record: AttendanceRecord) => {
     await dbService.saveItem('attendance', record);
+    if (onUpdateRecords) {
+      const exists = attendanceRecords.some(r => r.id === record.id);
+      if (exists) {
+        onUpdateRecords(attendanceRecords.map(r => r.id === record.id ? record : r));
+      } else {
+        onUpdateRecords([record, ...attendanceRecords]);
+      }
+    }
     if (showToast) {
       showToast(`✓ Attendance record for ${record.employeeName} saved permanently`, 'success');
     }
@@ -325,11 +328,59 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     if (!deletingRecord) return;
     setIsDeleting(true);
     try {
-      await dbService.deleteItem('attendance', deletingRecord.id);
+      const recordToDelete = deletingRecord;
+      const targetId = recordToDelete.id;
+      const targetEmpId = recordToDelete.empId;
+      const targetEmpName = recordToDelete.employeeName;
+
+      // 1. Delete document from Firestore
+      await dbService.deleteItem('attendance', targetId);
+
+      // 2. Also find and delete any other today/sample records matching this employee
+      const matchingOtherDocs = attendanceRecords.filter(
+        r => (r.empId === targetEmpId || r.employeeName.toLowerCase() === targetEmpName.toLowerCase()) &&
+             (r.date === recordToDelete.date || r.date === todayISO || r.date === '2026-09-01' || r.date.includes(todayDisplay))
+      );
+
+      for (const other of matchingOtherDocs) {
+        if (other.id !== targetId) {
+          await dbService.deleteItem('attendance', other.id).catch(() => {});
+        }
+      }
+
+      // Explicitly cleanup known seed IDs if Iqra or Asim
+      if (targetEmpId === 'EMP-0109' || targetEmpName.toLowerCase().includes('iqra')) {
+        await dbService.deleteItem('attendance', 'att-hist-04').catch(() => {});
+        dbService.markItemDeleted('attendance', 'att-hist-04');
+      }
+      if (targetEmpId === 'EMP-0110' || targetEmpName.toLowerCase().includes('asim')) {
+        await dbService.deleteItem('attendance', 'att-hist-05').catch(() => {});
+        dbService.markItemDeleted('attendance', 'att-hist-05');
+      }
+
+      // 3. Mark tombstones in dbService
+      dbService.markItemDeleted('attendance', targetId);
+      matchingOtherDocs.forEach(d => dbService.markItemDeleted('attendance', d.id));
+
+      // 4. Update the state immediately so the table updates without delay
+      const allMatchingIds = new Set([targetId, ...matchingOtherDocs.map(d => d.id)]);
+      if (targetEmpId === 'EMP-0109' || targetEmpName.toLowerCase().includes('iqra')) allMatchingIds.add('att-hist-04');
+      if (targetEmpId === 'EMP-0110' || targetEmpName.toLowerCase().includes('asim')) allMatchingIds.add('att-hist-05');
+
+      const updatedRecords = attendanceRecords.filter(
+        r => !allMatchingIds.has(r.id) &&
+             !(r.empId === targetEmpId && (r.date === recordToDelete.date || r.date === todayISO || r.date === '2026-09-01'))
+      );
+
+      if (onUpdateRecords) {
+        onUpdateRecords(updatedRecords);
+      }
+
       setIsDeleteModalOpen(false);
       setDeletingRecord(null);
+
       if (showToast) {
-        showToast(`✓ Attendance record for ${deletingRecord.employeeName} deleted from database`, 'success');
+        showToast(`✓ Attendance record for ${targetEmpName} deleted. They will only appear when they clock in.`, 'success');
       }
     } catch (err: any) {
       console.error('Delete failed:', err);
@@ -339,48 +390,15 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     }
   };
 
-  // Filtered Today's Records - Unified Roster for all active employees & today's punches
+  // Filtered Today's Records - Shows employees who have an attendance record logged for today
   const filteredTodayRecords = useMemo(() => {
     const recordsMap = new Map<string, AttendanceRecord>();
 
-    // 1. First add recorded attendance records matching today
+    // Add recorded attendance records matching today
     attendanceRecords.forEach(r => {
       const matchDate = r.date === todayISO || r.date === '2026-09-01' || r.date.includes(todayDisplay) || r.date.includes('Today');
       if (matchDate) {
         recordsMap.set(r.empId, r);
-      }
-    });
-
-    // 2. Ensure every active employee in the workforce is represented in today's register
-    employees.forEach(emp => {
-      if (!recordsMap.has(emp.empId)) {
-        const leaveCheck = isDateCoveredByApprovedLeave(todayISO, emp.name, leaveRequests);
-        const isLeave = leaveCheck.isLeave;
-        const initialStatus: AttendanceStatus = isLeave ? 'On Leave' : 'Present';
-
-        recordsMap.set(emp.empId, {
-          id: `att-${emp.empId}-${todayISO}`,
-          empId: emp.empId,
-          employeeName: emp.name,
-          department: emp.department,
-          avatar: emp.avatar,
-          avatarInitials: emp.avatarInitials || emp.name.split(' ').map(n => n[0]).join('').substring(0, 2),
-          date: todayISO,
-          displayDate: todayDisplay,
-          dayName: currentTime.toLocaleDateString('en-US', { weekday: 'long' }),
-          shift: 'Regular (09:00 AM – 06:00 PM)',
-          clockIn: isLeave ? '--:--' : '09:00 AM',
-          clockOut: '--:--',
-          breakMinutes: isLeave ? 0 : 45,
-          totalHrs: isLeave ? '0h 00m' : '7h 15m',
-          overtime: '0h 00m',
-          status: initialStatus,
-          lateDuration: '--',
-          remarks: isLeave ? `On ${leaveCheck.leaveType || 'Approved'} Leave` : 'Standard shift check-in',
-          recordedBy: 'Auto-Login System',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        });
       }
     });
 
@@ -400,7 +418,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
 
       return true;
     });
-  }, [attendanceRecords, employees, leaveRequests, todayISO, todayDisplay, currentTime, searchQuery, deptFilter, statusFilter]);
+  }, [attendanceRecords, todayISO, todayDisplay, searchQuery, deptFilter, statusFilter]);
 
   // Month navigation helpers
   const monthNames = [
@@ -559,9 +577,28 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                   {isClockedIn ? 'Currently Working' : isShiftCompleted ? 'Shift Completed' : 'Not Clocked In Today'}
                 </span>
               </div>
-              <p className="text-xs text-slate-400">
-                Shift: <span className="text-slate-300 font-medium">Regular (09:00 AM – 06:00 PM)</span> • Department: <span className="text-slate-300 font-medium">{currentUser.department}</span>
-              </p>
+              <div className="flex items-center gap-2 flex-wrap text-xs text-slate-400 pt-0.5">
+                <span>Shift:</span>
+                {!isClockedIn && !isShiftCompleted ? (
+                  <select
+                    value={selectedShift}
+                    onChange={(e) => setSelectedShift(e.target.value)}
+                    className="px-2.5 py-1 rounded-xl bg-purple-500/15 border border-purple-500/30 text-purple-200 text-xs font-medium focus:outline-none focus:border-purple-400 cursor-pointer"
+                  >
+                    {WORKFORCE_SHIFTS.map(s => (
+                      <option key={s.id} value={s.label} className="bg-[#131b2e] text-slate-200">
+                        {s.label}
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <span className="text-slate-200 font-medium px-2 py-0.5 rounded-lg bg-white/5 border border-white/10">
+                    {myTodayRecord?.shift || selectedShift}
+                  </span>
+                )}
+                <span className="text-slate-600">•</span>
+                <span>Department: <strong className="text-slate-300 font-medium">{currentUser.department}</strong></span>
+              </div>
             </div>
           </div>
 
@@ -868,7 +905,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                             </button>
                           </td>
                           <td className="py-3 px-4 text-slate-300">{record.department}</td>
-                          <td className="py-3 px-4 text-slate-400 text-[11px]">{record.shift || 'Regular (09:00 AM – 06:00 PM)'}</td>
+                          <td className="py-3 px-4 text-slate-400 text-[11px]">{record.shift || DEFAULT_SHIFT_LABEL}</td>
                           <td className="py-3 px-4 font-mono font-medium text-slate-200">
                             {record.clockIn}
                           </td>

@@ -8,8 +8,70 @@ import { AttendanceRecord, AttendanceStatus, Employee, LeaveRequest, DailyAttend
 export const PKT_TIMEZONE = 'Asia/Karachi';
 export const STANDARD_SHIFT_START = '09:00 AM';
 export const STANDARD_SHIFT_END = '06:00 PM';
-export const STANDARD_SHIFT_GRACE_MINUTES = 15; // <= 09:15 AM is Present, > 09:15 AM is Late
+export const STANDARD_SHIFT_GRACE_MINUTES = 15; // <= 15 mins after shift start is Present, > 15 mins is Late
 export const STANDARD_WORK_MINUTES_PER_DAY = 480; // 8 hours net work
+
+export interface WorkforceShift {
+  id: string;
+  name: string;
+  label: string;
+  startTime: string;
+  endTime: string;
+  description: string;
+  isOvernight?: boolean;
+}
+
+export const WORKFORCE_SHIFTS: WorkforceShift[] = [
+  {
+    id: 'shift-9am-6pm',
+    name: 'Morning Shift',
+    label: 'Morning (09:00 AM – 06:00 PM)',
+    startTime: '09:00 AM',
+    endTime: '06:00 PM',
+    description: 'Standard 9:00 AM to 6:00 PM work hours'
+  },
+  {
+    id: 'shift-11am-8pm',
+    name: 'Mid Day Shift',
+    label: 'Mid Day (11:00 AM – 08:00 PM)',
+    startTime: '11:00 AM',
+    endTime: '08:00 PM',
+    description: 'Mid-day 11:00 AM to 8:00 PM work hours'
+  },
+  {
+    id: 'shift-12pm-9pm',
+    name: 'Afternoon Shift',
+    label: 'Afternoon (12:00 PM – 09:00 PM)',
+    startTime: '12:00 PM',
+    endTime: '09:00 PM',
+    description: 'Afternoon 12:00 PM to 9:00 PM work hours'
+  },
+  {
+    id: 'shift-5pm-2am',
+    name: 'Night Shift',
+    label: 'Night (05:00 PM – 02:00 AM)',
+    startTime: '05:00 PM',
+    endTime: '02:00 AM',
+    description: 'Evening/Night 5:00 PM to 2:00 AM (overnight)',
+    isOvernight: true
+  }
+];
+
+export const DEFAULT_SHIFT_LABEL = WORKFORCE_SHIFTS[0].label;
+
+/**
+ * Extract shift start time (e.g. '09:00 AM', '11:00 AM', '12:00 PM', '05:00 PM') from shift string
+ */
+export function getShiftStartTime(shiftStr?: string): string {
+  if (!shiftStr) return '09:00 AM';
+  const clean = shiftStr.toLowerCase();
+  if (clean.includes('11:00') || clean.includes('11am') || clean.includes('11 am')) return '11:00 AM';
+  if (clean.includes('12:00') || clean.includes('12pm') || clean.includes('12 pm')) return '12:00 PM';
+  if (clean.includes('05:00') || clean.includes('5:00') || clean.includes('5pm') || clean.includes('5 pm') || clean.includes('night') || clean.includes('02:00')) return '05:00 PM';
+  if (clean.includes('09:00') || clean.includes('9:00') || clean.includes('9am') || clean.includes('9 am') || clean.includes('regular') || clean.includes('morning')) return '09:00 AM';
+  const match = shiftStr.match(/(\d{1,2}:\d{2}\s*(?:AM|PM))/i);
+  return match ? match[1].toUpperCase() : '09:00 AM';
+}
 
 /**
  * Get current Date object representing Pakistan Standard Time
@@ -163,11 +225,11 @@ export function calculateLiveElapsedHours(clockIn: string, breakMinutes: number 
 }
 
 /**
- * Calculate punctuality status and late duration
+ * Calculate punctuality status and late duration relative to assigned shift
  */
 export function determinePunctuality(
   clockIn: string, 
-  shiftStartTime: string = STANDARD_SHIFT_START, 
+  shiftStartTimeOrLabel: string = STANDARD_SHIFT_START, 
   graceMinutes: number = STANDARD_SHIFT_GRACE_MINUTES
 ): {
   status: 'Present' | 'Late';
@@ -175,13 +237,19 @@ export function determinePunctuality(
   lateMinutes: number;
 } {
   const inMins = parseTimeToMinutes(clockIn);
-  const shiftMins = parseTimeToMinutes(shiftStartTime) || (9 * 60); // default 09:00 AM
+  const actualStartTime = getShiftStartTime(shiftStartTimeOrLabel);
+  const shiftMins = parseTimeToMinutes(actualStartTime) || (9 * 60); // default 09:00 AM
 
   if (inMins === null) {
     return { status: 'Present', lateDuration: '--', lateMinutes: 0 };
   }
 
-  const diff = inMins - shiftMins;
+  let diff = inMins - shiftMins;
+  // Handle overnight shift edge case (e.g. clocking in after midnight for a night shift)
+  if (diff < -720) {
+    diff += 1440;
+  }
+
   if (diff > graceMinutes) {
     return {
       status: 'Late',
