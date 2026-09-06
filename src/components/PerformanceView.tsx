@@ -116,25 +116,27 @@ export const PerformanceView: React.FC<PerformanceViewProps> = ({
       return;
     }
 
-    if (window.confirm('Are you sure you want to delete this peer feedback note?')) {
-      setFeedbackList(prev => prev.filter(f => f.id !== id));
-      try {
-        await dbService.deleteItem('performance_feedback', id);
-        if (showToast) showToast('✓ 360 Peer Feedback deleted.');
-      } catch (err: any) {
-        console.error('Failed to delete feedback:', err);
-      }
+    setFeedbackList(prev => prev.filter(f => f.id !== id));
+    try {
+      await dbService.deleteItem('performance_feedback', id);
+      if (showToast) showToast('✓ 360 Peer Feedback deleted.');
+    } catch (err: any) {
+      console.error('Failed to delete feedback:', err);
     }
   };
 
   const activeTopPerformers = topPerformers.filter(p => 
-    employees.length === 0 || employees.some(e => e.empId === p.empId || e.name.toLowerCase() === p.name.toLowerCase())
+    employees.some(e => e.empId === p.empId || e.name.toLowerCase().trim() === p.name.toLowerCase().trim())
+  );
+
+  const activeFeedbackList = feedbackList.filter(fb => 
+    employees.some(e => e.name.toLowerCase().trim() === fb.toName.toLowerCase().trim())
   );
 
   // Dynamic calculations based on real employees and live data
   const totalEmployeesCount = employees.length;
   const topPerformersCount = activeTopPerformers.length;
-  const feedbackCount = feedbackList.length;
+  const feedbackCount = activeFeedbackList.length;
   const avgScore = activeTopPerformers.length > 0 
     ? Math.round(activeTopPerformers.reduce((acc, p) => acc + (p.score || 90), 0) / activeTopPerformers.length)
     : 88;
@@ -461,10 +463,10 @@ export const PerformanceView: React.FC<PerformanceViewProps> = ({
 
           <div className="space-y-4">
             {[
-              { goal: 'Design System & Component Tokens 2.0', owner: 'Ayon Ahmed', progress: 92, color: 'from-purple-500 to-indigo-500' },
-              { goal: 'Zero-Downtime Microservices Architecture', owner: 'Rahim Uddin', progress: 85, color: 'from-blue-500 to-cyan-500' },
-              { goal: 'Enterprise Security SOC2 Type II Audit', owner: 'David Rodriguez', progress: 74, color: 'from-emerald-500 to-teal-500' },
-              { goal: 'Hire 24 High-Impact Senior Engineers', owner: 'Sumaiya Akter', progress: 62, color: 'from-amber-500 to-orange-500' },
+              { goal: 'Design System & Component Tokens 2.0', owner: employees[0]?.name || 'Raja Raza', progress: 92, color: 'from-purple-500 to-indigo-500' },
+              { goal: 'Workforce Shifts & Biometric Scheduling', owner: employees[1]?.name || 'Aqsa', progress: 85, color: 'from-blue-500 to-cyan-500' },
+              { goal: 'Mobile App Screen Flows & Prototypes', owner: employees[2]?.name || 'Rani', progress: 74, color: 'from-emerald-500 to-teal-500' },
+              { goal: 'Frontend Core Performance Optimization', owner: employees[3]?.name || 'Iqra Pervaiz', progress: 62, color: 'from-amber-500 to-orange-500' },
             ].map((okr, idx) => (
               <div key={idx} className="p-3 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2">
                 <div className="flex items-center justify-between text-xs">
@@ -493,52 +495,58 @@ export const PerformanceView: React.FC<PerformanceViewProps> = ({
           </span>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {feedbackList.map((fb) => (
-            <div key={fb.id} className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3 relative group">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <img 
-                    src={fb.avatar} 
-                    alt={fb.fromName} 
-                    className="w-8 h-8 rounded-full object-cover ring-1 ring-white/10" 
-                    referrerPolicy="no-referrer"
-                  />
-                  <div>
-                    <p className="text-xs font-bold text-white">
-                      {fb.fromName} <span className="text-slate-500 font-normal">to</span> <span className="text-purple-300">{fb.toName}</span>
-                    </p>
-                    <p className="text-[10px] text-slate-500">{fb.timeAgo}</p>
+          {activeFeedbackList.length === 0 ? (
+            <div className="col-span-full py-8 text-center text-xs text-slate-500">
+              No 360 feedback notes recorded for current employees. Click "Give Feedback" to add one!
+            </div>
+          ) : (
+            activeFeedbackList.map((fb) => (
+              <div key={fb.id} className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3 relative group">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <img 
+                      src={fb.avatar} 
+                      alt={fb.fromName} 
+                      className="w-8 h-8 rounded-full object-cover ring-1 ring-white/10" 
+                      referrerPolicy="no-referrer"
+                    />
+                    <div>
+                      <p className="text-xs font-bold text-white">
+                        {fb.fromName} <span className="text-slate-500 font-normal">to</span> <span className="text-purple-300">{fb.toName}</span>
+                      </p>
+                      <p className="text-[10px] text-slate-500">{fb.timeAgo}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+                    {canManageFeedback && (
+                      <div className="flex items-center gap-1 ml-2">
+                        <button
+                          id={`btn-edit-feedback-${fb.id}`}
+                          onClick={() => handleOpenEditFeedback(fb)}
+                          title="Edit Feedback Note"
+                          className="p-1 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/20 transition-colors cursor-pointer"
+                        >
+                          <Edit3 className="w-3.5 h-3.5" />
+                        </button>
+                        <button
+                          id={`btn-delete-feedback-${fb.id}`}
+                          onClick={() => handleDeleteFeedback(fb.id)}
+                          title="Delete Feedback Note"
+                          className="p-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/20 transition-colors cursor-pointer"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
-                  {canManageFeedback && (
-                    <div className="flex items-center gap-1 ml-2">
-                      <button
-                        id={`btn-edit-feedback-${fb.id}`}
-                        onClick={() => handleOpenEditFeedback(fb)}
-                        title="Edit Feedback Note"
-                        className="p-1 rounded-lg bg-purple-500/10 hover:bg-purple-500/20 text-purple-300 border border-purple-500/20 transition-colors cursor-pointer"
-                      >
-                        <Edit3 className="w-3.5 h-3.5" />
-                      </button>
-                      <button
-                        id={`btn-delete-feedback-${fb.id}`}
-                        onClick={() => handleDeleteFeedback(fb.id)}
-                        title="Delete Feedback Note"
-                        className="p-1 rounded-lg bg-rose-500/10 hover:bg-rose-500/20 text-rose-300 border border-rose-500/20 transition-colors cursor-pointer"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-                  )}
-                </div>
+                <p className="text-xs text-slate-300 italic leading-relaxed">
+                  "{fb.comment}"
+                </p>
               </div>
-              <p className="text-xs text-slate-300 italic leading-relaxed">
-                "{fb.comment}"
-              </p>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 

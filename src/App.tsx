@@ -77,7 +77,11 @@ function loadStoredData<T>(key: string, fallback: T): T {
   try {
     const item = localStorage.getItem(key);
     if (item) {
-      return JSON.parse(item);
+      const parsed = JSON.parse(item);
+      if (key === 'insight_hrm_attendance' && Array.isArray(parsed)) {
+        return parsed.filter((r: any) => r && r.id && !dbService.isItemDeleted('attendance', r.id)) as unknown as T;
+      }
+      return parsed;
     }
   } catch (error) {
     console.error(`Error loading ${key} from localStorage:`, error);
@@ -128,6 +132,8 @@ export function App() {
 
     async function initDatabase() {
       try {
+        await dbService.loadGlobalDeletedTombstones();
+
         const loadedEmps = await dbService.loadOrSeedCollection('employees', INITIAL_EMPLOYEES);
         setEmployees(loadedEmps);
         if (loadedEmps.length > 0) setSelectedEmployee(loadedEmps[0]);
@@ -142,7 +148,7 @@ export function App() {
         setTasks(loadedTasks);
 
         const loadedAttendance = await dbService.loadOrSeedCollection('attendance', INITIAL_ATTENDANCE);
-        setAttendanceRecords(loadedAttendance);
+        setAttendanceRecords(loadedAttendance.filter(r => !dbService.isItemDeleted('attendance', r.id)));
 
         const loadedPayroll = await dbService.loadOrSeedCollection('payroll_records', INITIAL_PAYROLL_RECORDS);
         setPayrollRecords(loadedPayroll);
@@ -474,6 +480,20 @@ export function App() {
       }
 
       showToast(`Leave request rejected.`);
+    } catch (err: any) {
+      showToast(`❌ Database error: ${err.message || err}`);
+    }
+  };
+
+  const handleDeleteLeave = async (id: string) => {
+    if (currentUser.roleType !== 'admin') {
+      showToast('⚠️ Access Denied: Only Admins can permanently delete leave records.');
+      return;
+    }
+    try {
+      await dbService.deleteItem('leave_requests', id);
+      setLeaveRequests(prev => prev.filter(r => r.id !== id));
+      showToast('Leave record permanently deleted.');
     } catch (err: any) {
       showToast(`❌ Database error: ${err.message || err}`);
     }
@@ -1028,51 +1048,6 @@ export function App() {
     setCurrentView('dashboard');
     const roleTitle = (activeUser.roleType || 'user').toUpperCase();
     showToast(`Signed in as ${roleTitle} (${activeUser.email || activeUser.name})`);
-
-    // Automatic Attendance Clock-In on Login (Auto-Punch)
-    try {
-      const todayISO = getPKTDateISO();
-      const existingAtt = attendanceRecords.find(
-        r => (r.empId === activeUser.empId || r.employeeName.toLowerCase() === activeUser.name.toLowerCase()) &&
-             (r.date === todayISO || r.date === '2026-09-01' || r.date.includes('Today'))
-      );
-
-      if (!existingAtt || !existingAtt.clockIn || existingAtt.clockIn === '--:--' || existingAtt.status === 'Absent') {
-        const nowPKT = getPKTDate();
-        const clockInTimeStr = formatPKTTime(nowPKT);
-        const punctuality = determinePunctuality(clockInTimeStr, '09:00 AM', 15);
-        const dayName = nowPKT.toLocaleDateString('en-US', { weekday: 'long' });
-
-        const autoRecord: AttendanceRecord = {
-          id: `att-${activeUser.empId || 'USR'}-${todayISO}`,
-          empId: activeUser.empId || 'EMP-0001',
-          employeeName: activeUser.name,
-          department: activeUser.department || 'Operations',
-          avatar: activeUser.avatar,
-          avatarInitials: activeUser.name.split(' ').map(n => n[0]).join('').substring(0, 2),
-          date: todayISO,
-          displayDate: formatPKTDateDisplay(todayISO),
-          dayName,
-          shift: 'Regular (09:00 AM – 06:00 PM)',
-          clockIn: clockInTimeStr,
-          clockOut: '--:--',
-          breakMinutes: 0,
-          totalHrs: 'Working (0h 01m)',
-          overtime: '0h 00m',
-          status: punctuality.status,
-          lateDuration: punctuality.lateDuration,
-          remarks: 'Automatic attendance punch on login',
-          recordedBy: 'Auto-Login System',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        };
-
-        dbService.saveItem('attendance', autoRecord).catch(console.error);
-        setAttendanceRecords(prev => [autoRecord, ...prev.filter(r => r.empId !== autoRecord.empId || (r.date !== todayISO && r.date !== '2026-09-01'))]);
-      }
-    } catch (err) {
-      console.error('Error auto-clocking attendance on login:', err);
-    }
   };
 
   // User-Specific Theme Toggle Handler
@@ -1175,6 +1150,7 @@ export function App() {
           <EmployeeDetailView
             employee={selectedEmployee}
             currentUser={currentUser}
+            leaveRequests={leaveRequests}
             onBack={() => setCurrentView('employees')}
             onNavigate={setCurrentView}
             onSendMessage={handleSendMessage}
@@ -1229,10 +1205,13 @@ export function App() {
         return (
           <LeaveManagementView
             leaveRequests={leaveRequests}
+            currentUser={currentUser}
+            employees={employees}
             onApproveLeave={handleApproveLeave}
             onRejectLeave={handleRejectLeave}
             onOpenApplyLeave={() => setIsApplyLeaveOpen(true)}
             onNavigate={setCurrentView}
+            onDeleteLeave={handleDeleteLeave}
           />
         );
 
@@ -1432,6 +1411,8 @@ export function App() {
         isOpen={isApplyLeaveOpen}
         onClose={() => setIsApplyLeaveOpen(false)}
         onSubmit={handleApplyLeave}
+        currentUser={currentUser}
+        leaveRequests={leaveRequests}
       />
 
       <DownloadReportModal

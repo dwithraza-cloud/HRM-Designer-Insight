@@ -22,6 +22,7 @@ interface SeedState {
 
 export class DBService {
   private seededCache: Set<string> = new Set();
+  private deletedCache: Set<string> = new Set();
   private metaLoaded = false;
 
   constructor() {
@@ -37,27 +38,90 @@ export class DBService {
     } catch (e) {
       console.warn('Error reading local seed cache:', e);
     }
+
+    // Read local storage deleted items cache on startup
+    try {
+      const deletedStored = localStorage.getItem('insight_hrm_deleted_items_all');
+      if (deletedStored) {
+        const parsed = JSON.parse(deletedStored);
+        if (Array.isArray(parsed)) {
+          parsed.forEach(id => this.deletedCache.add(id));
+        }
+      }
+    } catch (e) {
+      console.warn('Error reading local deleted cache:', e);
+    }
   }
 
   /**
    * Check if an item ID has been deleted by the user
    */
   isItemDeleted(collectionName: string, id: string): boolean {
+    if (!id) return false;
+    const compoundKey = `${collectionName}_${id}`;
+    if (this.deletedCache.has(compoundKey) || this.deletedCache.has(id)) {
+      return true;
+    }
     try {
-      return localStorage.getItem(`${LOCAL_STORAGE_DELETED_PREFIX}${collectionName}_${id}`) === 'true';
+      if (localStorage.getItem(`${LOCAL_STORAGE_DELETED_PREFIX}${collectionName}_${id}`) === 'true') {
+        this.deletedCache.add(compoundKey);
+        this.deletedCache.add(id);
+        return true;
+      }
     } catch {
       return false;
+    }
+    return false;
+  }
+
+  /**
+   * Track deleted item ID permanently across memory, localStorage, and Firestore
+   */
+  markItemDeleted(collectionName: string, id: string): void {
+    if (!id) return;
+    const compoundKey = `${collectionName}_${id}`;
+    this.deletedCache.add(compoundKey);
+    this.deletedCache.add(id);
+
+    try {
+      localStorage.setItem(`${LOCAL_STORAGE_DELETED_PREFIX}${collectionName}_${id}`, 'true');
+      localStorage.setItem('insight_hrm_deleted_items_all', JSON.stringify(Array.from(this.deletedCache)));
+    } catch (e) {
+      console.warn('Error saving deleted item tombstone:', e);
+    }
+
+    // Persist tombstones to Firestore asynchronously so all accounts and reloads respect it
+    try {
+      const metaRef = doc(db, SYSTEM_METADATA_COLLECTION, 'deleted_records');
+      setDoc(metaRef, {
+        deletedKeys: Array.from(this.deletedCache),
+        updatedAt: new Date().toISOString()
+      }, { merge: true }).catch(() => {});
+    } catch {
+      // background non-blocking
     }
   }
 
   /**
-   * Track deleted item ID permanently
+   * Fetch global deletion tombstones from Firestore
    */
-  markItemDeleted(collectionName: string, id: string): void {
+  async loadGlobalDeletedTombstones(): Promise<void> {
     try {
-      localStorage.setItem(`${LOCAL_STORAGE_DELETED_PREFIX}${collectionName}_${id}`, 'true');
+      const metaRef = doc(db, SYSTEM_METADATA_COLLECTION, 'deleted_records');
+      const snap = await getDoc(metaRef);
+      if (snap.exists()) {
+        const data = snap.data();
+        if (Array.isArray(data.deletedKeys)) {
+          data.deletedKeys.forEach((k: string) => {
+            if (k) this.deletedCache.add(k);
+          });
+          try {
+            localStorage.setItem('insight_hrm_deleted_items_all', JSON.stringify(Array.from(this.deletedCache)));
+          } catch {}
+        }
+      }
     } catch (e) {
-      console.warn('Error saving deleted item tombstone:', e);
+      console.warn('Could not load global deleted tombstones:', e);
     }
   }
 
@@ -213,14 +277,17 @@ export class DBService {
    * Permanently delete a document from Firestore
    */
   async deleteItem(collectionName: string, id: string): Promise<void> {
+    if (!id) return;
+    // 1. Immediately mark tombstone locally and in cache
+    this.markItemDeleted(collectionName, id);
+
     try {
-      this.markItemDeleted(collectionName, id);
       await this.markCollectionSeeded(collectionName);
       const docRef = doc(db, collectionName, id);
       await deleteDoc(docRef);
     } catch (error) {
-      console.error(`[Firestore Error] Failed to delete document '${id}' from '${collectionName}':`, error);
-      throw error;
+      console.warn(`[Firestore Notice] Could not delete doc '${id}' from '${collectionName}' (may be local-only or already removed):`, error);
+      // Tombstone is already preserved, operation is considered complete
     }
   }
 

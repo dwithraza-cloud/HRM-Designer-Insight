@@ -41,7 +41,8 @@ import {
   Trash2,
   FolderOpen
 } from 'lucide-react';
-import { Employee, ViewMode, UserProfile, UserRole } from '../types';
+import { Employee, ViewMode, UserProfile, UserRole, LeaveRequest } from '../types';
+import { WORKFORCE_SHIFTS } from '../utils/attendanceUtils';
 
 interface ChecklistItem {
   id: string;
@@ -56,6 +57,7 @@ interface ChecklistItem {
 interface EmployeeDetailViewProps {
   employee: Employee;
   currentUser?: UserProfile;
+  leaveRequests?: LeaveRequest[];
   onBack: () => void;
   onNavigate: (view: ViewMode) => void;
   onSendMessage: (employee: Employee) => void;
@@ -66,6 +68,7 @@ interface EmployeeDetailViewProps {
 export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
   employee,
   currentUser,
+  leaveRequests = [],
   onBack,
   onNavigate,
   onSendMessage,
@@ -99,7 +102,8 @@ export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
     nationality: employee.nationality || 'Bangladeshi',
     location: employee.location || 'Gulshan 2, Dhaka',
     reportingManager: employee.reportingManager || 'Sarah Jenkins',
-    baseSalary: employee.baseSalary || 145000
+    baseSalary: employee.baseSalary || 145000,
+    shift: employee.shift || WORKFORCE_SHIFTS[0].label
   });
 
   const [saving, setSaving] = useState(false);
@@ -1149,6 +1153,10 @@ export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
                   <span className="font-semibold text-white">{employee.location || 'Gulshan 2, Dhaka'}</span>
                 </div>
                 <div>
+                  <span className="text-slate-500 block mb-1">Workforce Shift</span>
+                  <span className="font-semibold text-amber-300">{employee.shift || WORKFORCE_SHIFTS[0].label}</span>
+                </div>
+                <div>
                   <span className="text-slate-500 block mb-1">Employment Type</span>
                   <span className="font-semibold text-white">Full-Time Permanent</span>
                 </div>
@@ -1211,37 +1219,102 @@ export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
       )}
 
       {/* Leave Tab */}
-      {activeTab === 'Leave' && (
-        <div className="glass-panel p-6 rounded-3xl border border-white/5 space-y-4">
-          <div className="flex items-center justify-between border-b border-white/10 pb-3">
-            <h3 className="text-sm font-bold text-white flex items-center gap-2">
-              <CalendarDays className="w-4 h-4 text-amber-400" />
-              Leave Balance & History
-            </h3>
-            <button
-              onClick={() => onNavigate('leave')}
-              className="text-xs text-purple-400 hover:text-purple-300 font-semibold cursor-pointer"
-            >
-              Open Leave Center →
-            </button>
-          </div>
+      {activeTab === 'Leave' && (() => {
+        const empLeaves = leaveRequests.filter(r => 
+          (r.empId && r.empId === employee.empId) ||
+          (r.employeeName && r.employeeName.toLowerCase().trim() === employee.name.toLowerCase().trim())
+        );
+        const approvedEmpLeaves = empLeaves.filter(r => r.status === 'Approved');
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 text-xs">
-              <span className="text-slate-400 block mb-1">Casual Leave</span>
-              <p className="text-lg font-bold text-white">6 <span className="text-slate-500 text-xs">/ 10 days left</span></p>
+        const empCasualUsed = approvedEmpLeaves
+          .filter(r => (r.leaveType || '').toLowerCase().includes('casual'))
+          .reduce((sum, r) => sum + (Number(r.daysCount) || 1), 0);
+        const empSickUsed = approvedEmpLeaves
+          .filter(r => (r.leaveType || '').toLowerCase().includes('sick'))
+          .reduce((sum, r) => sum + (Number(r.daysCount) || 1), 0);
+        const empVacationUsed = approvedEmpLeaves
+          .filter(r => {
+            const t = (r.leaveType || '').toLowerCase();
+            return t.includes('annual') || t.includes('vacation') || t.includes('vocation');
+          })
+          .reduce((sum, r) => sum + (Number(r.daysCount) || 1), 0);
+
+        const empCasualLeft = Math.max(0, 12 - empCasualUsed);
+        const empSickLeft = Math.max(0, 12 - empSickUsed);
+        const empVacationLeft = Math.max(0, 10 - empVacationUsed);
+
+        return (
+          <div className="glass-panel p-6 rounded-3xl border border-white/5 space-y-4">
+            <div className="flex items-center justify-between border-b border-white/10 pb-3">
+              <div>
+                <h3 className="text-sm font-bold text-white flex items-center gap-2">
+                  <CalendarDays className="w-4 h-4 text-amber-400" />
+                  Leave Balances & History
+                </h3>
+                <p className="text-[11px] text-slate-400">Official Annual Quota: 12 CL/year • 12 SL/year • 10 Vacation/year</p>
+              </div>
+              <button
+                onClick={() => onNavigate('leave')}
+                className="text-xs text-purple-400 hover:text-purple-300 font-semibold cursor-pointer"
+              >
+                Open Leave Center →
+              </button>
             </div>
-            <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 text-xs">
-              <span className="text-slate-400 block mb-1">Sick Leave</span>
-              <p className="text-lg font-bold text-white">8 <span className="text-slate-500 text-xs">/ 10 days left</span></p>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 text-xs">
+                <span className="text-slate-400 block mb-1">Casual Leave (CL)</span>
+                <p className="text-lg font-bold text-white">{empCasualLeft} <span className="text-slate-500 text-xs">/ 12 days left</span></p>
+                <div className="w-full bg-white/5 rounded-full h-1.5 mt-2 overflow-hidden">
+                  <div className="bg-blue-500 h-full rounded-full" style={{ width: `${Math.round((empCasualLeft / 12) * 100)}%` }} />
+                </div>
+                <p className="text-[10px] text-slate-500 mt-1">{empCasualUsed} {empCasualUsed === 1 ? 'day' : 'days'} consumed</p>
+              </div>
+              <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 text-xs">
+                <span className="text-slate-400 block mb-1">Sick Leave (SL)</span>
+                <p className="text-lg font-bold text-white">{empSickLeft} <span className="text-slate-500 text-xs">/ 12 days left</span></p>
+                <div className="w-full bg-white/5 rounded-full h-1.5 mt-2 overflow-hidden">
+                  <div className="bg-rose-500 h-full rounded-full" style={{ width: `${Math.round((empSickLeft / 12) * 100)}%` }} />
+                </div>
+                <p className="text-[10px] text-slate-500 mt-1">{empSickUsed} {empSickUsed === 1 ? 'day' : 'days'} consumed</p>
+              </div>
+              <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 text-xs">
+                <span className="text-slate-400 block mb-1">Vacation Leave (VL)</span>
+                <p className="text-lg font-bold text-white">{empVacationLeft} <span className="text-slate-500 text-xs">/ 10 days left</span></p>
+                <div className="w-full bg-white/5 rounded-full h-1.5 mt-2 overflow-hidden">
+                  <div className="bg-purple-500 h-full rounded-full" style={{ width: `${Math.round((empVacationLeft / 10) * 100)}%` }} />
+                </div>
+                <p className="text-[10px] text-slate-500 mt-1">{empVacationUsed} {empVacationUsed === 1 ? 'day' : 'days'} consumed</p>
+              </div>
             </div>
-            <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5 text-xs">
-              <span className="text-slate-400 block mb-1">Annual Paid Leave</span>
-              <p className="text-lg font-bold text-white">12 <span className="text-slate-500 text-xs">/ 14 days left</span></p>
-            </div>
+
+            {empLeaves.length > 0 && (
+              <div className="mt-4 pt-4 border-t border-white/5">
+                <h4 className="text-xs font-semibold text-slate-300 mb-2">Leave Records for {employee.name}</h4>
+                <div className="space-y-2">
+                  {empLeaves.map(r => (
+                    <div key={r.id} className="p-2.5 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between text-xs">
+                      <div>
+                        <span className="font-semibold text-white">{r.leaveType}</span>
+                        <span className="text-slate-400 ml-2">({r.startDate} - {r.endDate})</span>
+                      </div>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                        r.status === 'Approved' 
+                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30' 
+                          : r.status === 'Rejected'
+                            ? 'bg-rose-500/20 text-rose-300 border border-rose-500/30'
+                            : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                      }`}>
+                        {r.status}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Payroll Tab */}
       {activeTab === 'Payroll' && canViewSalary && (
@@ -1609,6 +1682,22 @@ export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
                         placeholder="Gulshan 2, Dhaka / Remote"
                         className="w-full px-3.5 py-2.5 bg-white/[0.05] border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 transition-colors"
                       />
+                    </div>
+
+                    <div>
+                      <label className="text-slate-300 font-semibold mb-1.5 block">Workforce Shift (Timing)</label>
+                      <select
+                        id="select-edit-emp-shift"
+                        value={formData.shift || WORKFORCE_SHIFTS[0].label}
+                        onChange={(e) => setFormData({ ...formData, shift: e.target.value })}
+                        className="w-full px-3.5 py-2.5 bg-[#172038] border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500 transition-colors cursor-pointer"
+                      >
+                        {WORKFORCE_SHIFTS.map((s) => (
+                          <option key={s.id} value={s.label}>
+                            {s.label}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
                     <div>

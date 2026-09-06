@@ -15,24 +15,54 @@ import {
   Sparkles,
   CheckCircle2
 } from 'lucide-react';
-import { LeaveRequest, Employee, ViewMode } from '../types';
+import { LeaveRequest, Employee, ViewMode, UserProfile } from '../types';
 
 // 1. Apply for Leave Modal
 interface ApplyLeaveModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSubmit: (leave: LeaveRequest) => void;
+  currentUser?: UserProfile;
+  leaveRequests?: LeaveRequest[];
 }
 
 export const ApplyLeaveModal: React.FC<ApplyLeaveModalProps> = ({
   isOpen,
   onClose,
-  onSubmit
+  onSubmit,
+  currentUser,
+  leaveRequests = []
 }) => {
   const [leaveType, setLeaveType] = useState<'Casual Leave' | 'Sick Leave' | 'Annual Leave' | 'Maternity Leave'>('Casual Leave');
   const [startDate, setStartDate] = useState('2025-05-18');
   const [endDate, setEndDate] = useState('2025-05-20');
   const [reason, setReason] = useState('');
+
+  // Calculate live balances for user based on 12 Casual, 12 Sick, and 10 Vacation quota
+  const approvedUserLeaves = leaveRequests.filter(r => 
+    r.status === 'Approved' && 
+    currentUser?.name && 
+    r.employeeName.toLowerCase().trim() === currentUser.name.toLowerCase().trim()
+  );
+
+  const casualUsed = approvedUserLeaves
+    .filter(r => (r.leaveType || '').toLowerCase().includes('casual'))
+    .reduce((sum, r) => sum + (Number(r.daysCount) || 1), 0);
+
+  const sickUsed = approvedUserLeaves
+    .filter(r => (r.leaveType || '').toLowerCase().includes('sick'))
+    .reduce((sum, r) => sum + (Number(r.daysCount) || 1), 0);
+
+  const vacationUsed = approvedUserLeaves
+    .filter(r => {
+      const t = (r.leaveType || '').toLowerCase();
+      return t.includes('annual') || t.includes('vacation') || t.includes('vocation');
+    })
+    .reduce((sum, r) => sum + (Number(r.daysCount) || 1), 0);
+
+  const casualRemaining = Math.max(0, 12 - casualUsed);
+  const sickRemaining = Math.max(0, 12 - sickUsed);
+  const vacationRemaining = Math.max(0, 10 - vacationUsed);
 
   if (!isOpen) return null;
 
@@ -45,9 +75,10 @@ export const ApplyLeaveModal: React.FC<ApplyLeaveModalProps> = ({
 
     const newReq: LeaveRequest = {
       id: `lev-${Date.now()}`,
-      employeeName: 'Ayon Ahmed',
-      department: 'Design',
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZQndi0Q67LuyTUAs8C_7ptSSpWoFH67QhVbLxfJfqqymbTF0-ImTvZteCBSvRhku41rEwtRkkZ2yuI6nQmZb0BfCOfoZGNID_PEOn4VWAWuKVpWR7Ik8bXButYDHroiVhejf7BUJNlr5RCQjELnvfecxNjb3pdO-wFiNm8ZRyrk3KjzJktBW6t2HdB8uvLEdFXWKFvdGX3obC3EyYo3QUO3PVDq-c-ap2YZgHP_1pncDG6fIUYwwl',
+      empId: currentUser?.empId,
+      employeeName: currentUser?.name || 'Employee',
+      department: (currentUser?.department as any) || 'Design',
+      avatar: currentUser?.avatar || 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZQndi0Q67LuyTUAs8C_7ptSSpWoFH67QhVbLxfJfqqymbTF0-ImTvZteCBSvRhku41rEwtRkkZ2yuI6nQmZb0BfCOfoZGNID_PEOn4VWAWuKVpWR7Ik8bXButYDHroiVhejf7BUJNlr5RCQjELnvfecxNjb3pdO-wFiNm8ZRyrk3KjzJktBW6t2HdB8uvLEdFXWKFvdGX3obC3EyYo3QUO3PVDq-c-ap2YZgHP_1pncDG6fIUYwwl',
       leaveType,
       duration: `${days} Day${days > 1 ? 's' : ''}`,
       startDate: new Date(startDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
@@ -78,9 +109,9 @@ export const ApplyLeaveModal: React.FC<ApplyLeaveModalProps> = ({
               onChange={(e) => setLeaveType(e.target.value as any)}
               className="w-full px-3.5 py-2.5 bg-[#0b1326] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-purple-500/50"
             >
-              <option value="Casual Leave">Casual Leave (CL) - 12 Days Remaining</option>
-              <option value="Sick Leave">Sick Leave (SL) - 8 Days Remaining</option>
-              <option value="Annual Leave">Annual Vacation (AL) - 15 Days Remaining</option>
+              <option value="Casual Leave">Casual Leave (CL) - {casualRemaining} of 12 Days Remaining</option>
+              <option value="Sick Leave">Sick Leave (SL) - {sickRemaining} of 12 Days Remaining</option>
+              <option value="Annual Leave">Vacation Leave (VL) - {vacationRemaining} of 10 Days Remaining</option>
               <option value="Maternity Leave">Maternity / Paternity Leave</option>
             </select>
           </div>

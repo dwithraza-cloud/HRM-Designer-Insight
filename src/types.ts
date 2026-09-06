@@ -77,6 +77,7 @@ export interface Employee {
 
 export interface LeaveRequest {
   id: string;
+  empId?: string;
   employeeName: string;
   department: string;
   avatar?: string;

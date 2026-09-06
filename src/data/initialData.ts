@@ -205,150 +205,9 @@ export const INITIAL_EMPLOYEES: Employee[] = [
   }
 ];
 
-export const INITIAL_LEAVE_REQUESTS: LeaveRequest[] = [
-  {
-    id: 'lev-1',
-    employeeName: 'Rahim Uddin',
-    department: 'Engineering',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBSANbGI_8XJwr4JerK2U_S85Z10-Lhe_dnK9SL5j7CA7A78CwnhHQHcY4OfNOr2pDaW9hgOkTqKBCWPZ9PSSR9sfz9ljGdJCaRFTtYFjjW-EeDaH4Lb7pSfNCRoyGbmvg9LYJvJf4XTU2H0-vTX1OncSoyHd9Yq1BjbrpoWB6up8qQOivnc3S9AK11f-bL5xi6YcXHd-lgU3gKTaGFvNAZXYG0H5_OaDSz4Vlg_JLyRbeFO6H7cJrv',
-    leaveType: 'Casual Leave',
-    duration: '3 Days',
-    startDate: '12 May 2025',
-    endDate: '14 May 2025',
-    daysCount: 3,
-    reason: 'Family wedding event in Sylhet.',
-    status: 'Pending',
-    appliedDate: '08 May 2025'
-  },
-  {
-    id: 'lev-2',
-    employeeName: 'Sarah Rahman',
-    department: 'Marketing',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA5IchO3RZGm0f-HVXMJ2KxT1l2SPNekW2kVOsggoKpVozxw1zaldbKe88nR15OTuPadqt_G7uE6prssjL5xoTgVCGTpoza8BFq1s1jhzKiaXW7oZKPC9tygDzBzxnsHNiu2qwkIO4zmOCcexW7kiM1D9FmeO5X-YHAWr5NitUEE2fZ6T5TkPRNQb3uPDz0rR1Mnot8atZ8vqQ5D0tFqEAqa-TfiXb4wekFZpoBxlHR6R4nrLDWUoI1',
-    leaveType: 'Sick Leave',
-    duration: '2 Days',
-    startDate: '15 May 2025',
-    endDate: '16 May 2025',
-    daysCount: 2,
-    reason: 'Medical checkup and recovery prescribed by doctor.',
-    status: 'Pending',
-    appliedDate: '10 May 2025'
-  },
-  {
-    id: 'lev-3',
-    employeeName: 'Sumaiya Akter',
-    department: 'HR',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuADQcAFIWDJ8g7APl2aOjC7M5drmvNeR0adkjwJQVVuoFudHVArwpni00b8CM7KOAHa7oxn4kKlj8AuLw3DQ5q7z72A_M7SyQJfWE_Omi_kh3T0W41JFx5OUziSGWqpzvo0veD9kqf54hae4mDr7abyGMq79swnEo0j598XUbb2OXswI5H1s5qlM86vEdiXh_udAlNHwMxSXuvt-XFNIbqvvlG-ZjCtCUI--j3MBmfhy7XMikuswA27',
-    leaveType: 'Annual Leave',
-    duration: '5 Days',
-    startDate: '20 May 2025',
-    endDate: '24 May 2025',
-    daysCount: 5,
-    reason: 'Annual vacation trip with family.',
-    status: 'Approved',
-    appliedDate: '02 May 2025'
-  },
-  {
-    id: 'lev-4',
-    employeeName: 'David Chen',
-    department: 'Engineering',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDCygYhHxrgl5qRtqzjE6Q0wBw0qO07I1AgcE3f7rjT4Kvlk-h2eBlcyXzERuSG8QLwXvTln7dkB0evTz0_8d6XscH6Z-3ZscPI4rvjg4uAo_okgcs6zG4cqq6SF-bGnZraG6xC0yvzBhJ6reIdNoLS3uiyVM70IVXv4NOXel6TAoMvE_fZJ0Fbk50-6GNyyj9xAgi0SThZcppMO1pbPKw8HQ78s8IXlXstNFswBA7TOP-RXosHeF3X',
-    leaveType: 'Casual Leave',
-    duration: '1 Day',
-    startDate: '18 May 2025',
-    endDate: '18 May 2025',
-    daysCount: 1,
-    reason: 'Personal urgent bank paperwork.',
-    status: 'Pending',
-    appliedDate: '11 May 2025'
-  }
-];
+export const INITIAL_LEAVE_REQUESTS: LeaveRequest[] = [];
 
-export const INITIAL_ATTENDANCE: AttendanceRecord[] = [
-  {
-    id: 'att-hist-01',
-    empId: 'EMP-0001',
-    employeeName: 'Raja Raza',
-    department: 'Operations',
-    avatar: '/raja_raza.jpg',
-    avatarInitials: 'RR',
-    date: '2026-09-01',
-    displayDate: '01 Sep 2026',
-    dayName: 'Tuesday',
-    shift: 'Morning (09:00 AM – 06:00 PM)',
-    clockIn: '10:03 AM',
-    clockOut: '--:--',
-    breakMinutes: 45,
-    totalHrs: '7h 45m',
-    overtime: '0h 00m',
-    status: 'Late',
-    lateDuration: '1h 03m',
-    remarks: 'Field operations review',
-    recordedBy: 'Self'
-  },
-  {
-    id: 'att-hist-02',
-    empId: 'EMP-0142',
-    employeeName: 'Rani',
-    department: 'Design',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBSANbGI_8XJwr4JerK2U_S85Z10-Lhe_dnK9SL5j7CA7A78CwnhHQHcY4OfNOr2pDaW9hgOkTqKBCWPZ9PSSR9sfz9ljGdJCaRFTtYFjjW-EeDaH4Lb7pSfNCRoyGbmvg9LYJvJf4XTU2H0-vTX1OncSoyHd9Yq1BjbrpoWB6up8qQOivnc3S9AK11f-bL5xi6YcXHd-lgU3gKTaGFvNAZXYG0H5_OaDSz4Vlg_JLyRbeFO6H7cJrv',
-    avatarInitials: 'RA',
-    date: '2026-09-01',
-    displayDate: '01 Sep 2026',
-    dayName: 'Tuesday',
-    shift: 'Morning (09:00 AM – 06:00 PM)',
-    clockIn: '09:05 AM',
-    clockOut: '--:--',
-    breakMinutes: 45,
-    totalHrs: '6h 55m',
-    overtime: '0h 00m',
-    status: 'Present',
-    lateDuration: '--',
-    remarks: 'UI & Design system sprint',
-    recordedBy: 'Self'
-  },
-  {
-    id: 'att-hist-03',
-    empId: 'EMP-0103',
-    employeeName: 'Aqsa',
-    department: 'Design',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCrGYbO589VOTATEVvsbR5nyyOSwLBLuKXOxbFTAMEVyEEoVKEAscptTr1Fw8iGYSdAB1g1J5Y2Vx6y8Ypywrc1QuHnwiu6JKqVnuiQ75E-Zl1lklVnZju58LXg4EI6rxi76D29F_QaeZ2oRg09f6FoJmK_QL6Z8b3aMDi0bl53XwFkCgcHB8gkqEbh1qkmBlu_dlAs6b6vNmeVUXXkWqoQmRb8581biV9eH9oJ2xg2_FZghdAbak5L',
-    avatarInitials: 'AQ',
-    date: '2026-09-01',
-    displayDate: '01 Sep 2026',
-    dayName: 'Tuesday',
-    shift: 'Morning (09:00 AM – 06:00 PM)',
-    clockIn: '08:50 AM',
-    clockOut: '--:--',
-    breakMinutes: 50,
-    totalHrs: '7h 10m',
-    overtime: '0h 10m',
-    status: 'Present',
-    lateDuration: '--',
-    remarks: 'Design review & Figma sync',
-    recordedBy: 'Self'
-  },
-  {
-    id: 'att-hist-06',
-    empId: 'EMP-0111',
-    employeeName: 'Saba',
-    department: 'Marketing',
-    avatarInitials: 'SB',
-    date: '2026-09-01',
-    displayDate: '01 Sep 2026',
-    dayName: 'Tuesday',
-    shift: 'Morning (09:00 AM – 06:00 PM)',
-    clockIn: '09:00 AM',
-    clockOut: '--:--',
-    breakMinutes: 60,
-    totalHrs: '7h 00m',
-    overtime: '0h 00m',
-    status: 'Present',
-    lateDuration: '--',
-    remarks: 'Video editing & brand campaign',
-    recordedBy: 'Self'
-  }
-];
+export const INITIAL_ATTENDANCE: AttendanceRecord[] = [];
 
 export const INITIAL_ACTIVE_INTERVIEWS: ActiveInterview[] = [
   {
@@ -577,67 +436,51 @@ export const INITIAL_PAYROLL_RECORDS: PayrollRecord[] = [
   },
   {
     id: 'pay-4',
-    empId: 'EMP-0102',
-    employeeName: 'Sumaiya Akter',
-    department: 'HR',
-    designation: 'HR Specialist',
-    baseSalary: 95000,
-    allowances: 14250,
-    deductions: 7600,
-    netSalary: 101650,
-    status: 'Processing',
-    paymentDate: 'Pending',
+    empId: 'EMP-0109',
+    employeeName: 'Iqra Pervaiz',
+    department: 'Engineering',
+    designation: 'Senior Frontend Engineer',
+    baseSalary: 260000,
+    allowances: 39000,
+    deductions: 20800,
+    netSalary: 278200,
+    status: 'Paid',
+    paymentDate: '28 May 2025',
     month: 'May 2025',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuADQcAFIWDJ8g7APl2aOjC7M5drmvNeR0adkjwJQVVuoFudHVArwpni00b8CM7KOAHa7oxn4kKlj8AuLw3DQ5q7z72A_M7SyQJfWE_Omi_kh3T0W41JFx5OUziSGWqpzvo0veD9kqf54hae4mDr7abyGMq79swnEo0j598XUbb2OXswI5H1s5qlM86vEdiXh_udAlNHwMxSXuvt-XFNIbqvvlG-ZjCtCUI--j3MBmfhy7XMikuswA27',
+    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDCygYhHxrgl5qRtqzjE6Q0wBw0qO07I1AgcE3f7rjT4Kvlk-h2eBlcyXzERuSG8QLwXvTln7dkB0evTz0_8d6XscH6Z-3ZscPI4rvjg4uAo_okgcs6zG4cqq6SF-bGnZraG6xC0yvzBhJ6reIdNoLS3uiyVM70IVXv4NOXel6TAoMvE_fZJ0Fbk50-6GNyyj9xAgi0SThZcppMO1pbPKw8HQ78s8IXlXstNFswBA7TOP-RXosHeF3X',
     paymentMethod: 'Direct Deposit'
   },
   {
     id: 'pay-5',
-    empId: 'EMP-0104',
-    employeeName: 'David Rodriguez',
-    department: 'Engineering',
-    designation: 'Chief Technology Officer',
-    baseSalary: 350000,
-    allowances: 52500,
-    deductions: 28000,
-    netSalary: 374500,
-    status: 'Paid',
-    paymentDate: '28 May 2025',
-    month: 'May 2025',
-    avatarInitials: 'DR',
-    paymentMethod: 'Bank Wire Transfer'
-  },
-  {
-    id: 'pay-6',
-    empId: 'EMP-0105',
-    employeeName: 'Sarah Rahman',
+    empId: 'EMP-0110',
+    employeeName: 'Asim Khan',
     department: 'Marketing',
-    designation: 'Marketing Director',
-    baseSalary: 130000,
-    allowances: 19500,
-    deductions: 10400,
-    netSalary: 139100,
-    status: 'Paid',
-    paymentDate: '28 May 2025',
+    designation: 'Social Media Manager',
+    baseSalary: 140000,
+    allowances: 21000,
+    deductions: 11200,
+    netSalary: 149800,
+    status: 'Processing',
+    paymentDate: 'Pending',
     month: 'May 2025',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA5IchO3RZGm0f-HVXMJ2KxT1l2SPNekW2kVOsggoKpVozxw1zaldbKe88nR15OTuPadqt_G7uE6prssjL5xoTgVCGTpoza8BFq1s1jhzKiaXW7oZKPC9tygDzBzxnsHNiu2qwkIO4zmOCcexW7kiM1D9FmeO5X-YHAWr5NitUEE2fZ6T5TkPRNQb3uPDz0rR1Mnot8atZ8vqQ5D0tFqEAqa-TfiXb4wekFZpoBxlHR6R4nrLDWUoI1',
+    avatarInitials: 'AK',
     paymentMethod: 'Direct Deposit'
   },
   {
-    id: 'pay-7',
-    empId: 'EMP-0106',
-    employeeName: 'Alex Morgan',
-    department: 'Engineering',
-    designation: 'Lead DevOps Architect',
-    baseSalary: 175000,
-    allowances: 26250,
-    deductions: 14000,
-    netSalary: 187250,
-    status: 'On Hold',
-    paymentDate: 'Pending Verification',
+    id: 'pay-6',
+    empId: 'EMP-0111',
+    employeeName: 'Saba',
+    department: 'Marketing',
+    designation: 'Video Editor',
+    baseSalary: 150000,
+    allowances: 22500,
+    deductions: 12000,
+    netSalary: 160500,
+    status: 'Paid',
+    paymentDate: '28 May 2025',
     month: 'May 2025',
-    avatarInitials: 'AM',
-    paymentMethod: 'Bank Wire Transfer'
+    avatarInitials: 'SB',
+    paymentMethod: 'Direct Deposit'
   }
 ];
 
@@ -985,38 +828,46 @@ export const TOP_PERFORMERS: TopPerformer[] = [
 export const RECENT_FEEDBACK: FeedbackItem[] = [
   {
     id: 'fb-1',
-    fromName: 'Sarah Jenkins',
-    toName: 'Ayon Ahmed',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCrGYbO589VOTATEVvsbR5nyyOSwLBLuKXOxbFTAMEVyEEoVKEAscptTr1Fw8iGYSdAB1g1J5Y2Vx6y8Ypywrc1QuHnwiu6JKqVnuiQ75E-Zl1lklVnZju58LXg4EI6rxi76D29F_QaeZ2oRg09f6FoJmK_QL6Z8b3aMDi0bl53XwFkCgcHB8gkqEbh1qkmBlu_dlAs6b6vNmeVUXXkWqoQmRb8581biV9eH9oJ2xg2_FZghdAbak5L',
+    fromName: 'Raja Raza',
+    toName: 'Aqsa',
+    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZQndi0Q67LuyTUAs8C_7ptSSpWoFH67QhVbLxfJfqqymbTF0-ImTvZteCBSvRhku41rEwtRkkZ2yuI6nQmZb0BfCOfoZGNID_PEOn4VWAWuKVpWR7Ik8bXButYDHroiVhejf7BUJNlr5RCQjELnvfecxNjb3pdO-wFiNm8ZRyrk3KjzJktBW6t2HdB8uvLEdFXWKFvdGX3obC3EyYo3QUO3PVDq-c-ap2YZgHP_1pncDG6fIUYwwl',
     timeAgo: '2 hours ago',
-    comment: 'Exceptional work redesigning the core enterprise flow! The consistency in design tokens and spatial clarity is world-class.'
+    comment: 'Exceptional design leadership across our entire product suite. The team velocity has improved dramatically!'
   },
   {
     id: 'fb-2',
-    fromName: 'David Rodriguez',
-    toName: 'Rahim Uddin',
-    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAxxwgp1S_xgssIZegK3dERGVDZcLI9XQVUUm9It4Wm4oMN4NKizpZSI9fWQibKQdGBAI8RMzHaqD_HL4fSBoylnUj-ucusfkiJ8xXMyzcwvEM_rNaleKTzbfNS6NpSpcOYjnN7_IfN8HwVz4nDrcsjOoNXLw5OjxsykRRqh1lGToOo0hbnOQt7mnj54iEhfAtgCaAsqcivvqhMKtX2XVijkEYYxOy-VtUvvwosmtJodKaQSKIgpOb4',
+    fromName: 'Aqsa',
+    toName: 'Rani',
+    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCrGYbO589VOTATEVvsbR5nyyOSwLBLuKXOxbFTAMEVyEEoVKEAscptTr1Fw8iGYSdAB1g1J5Y2Vx6y8Ypywrc1QuHnwiu6JKqVnuiQ75E-Zl1lklVnZju58LXg4EI6rxi76D29F_QaeZ2oRg09f6FoJmK_QL6Z8b3aMDi0bl53XwFkCgcHB8gkqEbh1qkmBlu_dlAs6b6vNmeVUXXkWqoQmRb8581biV9eH9oJ2xg2_FZghdAbak5L',
     timeAgo: '1 day ago',
-    comment: 'The zero-downtime database migration was executed flawlessly without any degradation in API latency. Outstanding work!'
+    comment: 'Outstanding visual craft and layout precision on the latest dashboard redesign. Pixel-perfect work!'
+  },
+  {
+    id: 'fb-3',
+    fromName: 'Raja Raza',
+    toName: 'Iqra Pervaiz',
+    avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZQndi0Q67LuyTUAs8C_7ptSSpWoFH67QhVbLxfJfqqymbTF0-ImTvZteCBSvRhku41rEwtRkkZ2yuI6nQmZb0BfCOfoZGNID_PEOn4VWAWuKVpWR7Ik8bXButYDHroiVhejf7BUJNlr5RCQjELnvfecxNjb3pdO-wFiNm8ZRyrk3KjzJktBW6t2HdB8uvLEdFXWKFvdGX3obC3EyYo3QUO3PVDq-c-ap2YZgHP_1pncDG6fIUYwwl',
+    timeAgo: '2 days ago',
+    comment: 'Great work on frontend state modularity, TypeScript type-safety, and snappy client interactions.'
   }
 ];
 
 export const NOTIFICATIONS: NotificationItem[] = [
   {
     id: 'notif-1',
-    title: 'New Leave Application',
-    message: 'Rahim Uddin submitted a Casual Leave request (3 Days)',
+    title: 'Workforce Attendance Logged',
+    message: 'Workforce shifts and biometric logs synchronized successfully',
     time: '10 min ago',
     read: false,
-    type: 'leave',
+    type: 'system',
     createdAt: new Date(Date.now() - 10 * 60000).toISOString(),
-    recipientRole: 'admin',
-    linkView: 'leave'
+    recipientRole: 'all',
+    linkView: 'attendance'
   },
   {
     id: 'notif-2',
     title: 'Task Due Soon',
-    message: 'Task "Design System v2.0 UI Specs" is due in 24 hours',
+    message: 'Task "Design System 2.0 Governance" is due today',
     time: '25 min ago',
     read: false,
     type: 'task',
@@ -1027,7 +878,7 @@ export const NOTIFICATIONS: NotificationItem[] = [
   {
     id: 'notif-3',
     title: '360 Peer Feedback Received',
-    message: 'Sarah Jenkins left you a 360 peer feedback review note',
+    message: 'Raja Raza left feedback for Aqsa on Design Leadership',
     time: '1 hour ago',
     read: false,
     type: 'performance',
@@ -1084,237 +935,146 @@ export const NOTIFICATIONS: NotificationItem[] = [
 export const INITIAL_TASKS: TaskItem[] = [
   {
     id: 'task-1',
-    title: 'Approve Rahim Uddin\'s casual leave application',
-    description: 'Verify 3-day sick leave balance and coordinate coverage with the engineering pod lead.',
+    title: 'Design System 2.0 Governance & Guidelines',
+    description: 'Establish typography tokens, spatial grids, and component libraries across web and mobile surfaces.',
     completed: false,
     status: 'Pending',
     pinned: true,
     priority: 'high',
     dueDate: 'Today',
-    category: 'Leave',
+    category: 'Design',
     createdAt: 'Today at 09:15 AM',
     assignedTo: {
-      id: 'emp-1',
-      name: 'Ayon Ahmed',
-      role: 'Lead UI/UX Designer & Admin',
-      roleType: 'admin',
-      department: 'Design',
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZQndi0Q67LuyTUAs8C_7ptSSpWoFH67QhVbLxfJfqqymbTF0-ImTvZteCBSvRhku41rEwtRkkZ2yuI6nQmZb0BfCOfoZGNID_PEOn4VWAWuKVpWR7Ik8bXButYDHroiVhejf7BUJNlr5RCQjELnvfecxNjb3pdO-wFiNm8ZRyrk3KjzJktBW6t2HdB8uvLEdFXWKFvdGX3obC3EyYo3QUO3PVDq-c-ap2YZgHP_1pncDG6fIUYwwl'
-    },
-    assignedBy: {
-      id: 'emp-4',
-      name: 'Sarah Jenkins',
-      role: 'VP of Product Design',
+      id: 'emp-3',
+      name: 'Aqsa',
+      role: 'Design Department Lead',
       roleType: 'manager',
+      department: 'Design',
       avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCrGYbO589VOTATEVvsbR5nyyOSwLBLuKXOxbFTAMEVyEEoVKEAscptTr1Fw8iGYSdAB1g1J5Y2Vx6y8Ypywrc1QuHnwiu6JKqVnuiQ75E-Zl1lklVnZju58LXg4EI6rxi76D29F_QaeZ2oRg09f6FoJmK_QL6Z8b3aMDi0bl53XwFkCgcHB8gkqEbh1qkmBlu_dlAs6b6vNmeVUXXkWqoQmRb8581biV9eH9oJ2xg2_FZghdAbak5L'
     },
+    assignedBy: {
+      id: 'emp-1',
+      name: 'Raja Raza',
+      role: 'HR Director & System Admin',
+      roleType: 'admin',
+      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZQndi0Q67LuyTUAs8C_7ptSSpWoFH67QhVbLxfJfqqymbTF0-ImTvZteCBSvRhku41rEwtRkkZ2yuI6nQmZb0BfCOfoZGNID_PEOn4VWAWuKVpWR7Ik8bXButYDHroiVhejf7BUJNlr5RCQjELnvfecxNjb3pdO-wFiNm8ZRyrk3KjzJktBW6t2HdB8uvLEdFXWKFvdGX3obC3EyYo3QUO3PVDq-c-ap2YZgHP_1pncDG6fIUYwwl'
+    },
     department: 'Design',
-    tags: ['HR Approvals', 'Urgent Coverage'],
-    attachments: [
-      {
-        id: 'att-1',
-        name: 'leave_medical_certificate.jpg',
-        type: 'image',
-        url: 'https://images.unsplash.com/photo-1584515979956-d9f6e5d09982?auto=format&fit=crop&w=600&q=80',
-        size: '1.4 MB',
-        uploadedAt: 'Today at 09:18 AM',
-        source: 'upload'
-      },
-      {
-        id: 'att-2',
-        name: 'coverage_schedule_q2.pdf',
-        type: 'pdf',
-        url: 'https://images.unsplash.com/photo-1568667256549-094345857637?auto=format&fit=crop&w=600&q=80',
-        size: '420 KB',
-        uploadedAt: 'Today at 09:20 AM',
-        source: 'upload'
-      }
-    ]
+    tags: ['Design System', 'Core Governance']
   },
   {
     id: 'task-2',
-    title: 'Review Q2 design team performance appraisals',
-    description: 'Calibrate scores for 4 junior designers and prepare executive promotion dossier.',
+    title: 'Mobile App Screen Mockups & Micro-interactions',
+    description: 'Design dark-mode elevation screens and interactive button states for the iOS/Android release.',
     completed: false,
     status: 'In Progress',
     pinned: true,
     priority: 'high',
     dueDate: 'Tomorrow',
-    category: 'Performance',
+    category: 'Design',
     createdAt: 'Yesterday at 04:30 PM',
     assignedTo: {
-      id: 'emp-4',
-      name: 'Sarah Jenkins',
-      role: 'VP of Product Design',
-      roleType: 'manager',
+      id: 'emp-2',
+      name: 'Rani',
+      role: 'UI/UX Visual Designer',
+      roleType: 'employee',
       department: 'Design',
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCrGYbO589VOTATEVvsbR5nyyOSwLBLuKXOxbFTAMEVyEEoVKEAscptTr1Fw8iGYSdAB1g1J5Y2Vx6y8Ypywrc1QuHnwiu6JKqVnuiQ75E-Zl1lklVnZju58LXg4EI6rxi76D29F_QaeZ2oRg09f6FoJmK_QL6Z8b3aMDi0bl53XwFkCgcHB8gkqEbh1qkmBlu_dlAs6b6vNmeVUXXkWqoQmRb8581biV9eH9oJ2xg2_FZghdAbak5L'
+      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBSANbGI_8XJwr4JerK2U_S85Z10-Lhe_dnK9SL5j7CA7A78CwnhHQHcY4OfNOr2pDaW9hgOkTqKBCWPZ9PSSR9sfz9ljGdJCaRFTtYFjjW-EeDaH4Lb7pSfNCRoyGbmvg9LYJvJf4XTU2H0-vTX1OncSoyHd9Yq1BjbrpoWB6up8qQOivnc3S9AK11f-bL5xi6YcXHd-lgU3gKTaGFvNAZXYG0H5_OaDSz4Vlg_JLyRbeFO6H7cJrv'
     },
     assignedBy: {
-      id: 'emp-1',
-      name: 'Ayon Ahmed',
-      role: 'Lead UI/UX Designer & Admin',
-      roleType: 'admin',
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZQndi0Q67LuyTUAs8C_7ptSSpWoFH67QhVbLxfJfqqymbTF0-ImTvZteCBSvRhku41rEwtRkkZ2yuI6nQmZb0BfCOfoZGNID_PEOn4VWAWuKVpWR7Ik8bXButYDHroiVhejf7BUJNlr5RCQjELnvfecxNjb3pdO-wFiNm8ZRyrk3KjzJktBW6t2HdB8uvLEdFXWKFvdGX3obC3EyYo3QUO3PVDq-c-ap2YZgHP_1pncDG6fIUYwwl'
+      id: 'emp-3',
+      name: 'Aqsa',
+      role: 'Design Department Lead',
+      roleType: 'manager',
+      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCrGYbO589VOTATEVvsbR5nyyOSwLBLuKXOxbFTAMEVyEEoVKEAscptTr1Fw8iGYSdAB1g1J5Y2Vx6y8Ypywrc1QuHnwiu6JKqVnuiQ75E-Zl1lklVnZju58LXg4EI6rxi76D29F_QaeZ2oRg09f6FoJmK_QL6Z8b3aMDi0bl53XwFkCgcHB8gkqEbh1qkmBlu_dlAs6b6vNmeVUXXkWqoQmRb8581biV9eH9oJ2xg2_FZghdAbak5L'
     },
     department: 'Design',
-    tags: ['Quarterly Review', 'Design Leadership'],
-    attachments: [
-      {
-        id: 'att-3',
-        name: 'ux_design_scorecards_matrix.png',
-        type: 'image',
-        url: 'https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=600&q=80',
-        size: '2.1 MB',
-        uploadedAt: 'Yesterday at 04:35 PM',
-        source: 'generated'
-      }
-    ]
+    tags: ['Mobile UI', 'Prototyping']
   },
   {
     id: 'task-3',
-    title: 'Sign off May payroll disbursement batch',
-    description: 'Ensure statutory tax withholding, bonus calculations, and overtime payouts are balanced.',
+    title: 'Frontend Performance & Web Vitals Optimization',
+    description: 'Profile React render cycles, eliminate unnecessary re-renders, and ensure instantaneous navigation transitions.',
     completed: false,
     status: 'In Progress',
     pinned: false,
     priority: 'medium',
     dueDate: '28 May',
-    category: 'Payroll',
+    category: 'Engineering',
     createdAt: '2 days ago',
     assignedTo: {
-      id: 'emp-8',
-      name: 'James Wilson',
-      role: 'Financial Analyst',
+      id: 'emp-4',
+      name: 'Iqra Pervaiz',
+      role: 'Senior Frontend Engineer',
       roleType: 'employee',
-      department: 'Finance',
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCYuWL1I268A8mrdo_oo6Ogy_tSmASTaEJzJe3YhKGlNgG-oTNLpoHtIfy51vMDxhlTEaMNdg0f8nYuwf5pN1P1s8ipRI8UPvU8ubP4jIzk2XVX6dnAtOqx4Sdgx7ApP-rb9yAJfNQc0srAr64oJ2RuzqXKIX5b5AdPGEulshBmBcxQEgBpu8GVCjNiIbRRMND0n1IrG9SqpcfdNHqJyikzXSu_9Yhs3J1sOs9pR-ahVBP6E3C1G0-m'
+      department: 'Engineering',
+      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuDCygYhHxrgl5qRtqzjE6Q0wBw0qO07I1AgcE3f7rjT4Kvlk-h2eBlcyXzERuSG8QLwXvTln7dkB0evTz0_8d6XscH6Z-3ZscPI4rvjg4uAo_okgcs6zG4cqq6SF-bGnZraG6xC0yvzBhJ6reIdNoLS3uiyVM70IVXv4NOXel6TAoMvE_fZJ0Fbk50-6GNyyj9xAgi0SThZcppMO1pbPKw8HQ78s8IXlXstNFswBA7TOP-RXosHeF3X'
     },
     assignedBy: {
       id: 'emp-1',
-      name: 'Ayon Ahmed',
-      role: 'Lead UI/UX Designer & Admin',
+      name: 'Raja Raza',
+      role: 'HR Director & System Admin',
       roleType: 'admin',
       avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZQndi0Q67LuyTUAs8C_7ptSSpWoFH67QhVbLxfJfqqymbTF0-ImTvZteCBSvRhku41rEwtRkkZ2yuI6nQmZb0BfCOfoZGNID_PEOn4VWAWuKVpWR7Ik8bXButYDHroiVhejf7BUJNlr5RCQjELnvfecxNjb3pdO-wFiNm8ZRyrk3KjzJktBW6t2HdB8uvLEdFXWKFvdGX3obC3EyYo3QUO3PVDq-c-ap2YZgHP_1pncDG6fIUYwwl'
     },
-    department: 'Finance',
-    tags: ['Payroll Run', 'Audit Compliance']
+    department: 'Engineering',
+    tags: ['Web Vitals', 'React Architecture']
   },
   {
     id: 'task-4',
-    title: 'Screen Senior Frontend Developer applicant resumes (48)',
-    description: 'Shortlist top 8 candidates meeting React 19, TypeScript, and micro-frontend requirements.',
+    title: 'Social Media Campaign & Outreach Plan',
+    description: 'Prepare creative copy and schedule multi-platform posts for our upcoming hiring wave.',
     completed: true,
     status: 'Completed',
     pinned: false,
     priority: 'medium',
     dueDate: 'Done',
-    category: 'Recruitment',
+    category: 'Marketing',
     createdAt: '3 days ago',
     assignedTo: {
-      id: 'emp-3',
-      name: 'Sumaiya Akter',
-      role: 'HR Specialist',
+      id: 'emp-5',
+      name: 'Asim Khan',
+      role: 'Social Media Manager',
       roleType: 'employee',
-      department: 'HR',
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuADQcAFIWDJ8g7APl2aOjC7M5drmvNeR0adkjwJQVVuoFudHVArwpni00b8CM7KOAHa7oxn4kKlj8AuLw3DQ5q7z72A_M7SyQJfWE_Omi_kh3T0W41JFx5OUziSGWqpzvo0veD9kqf54hae4mDr7abyGMq79swnEo0j598XUbb2OXswI5H1s5qlM86vEdiXh_udAlNHwMxSXuvt-XFNIbqvvlG-ZjCtCUI--j3MBmfhy7XMikuswA27'
+      department: 'Marketing'
     },
     assignedBy: {
-      id: 'emp-5',
-      name: 'David Rodriguez',
-      role: 'Chief Technology Officer',
-      roleType: 'manager',
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAxxwgp1S_xgssIZegK3dERGVDZcLI9XQVUUm9It4Wm4oMN4NKizpZSI9fWQibKQdGBAI8RMzHaqD_HL4fSBoylnUj-ucusfkiJ8xXMyzcwvEM_rNaleKTzbfNS6NpSpcOYjnN7_IfN8HwVz4nDrcsjOoNXLw5OjxsykRRqh1lGToOo0hbnOQt7mnj54iEhfAtgCaAsqcivvqhMKtX2XVijkEYYxOy-VtUvvwosmtJodKaQSKIgpOb4'
+      id: 'emp-1',
+      name: 'Raja Raza',
+      role: 'HR Director & System Admin',
+      roleType: 'admin',
+      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZQndi0Q67LuyTUAs8C_7ptSSpWoFH67QhVbLxfJfqqymbTF0-ImTvZteCBSvRhku41rEwtRkkZ2yuI6nQmZb0BfCOfoZGNID_PEOn4VWAWuKVpWR7Ik8bXButYDHroiVhejf7BUJNlr5RCQjELnvfecxNjb3pdO-wFiNm8ZRyrk3KjzJktBW6t2HdB8uvLEdFXWKFvdGX3obC3EyYo3QUO3PVDq-c-ap2YZgHP_1pncDG6fIUYwwl'
     },
-    department: 'HR',
-    tags: ['Tech Hiring', 'Pipeline']
+    department: 'Marketing',
+    tags: ['Social Media', 'Branding']
   },
   {
     id: 'task-5',
-    title: 'Verify NDA paperwork for new joiner Fatima Zohra',
-    description: 'Ensure signed intellectual property assignment and identity verification documents are filed.',
+    title: 'Product Demo Video Editing & Motion Graphics',
+    description: 'Assemble motion graphics cuts and audio syncing for the software showcase reel.',
     completed: false,
     status: 'Pending',
     pinned: false,
     priority: 'low',
     dueDate: 'Friday',
-    category: 'Onboarding',
+    category: 'Marketing',
     createdAt: '1 day ago',
     assignedTo: {
-      id: 'emp-3',
-      name: 'Sumaiya Akter',
-      role: 'HR Specialist',
+      id: 'emp-6',
+      name: 'Saba',
+      role: 'Video Editor',
       roleType: 'employee',
-      department: 'HR',
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuADQcAFIWDJ8g7APl2aOjC7M5drmvNeR0adkjwJQVVuoFudHVArwpni00b8CM7KOAHa7oxn4kKlj8AuLw3DQ5q7z72A_M7SyQJfWE_Omi_kh3T0W41JFx5OUziSGWqpzvo0veD9kqf54hae4mDr7abyGMq79swnEo0j598XUbb2OXswI5H1s5qlM86vEdiXh_udAlNHwMxSXuvt-XFNIbqvvlG-ZjCtCUI--j3MBmfhy7XMikuswA27'
-    },
-    assignedBy: {
-      id: 'emp-4',
-      name: 'Sarah Jenkins',
-      role: 'VP of Product Design',
-      roleType: 'manager',
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCrGYbO589VOTATEVvsbR5nyyOSwLBLuKXOxbFTAMEVyEEoVKEAscptTr1Fw8iGYSdAB1g1J5Y2Vx6y8Ypywrc1QuHnwiu6JKqVnuiQ75E-Zl1lklVnZju58LXg4EI6rxi76D29F_QaeZ2oRg09f6FoJmK_QL6Z8b3aMDi0bl53XwFkCgcHB8gkqEbh1qkmBlu_dlAs6b6vNmeVUXXkWqoQmRb8581biV9eH9oJ2xg2_FZghdAbak5L'
-    },
-    department: 'HR',
-    tags: ['Compliance', 'New Joiner']
-  },
-  {
-    id: 'task-6',
-    title: 'Deploy infrastructure updates for database security patch',
-    description: 'Apply security patches to PostgreSQL clusters with zero downtime failover.',
-    completed: false,
-    status: 'In Progress',
-    pinned: false,
-    priority: 'urgent',
-    dueDate: 'Today',
-    category: 'Engineering',
-    createdAt: 'Today at 08:00 AM',
-    assignedTo: {
-      id: 'emp-7',
-      name: 'Michael Lee',
-      role: 'DevOps Architect',
-      roleType: 'employee',
-      department: 'Engineering',
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCwY4FYp5_M7k-ZIiDBaE9RxdEkkHIZ-0iOnrgx4tUXhpraXo8K9oa9lSO_8BcdC9WHYpoTRLi-yjLbZvTxlT0x6mMs2w-wcSvfhuXZ3jatECSogNvTrNSgDswwJxuHS57HgdFTQVtKswQtamvIRLtzLStl3GeYzoa-vq97chSsokir3mYCzjFrZx745AWtSH9Fb5B0ZbATFXXjldqEpQWtZDw8zhwcd-H7t0DPFPNQWokx08LQ2PfB'
-    },
-    assignedBy: {
-      id: 'emp-5',
-      name: 'David Rodriguez',
-      role: 'Chief Technology Officer',
-      roleType: 'manager',
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAxxwgp1S_xgssIZegK3dERGVDZcLI9XQVUUm9It4Wm4oMN4NKizpZSI9fWQibKQdGBAI8RMzHaqD_HL4fSBoylnUj-ucusfkiJ8xXMyzcwvEM_rNaleKTzbfNS6NpSpcOYjnN7_IfN8HwVz4nDrcsjOoNXLw5OjxsykRRqh1lGToOo0hbnOQt7mnj54iEhfAtgCaAsqcivvqhMKtX2XVijkEYYxOy-VtUvvwosmtJodKaQSKIgpOb4'
-    },
-    department: 'Engineering',
-    tags: ['DevOps', 'Security Hotfix']
-  },
-  {
-    id: 'task-7',
-    title: 'Finalize Design System token palette documentation for v3.0',
-    description: 'Document color contrast ratios, dark mode elevation scales, and accessibility badges.',
-    completed: false,
-    status: 'In Progress',
-    pinned: false,
-    priority: 'medium',
-    dueDate: 'Friday',
-    category: 'Design',
-    createdAt: 'Yesterday',
-    assignedTo: {
-      id: 'emp-9',
-      name: 'Elena Rodriguez',
-      role: 'Product Strategist',
-      roleType: 'employee',
-      department: 'Design',
-      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBDijMHP0EyUOQOObEYIh_Hb4Z8uFiGLY5LNH6JgNEZtRFha7dhi0jCINuK5K8eCrEV5XynCXMvuGq_895NA4vn0eN_nPdtjw20v5JdVsgbQS6RaKALyS3MJJ8F-FiYZCQxtngYpZh2zqPvUnt-YSCzO8SWont-LHujOrKAnQeZdyCZl3rIGH9HgZjFf3tMrPhJEbcWqyr3C8nQeioKR4GylOA6NGtgRxH-lUAHTN5e-fVELArV7z4S'
+      department: 'Marketing'
     },
     assignedBy: {
       id: 'emp-1',
-      name: 'Ayon Ahmed',
-      role: 'Lead UI/UX Designer & Admin',
+      name: 'Raja Raza',
+      role: 'HR Director & System Admin',
       roleType: 'admin',
       avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZQndi0Q67LuyTUAs8C_7ptSSpWoFH67QhVbLxfJfqqymbTF0-ImTvZteCBSvRhku41rEwtRkkZ2yuI6nQmZb0BfCOfoZGNID_PEOn4VWAWuKVpWR7Ik8bXButYDHroiVhejf7BUJNlr5RCQjELnvfecxNjb3pdO-wFiNm8ZRyrk3KjzJktBW6t2HdB8uvLEdFXWKFvdGX3obC3EyYo3QUO3PVDq-c-ap2YZgHP_1pncDG6fIUYwwl'
     },
-    department: 'Design',
-    tags: ['Design System', 'Tokens']
+    department: 'Marketing',
+    tags: ['Video Editing', 'Motion Graphics']
   }
 ];
 

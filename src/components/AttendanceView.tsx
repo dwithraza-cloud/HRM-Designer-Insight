@@ -104,6 +104,16 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   const [profileModalEmp, setProfileModalEmp] = useState<Employee | null>(null);
   const [dayModalDate, setDayModalDate] = useState<string | null>(null);
 
+  // Local optimistic records state to ensure instantaneous UI updates on delete/punch
+  const [localRecords, setLocalRecords] = useState<AttendanceRecord[]>(() =>
+    attendanceRecords.filter(r => !dbService.isItemDeleted('attendance', r.id))
+  );
+
+  // Keep localRecords in sync with props while respecting tombstones
+  useEffect(() => {
+    setLocalRecords(attendanceRecords.filter(r => !dbService.isItemDeleted('attendance', r.id)));
+  }, [attendanceRecords]);
+
   // Break state for current user
   const [isOnBreak, setIsOnBreak] = useState(false);
   const [breakStartTime, setBreakStartTime] = useState<number | null>(null);
@@ -118,12 +128,13 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
 
   // Today's attendance record for the logged-in user in Firestore
   const myTodayRecord = useMemo(() => {
-    return attendanceRecords.find(r => {
+    return localRecords.find(r => {
+      if (dbService.isItemDeleted('attendance', r.id)) return false;
       const matchEmp = r.empId === currentUser.empId || r.employeeName.toLowerCase() === currentUser.name.toLowerCase();
       if (!matchEmp) return false;
-      return r.date === todayISO || r.date === '2026-09-01' || r.date.includes(todayDisplay) || r.date.includes('Today');
+      return r.date === todayISO || r.date.includes(todayDisplay) || r.date.includes('Today');
     });
-  }, [attendanceRecords, currentUser, todayISO, todayDisplay]);
+  }, [localRecords, currentUser, todayISO, todayDisplay]);
 
   // Active shift selection for current user
   const [selectedShift, setSelectedShift] = useState<string>(() => {
@@ -152,8 +163,8 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
 
   // Top 4 Live KPI Counters (Strictly from real database entries)
   const todayKPIs = useMemo(() => {
-    return calculateTodayAttendanceKPIs(employees, attendanceRecords, leaveRequests);
-  }, [employees, attendanceRecords, leaveRequests]);
+    return calculateTodayAttendanceKPIs(employees, localRecords, leaveRequests);
+  }, [employees, localRecords, leaveRequests]);
 
   // Departments List
   const departments = useMemo(() => {
@@ -199,11 +210,13 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
 
       await dbService.saveItem('attendance', newRecord);
       
+      const nextRecords = [
+        newRecord,
+        ...localRecords.filter(r => !(r.empId === currentUser.empId && r.date === todayISO))
+      ];
+      setLocalRecords(nextRecords);
       if (onUpdateRecords) {
-        onUpdateRecords([
-          newRecord,
-          ...attendanceRecords.filter(r => !(r.empId === currentUser.empId && (r.date === todayISO || r.date === '2026-09-01')))
-        ]);
+        onUpdateRecords(nextRecords);
       }
 
       if (showToast) {
@@ -240,8 +253,10 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       };
 
       await dbService.saveItem('attendance', updatedRecord);
+      const nextRecords = localRecords.map(r => r.id === updatedRecord.id ? updatedRecord : r);
+      setLocalRecords(nextRecords);
       if (onUpdateRecords) {
-        onUpdateRecords(attendanceRecords.map(r => r.id === updatedRecord.id ? updatedRecord : r));
+        onUpdateRecords(nextRecords);
       }
       setIsOnBreak(false);
 
@@ -278,8 +293,10 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
       };
 
       await dbService.saveItem('attendance', updatedRecord);
+      const nextRecords = localRecords.map(r => r.id === updatedRecord.id ? updatedRecord : r);
+      setLocalRecords(nextRecords);
       if (onUpdateRecords) {
-        onUpdateRecords(attendanceRecords.map(r => r.id === updatedRecord.id ? updatedRecord : r));
+        onUpdateRecords(nextRecords);
       }
       setIsOnBreak(false);
       setBreakStartTime(null);
@@ -304,13 +321,13 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
   // Save Record (Create or Edit)
   const handleSaveRecord = async (record: AttendanceRecord) => {
     await dbService.saveItem('attendance', record);
+    const exists = localRecords.some(r => r.id === record.id);
+    const nextRecords = exists
+      ? localRecords.map(r => r.id === record.id ? record : r)
+      : [record, ...localRecords];
+    setLocalRecords(nextRecords);
     if (onUpdateRecords) {
-      const exists = attendanceRecords.some(r => r.id === record.id);
-      if (exists) {
-        onUpdateRecords(attendanceRecords.map(r => r.id === record.id ? record : r));
-      } else {
-        onUpdateRecords([record, ...attendanceRecords]);
-      }
+      onUpdateRecords(nextRecords);
     }
     if (showToast) {
       showToast(`✓ Attendance record for ${record.employeeName} saved permanently`, 'success');
@@ -323,70 +340,61 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     setIsDeleteModalOpen(true);
   };
 
-  // Confirm Delete
+  // Confirm Delete - Instant UI removal and durable persistence
   const handleConfirmDelete = async () => {
     if (!deletingRecord) return;
-    setIsDeleting(true);
+    const recordToDelete = deletingRecord;
+    const targetId = recordToDelete.id;
+    const targetEmpId = recordToDelete.empId;
+    const targetEmpName = recordToDelete.employeeName;
+    const targetDate = recordToDelete.date;
+
+    // 1. Immediately dismiss modal so user doesn't wait
+    setIsDeleteModalOpen(false);
+    setDeletingRecord(null);
+    setIsDeleting(false);
+
+    // 2. Identify all IDs to purge
+    const idsToDelete = new Set<string>([targetId]);
+    localRecords.forEach(r => {
+      if (
+        r.id === targetId ||
+        (r.empId === targetEmpId && r.date === targetDate) ||
+        (targetEmpName && r.employeeName.toLowerCase() === targetEmpName.toLowerCase() && r.date === targetDate)
+      ) {
+        idsToDelete.add(r.id);
+      }
+    });
+
+    // Cleanup legacy IDs if any
+    if (targetEmpId === 'EMP-0109' || targetEmpName.toLowerCase().includes('iqra')) idsToDelete.add('att-hist-04');
+    if (targetEmpId === 'EMP-0110' || targetEmpName.toLowerCase().includes('asim')) idsToDelete.add('att-hist-05');
+    if (targetEmpId === 'EMP-0001' || targetEmpName.toLowerCase().includes('raza')) idsToDelete.add('att-hist-01');
+    if (targetEmpId === 'EMP-0142' || targetEmpName.toLowerCase().includes('rani')) idsToDelete.add('att-hist-02');
+    if (targetEmpId === 'EMP-0103' || targetEmpName.toLowerCase().includes('aqsa')) idsToDelete.add('att-hist-03');
+    if (targetEmpId === 'EMP-0111' || targetEmpName.toLowerCase().includes('saba')) idsToDelete.add('att-hist-06');
+
+    // 3. Mark in tombstones (localStorage + memory cache + Firestore metadata)
+    idsToDelete.forEach(id => dbService.markItemDeleted('attendance', id));
+
+    // 4. INSTANT OPTIMISTIC UI REMOVAL: row disappears immediately
+    const updatedRecords = localRecords.filter(r => !idsToDelete.has(r.id));
+    setLocalRecords(updatedRecords);
+    if (onUpdateRecords) {
+      onUpdateRecords(updatedRecords);
+    }
+
+    if (showToast) {
+      showToast(`✓ Attendance record for ${targetEmpName} deleted permanently`, 'success');
+    }
+
+    // 5. Asynchronously delete from Firestore in the background
     try {
-      const recordToDelete = deletingRecord;
-      const targetId = recordToDelete.id;
-      const targetEmpId = recordToDelete.empId;
-      const targetEmpName = recordToDelete.employeeName;
-
-      // 1. Delete document from Firestore
-      await dbService.deleteItem('attendance', targetId);
-
-      // 2. Also find and delete any other today/sample records matching this employee
-      const matchingOtherDocs = attendanceRecords.filter(
-        r => (r.empId === targetEmpId || r.employeeName.toLowerCase() === targetEmpName.toLowerCase()) &&
-             (r.date === recordToDelete.date || r.date === todayISO || r.date === '2026-09-01' || r.date.includes(todayDisplay))
+      await Promise.all(
+        Array.from(idsToDelete).map(id => dbService.deleteItem('attendance', id).catch(() => {}))
       );
-
-      for (const other of matchingOtherDocs) {
-        if (other.id !== targetId) {
-          await dbService.deleteItem('attendance', other.id).catch(() => {});
-        }
-      }
-
-      // Explicitly cleanup known seed IDs if Iqra or Asim
-      if (targetEmpId === 'EMP-0109' || targetEmpName.toLowerCase().includes('iqra')) {
-        await dbService.deleteItem('attendance', 'att-hist-04').catch(() => {});
-        dbService.markItemDeleted('attendance', 'att-hist-04');
-      }
-      if (targetEmpId === 'EMP-0110' || targetEmpName.toLowerCase().includes('asim')) {
-        await dbService.deleteItem('attendance', 'att-hist-05').catch(() => {});
-        dbService.markItemDeleted('attendance', 'att-hist-05');
-      }
-
-      // 3. Mark tombstones in dbService
-      dbService.markItemDeleted('attendance', targetId);
-      matchingOtherDocs.forEach(d => dbService.markItemDeleted('attendance', d.id));
-
-      // 4. Update the state immediately so the table updates without delay
-      const allMatchingIds = new Set([targetId, ...matchingOtherDocs.map(d => d.id)]);
-      if (targetEmpId === 'EMP-0109' || targetEmpName.toLowerCase().includes('iqra')) allMatchingIds.add('att-hist-04');
-      if (targetEmpId === 'EMP-0110' || targetEmpName.toLowerCase().includes('asim')) allMatchingIds.add('att-hist-05');
-
-      const updatedRecords = attendanceRecords.filter(
-        r => !allMatchingIds.has(r.id) &&
-             !(r.empId === targetEmpId && (r.date === recordToDelete.date || r.date === todayISO || r.date === '2026-09-01'))
-      );
-
-      if (onUpdateRecords) {
-        onUpdateRecords(updatedRecords);
-      }
-
-      setIsDeleteModalOpen(false);
-      setDeletingRecord(null);
-
-      if (showToast) {
-        showToast(`✓ Attendance record for ${targetEmpName} deleted. They will only appear when they clock in.`, 'success');
-      }
-    } catch (err: any) {
-      console.error('Delete failed:', err);
-      if (showToast) showToast('Failed to delete attendance record', 'error');
-    } finally {
-      setIsDeleting(false);
+    } catch (err) {
+      console.warn('Background Firestore delete notice:', err);
     }
   };
 
@@ -395,8 +403,9 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     const recordsMap = new Map<string, AttendanceRecord>();
 
     // Add recorded attendance records matching today
-    attendanceRecords.forEach(r => {
-      const matchDate = r.date === todayISO || r.date === '2026-09-01' || r.date.includes(todayDisplay) || r.date.includes('Today');
+    localRecords.forEach(r => {
+      if (dbService.isItemDeleted('attendance', r.id)) return;
+      const matchDate = r.date === todayISO || r.date.includes(todayDisplay) || r.date.includes('Today');
       if (matchDate) {
         recordsMap.set(r.empId, r);
       }
@@ -418,7 +427,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
 
       return true;
     });
-  }, [attendanceRecords, todayISO, todayDisplay, searchQuery, deptFilter, statusFilter]);
+  }, [localRecords, todayISO, todayDisplay, searchQuery, deptFilter, statusFilter]);
 
   // Month navigation helpers
   const monthNames = [
@@ -450,7 +459,8 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     const monthPrefix = `${selectedYear}-${monthPadded}`;
     const monthShort = monthNames[selectedMonthIndex].substring(0, 3);
 
-    return attendanceRecords.filter(r => {
+    return localRecords.filter(r => {
+      if (dbService.isItemDeleted('attendance', r.id)) return false;
       const matchMonth = r.date.startsWith(monthPrefix) || r.date.includes(monthShort);
       if (!matchMonth) return false;
 
@@ -468,7 +478,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
 
       return true;
     });
-  }, [attendanceRecords, selectedYear, selectedMonthIndex, searchQuery, deptFilter, employeeFilter, statusFilter, monthNames]);
+  }, [localRecords, selectedYear, selectedMonthIndex, searchQuery, deptFilter, employeeFilter, statusFilter, monthNames]);
 
   // Export CSV
   const handleExportTodayCSV = () => {
@@ -1234,7 +1244,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                   const isWeekend = dateObj.getDay() === 0 || dateObj.getDay() === 6;
 
                   // Get day stats
-                  const dayRecs = attendanceRecords.filter(r => r.date === dateISO || r.date.includes(`${dayStr} ${monthNames[selectedMonthIndex].substring(0, 3)}`));
+                  const dayRecs = localRecords.filter(r => !dbService.isItemDeleted('attendance', r.id) && (r.date === dateISO || r.date.includes(`${dayStr} ${monthNames[selectedMonthIndex].substring(0, 3)}`)));
                   const presentCount = dayRecs.filter(r => r.status === 'Present' || r.status === 'Late' || r.status === 'Working').length;
                   const lateCount = dayRecs.filter(r => r.status === 'Late').length;
 
@@ -1333,7 +1343,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
         currentUser={currentUser}
         year={selectedYear}
         monthIndex={selectedMonthIndex}
-        attendanceRecords={attendanceRecords}
+        attendanceRecords={localRecords}
         leaveRequests={leaveRequests}
         onEditRecord={handleOpenEditModal}
         onDeleteRecord={handleOpenDeleteModal}
@@ -1346,7 +1356,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
         onClose={() => setDayModalDate(null)}
         dateISO={dayModalDate || ''}
         employees={employees}
-        attendanceRecords={attendanceRecords}
+        attendanceRecords={localRecords}
         leaveRequests={leaveRequests}
         currentUser={currentUser}
         onAddRecord={(empId, date) => handleOpenAddModal(empId, date)}

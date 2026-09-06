@@ -11,9 +11,11 @@ import {
   Calendar, 
   Check, 
   Sparkles,
-  Camera
+  Camera,
+  Clock
 } from 'lucide-react';
 import { Employee, ViewMode } from '../types';
+import { WORKFORCE_SHIFTS } from '../utils/attendanceUtils';
 
 interface AddEmployeeViewProps {
   onBack: () => void;
@@ -36,6 +38,7 @@ export const AddEmployeeView: React.FC<AddEmployeeViewProps> = ({
     joiningDate: '2025-05-01',
     department: 'Design',
     designation: '',
+    shift: WORKFORCE_SHIFTS[0].label,
     reportingManager: 'Sarah Jenkins',
     baseSalary: 120000,
     avatarUrl: ''
@@ -60,6 +63,7 @@ export const AddEmployeeView: React.FC<AddEmployeeViewProps> = ({
       phone: formData.phone || '+880 1700-000000',
       status: 'Active',
       joiningDate: new Date(formData.joiningDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      shift: formData.shift,
       avatar: avatarPreview || 'https://lh3.googleusercontent.com/aida-public/AB6AXuAZQndi0Q67LuyTUAs8C_7ptSSpWoFH67QhVbLxfJfqqymbTF0-ImTvZteCBSvRhku41rEwtRkkZ2yuI6nQmZb0BfCOfoZGNID_PEOn4VWAWuKVpWR7Ik8bXButYDHroiVhejf7BUJNlr5RCQjELnvfecxNjb3pdO-wFiNm8ZRyrk3KjzJktBW6t2HdB8uvLEdFXWKFvdGX3obC3EyYo3QUO3PVDq-c-ap2YZgHP_1pncDG6fIUYwwl',
       gender: formData.gender,
       dob: formData.dob,
@@ -299,6 +303,20 @@ export const AddEmployeeView: React.FC<AddEmployeeViewProps> = ({
                   onChange={(e) => setFormData({ ...formData, baseSalary: Number(e.target.value) })}
                   className="w-full px-3.5 py-2.5 bg-white/[0.04] border border-white/10 rounded-xl text-xs text-white placeholder-slate-500 focus:outline-none focus:border-purple-500/50"
                 />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-slate-400 block mb-1.5">Workforce Shift (Timing)</label>
+                <select
+                  value={formData.shift}
+                  onChange={(e) => setFormData({ ...formData, shift: e.target.value })}
+                  className="w-full px-3.5 py-2.5 bg-[#131b2e] border border-white/10 rounded-xl text-xs text-white focus:outline-none focus:border-purple-500/50 cursor-pointer"
+                >
+                  {WORKFORCE_SHIFTS.map((s) => (
+                    <option key={s.id} value={s.label}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>
