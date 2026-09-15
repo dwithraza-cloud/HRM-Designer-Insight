@@ -162,6 +162,12 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
   const [formAssigneeId, setFormAssigneeId] = useState('');
   const [formTags, setFormTags] = useState('HR Workflow');
 
+  // Selective Numeric Target & Progress Tracking (e.g. 14 posts per month)
+  const [formHasNumericTarget, setFormHasNumericTarget] = useState(false);
+  const [formTargetCount, setFormTargetCount] = useState(14);
+  const [formCurrentCount, setFormCurrentCount] = useState(0);
+  const [formUnitName, setFormUnitName] = useState('posts');
+
   // Voice-to-Text Speech Recognition State
   const [isListening, setIsListening] = useState(false);
   const [listeningTarget, setListeningTarget] = useState<'title' | 'description' | 'voice-modal' | null>(null);
@@ -584,8 +590,8 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
       id: `task-${Date.now()}`,
       title: formTitle.trim(),
       description: formDescription.trim() || 'Standard operational task assignment.',
-      completed: false,
-      status: 'Pending',
+      completed: formHasNumericTarget ? (Number(formCurrentCount) >= Number(formTargetCount)) : false,
+      status: formHasNumericTarget && (Number(formCurrentCount) >= Number(formTargetCount)) ? 'Completed' : 'Pending',
       pinned: false,
       priority: formPriority,
       category: formCategory,
@@ -607,7 +613,12 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
         roleType: currentUser.roleType,
         avatar: currentUser.avatar
       },
-      tags: formTags.split(',').map(t => t.trim()).filter(Boolean)
+      tags: formTags.split(',').map(t => t.trim()).filter(Boolean),
+      // Selective Numeric Target & Progress fields
+      hasNumericTarget: formHasNumericTarget,
+      targetCount: formHasNumericTarget ? Math.max(1, Number(formTargetCount) || 1) : undefined,
+      currentCount: formHasNumericTarget ? Math.max(0, Number(formCurrentCount) || 0) : undefined,
+      unitName: formHasNumericTarget ? (formUnitName.trim() || 'posts') : undefined
     };
 
     onAddTask(newTaskPayload);
@@ -615,6 +626,35 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
     setFormTitle('');
     setFormDescription('');
     setFormTags('HR Workflow');
+    setFormHasNumericTarget(false);
+    setFormTargetCount(14);
+    setFormCurrentCount(0);
+    setFormUnitName('posts');
+  };
+
+  // Inline progress update for tasks with numeric target
+  const handleUpdateTaskCount = (taskId: string, newCount: number) => {
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+    const target = Math.max(1, task.targetCount || 1);
+    const clampedCount = Math.max(0, newCount);
+    const isNowComplete = clampedCount >= target;
+    const updatedTask: TaskItem = {
+      ...task,
+      currentCount: clampedCount,
+      completed: isNowComplete,
+      status: isNowComplete ? 'Completed' : (task.status === 'Completed' && clampedCount < target ? 'In Progress' : (task.status || 'In Progress'))
+    };
+
+    if (selectedTaskForDetails && selectedTaskForDetails.id === taskId) {
+      setSelectedTaskForDetails(updatedTask);
+    }
+
+    if (onEditTask) {
+      onEditTask(updatedTask);
+    } else {
+      onAddTask(updatedTask);
+    }
   };
 
   // Attachment Helper Functions
@@ -1748,6 +1788,72 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
                             </button>
                           )}
                         </div>
+
+                        {/* Numeric Target & Percentage Tracker Bar (Only if hasNumericTarget is active) */}
+                        {task.hasNumericTarget && (
+                          <div className="pt-2 pb-0.5 max-w-md space-y-1.5">
+                            <div className="flex items-center justify-between text-xs">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="text-[10px] font-bold uppercase tracking-wider text-purple-300 bg-purple-500/15 px-1.5 py-0.5 rounded border border-purple-500/30">
+                                  Target Goal
+                                </span>
+                                <span className="font-semibold text-white">
+                                  {task.currentCount || 0} / {task.targetCount || 1} {task.unitName || 'posts'}
+                                </span>
+                                <span className={`text-[10px] font-bold px-1.5 py-0.2 rounded-full ${
+                                  (task.currentCount || 0) >= (task.targetCount || 1)
+                                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                                    : 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                                }`}>
+                                  {Math.min(100, Math.round(((task.currentCount || 0) / Math.max(1, task.targetCount || 1)) * 100))}%
+                                </span>
+                              </div>
+
+                              {/* Inline Quick Stepper for incrementing/decrementing progress */}
+                              <div className="flex items-center gap-1 bg-white/[0.04] border border-white/10 rounded-lg p-0.5">
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleUpdateTaskCount(task.id, Math.max(0, (task.currentCount || 0) - 1));
+                                  }}
+                                  title="Decrease count"
+                                  className="w-5 h-5 rounded flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-colors text-xs font-bold cursor-pointer"
+                                >
+                                  -
+                                </button>
+                                <span className="text-[11px] font-bold text-white px-1.5 min-w-[20px] text-center">
+                                  {task.currentCount || 0}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleUpdateTaskCount(task.id, (task.currentCount || 0) + 1);
+                                  }}
+                                  title="Add 1 completed unit"
+                                  className="w-5 h-5 rounded flex items-center justify-center text-purple-300 hover:text-emerald-400 hover:bg-white/10 transition-colors text-xs font-bold cursor-pointer"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Progress bar */}
+                            <div className="w-full bg-white/[0.06] h-2 rounded-full overflow-hidden border border-white/5">
+                              <div
+                                className={`h-full rounded-full transition-all duration-300 ${
+                                  (task.currentCount || 0) >= (task.targetCount || 1)
+                                    ? 'bg-gradient-to-r from-emerald-500 to-teal-400'
+                                    : 'bg-gradient-to-r from-purple-500 to-indigo-400'
+                                }`}
+                                style={{
+                                  width: `${Math.min(100, Math.round(((task.currentCount || 0) / Math.max(1, task.targetCount || 1)) * 100))}%`
+                                }}
+                              />
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -1861,6 +1967,27 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
                       <span className="text-[10px] text-slate-400">{task.dueDate}</span>
                     </div>
                     <p className="text-xs font-semibold text-white line-clamp-2">{task.title}</p>
+
+                    {/* Deliverable Progress on Pending Card */}
+                    {task.hasNumericTarget && (
+                      <div className="space-y-1 py-1 px-2 rounded-lg bg-white/[0.03] border border-white/5">
+                        <div className="flex items-center justify-between text-[10px]">
+                          <span className="text-purple-300 font-semibold">
+                            {task.currentCount || 0}/{task.targetCount || 1} {task.unitName || 'posts'}
+                          </span>
+                          <span className="text-slate-400 font-bold">
+                            {Math.min(100, Math.round(((task.currentCount || 0) / Math.max(1, task.targetCount || 1)) * 100))}%
+                          </span>
+                        </div>
+                        <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-purple-500 to-indigo-400 rounded-full"
+                            style={{ width: `${Math.min(100, Math.round(((task.currentCount || 0) / Math.max(1, task.targetCount || 1)) * 100))}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
                     <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-white/5">
                       <div className="flex items-center gap-1.5 min-w-0">
                         <span className="truncate">To: {task.assignedTo?.name || 'Unassigned'}</span>
@@ -1914,6 +2041,27 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
                       <span className="text-[10px] text-blue-300">{task.dueDate}</span>
                     </div>
                     <p className="text-xs font-semibold text-white line-clamp-2">{task.title}</p>
+
+                    {/* Deliverable Progress on In Progress Card */}
+                    {task.hasNumericTarget && (
+                      <div className="space-y-1 py-1 px-2 rounded-lg bg-white/[0.03] border border-white/5">
+                        <div className="flex items-center justify-between text-[10px]">
+                          <span className="text-blue-300 font-semibold">
+                            {task.currentCount || 0}/{task.targetCount || 1} {task.unitName || 'posts'}
+                          </span>
+                          <span className="text-slate-400 font-bold">
+                            {Math.min(100, Math.round(((task.currentCount || 0) / Math.max(1, task.targetCount || 1)) * 100))}%
+                          </span>
+                        </div>
+                        <div className="w-full bg-white/10 h-1.5 rounded-full overflow-hidden">
+                          <div
+                            className="h-full bg-gradient-to-r from-blue-500 to-emerald-400 rounded-full"
+                            style={{ width: `${Math.min(100, Math.round(((task.currentCount || 0) / Math.max(1, task.targetCount || 1)) * 100))}%` }}
+                          />
+                        </div>
+                      </div>
+                    )}
+
                     <div className="flex items-center justify-between text-[10px] text-slate-400 pt-1 border-t border-white/5">
                       <span>To: {task.assignedTo?.name || 'Unassigned'}</span>
                       <button
@@ -1959,6 +2107,22 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
                       <span className="text-[10px] text-slate-500">{task.dueDate}</span>
                     </div>
                     <p className="text-xs font-medium text-slate-300 line-through line-clamp-2">{task.title}</p>
+
+                    {/* Deliverable Progress on Completed Card */}
+                    {task.hasNumericTarget && (
+                      <div className="space-y-1 py-1 px-2 rounded-lg bg-emerald-950/20 border border-emerald-500/20">
+                        <div className="flex items-center justify-between text-[10px]">
+                          <span className="text-emerald-300 font-semibold">
+                            {task.currentCount || 0}/{task.targetCount || 1} {task.unitName || 'posts'}
+                          </span>
+                          <span className="text-emerald-400 font-bold">100% Target Met</span>
+                        </div>
+                        <div className="w-full bg-emerald-500/20 h-1.5 rounded-full overflow-hidden">
+                          <div className="h-full bg-emerald-400 rounded-full w-full" />
+                        </div>
+                      </div>
+                    )}
+
                     <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1 border-t border-white/5">
                       <span>Done by {task.assignedTo?.name}</span>
                       <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
@@ -2174,6 +2338,81 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
                 />
               </div>
 
+              {/* Optional Numeric Deliverable / Target Progress Tracking */}
+              <div className="p-3.5 rounded-2xl border border-purple-500/30 bg-purple-950/20 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="checkbox-enable-numeric-target"
+                      checked={formHasNumericTarget}
+                      onChange={(e) => setFormHasNumericTarget(e.target.checked)}
+                      className="w-4 h-4 rounded border-white/20 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                    />
+                    <label htmlFor="checkbox-enable-numeric-target" className="text-xs font-bold text-white cursor-pointer select-none">
+                      Enable Numbering & Percentage Target Tracking
+                    </label>
+                  </div>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-medium border border-purple-500/30">
+                    Optional
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-400">
+                  Selectively activate this when a task has measurable targets (e.g. 14 posts per month, 10 designs, 5 calls). Employees and managers can track progress by numbers and percentage.
+                </p>
+
+                {formHasNumericTarget && (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-purple-500/20 animate-in fade-in duration-200">
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-semibold text-slate-300">Target Goal</label>
+                      <input
+                        id="modal-input-task-target-count"
+                        type="number"
+                        min="1"
+                        value={formTargetCount}
+                        onChange={(e) => setFormTargetCount(Math.max(1, parseInt(e.target.value) || 1))}
+                        className="w-full bg-white/[0.06] border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-500 font-bold"
+                        placeholder="e.g. 14"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-semibold text-slate-300">Unit / Deliverable Name</label>
+                      <input
+                        id="modal-input-task-unit-name"
+                        type="text"
+                        value={formUnitName}
+                        onChange={(e) => setFormUnitName(e.target.value)}
+                        className="w-full bg-white/[0.06] border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-500"
+                        placeholder="e.g. posts, designs, calls"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-semibold text-slate-300">Current Progress (Start)</label>
+                      <input
+                        id="modal-input-task-current-count"
+                        type="number"
+                        min="0"
+                        value={formCurrentCount}
+                        onChange={(e) => setFormCurrentCount(Math.max(0, parseInt(e.target.value) || 0))}
+                        className="w-full bg-white/[0.06] border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-500 font-bold"
+                        placeholder="e.g. 0"
+                      />
+                    </div>
+                    <div className="sm:col-span-3 bg-purple-900/30 border border-purple-500/20 rounded-xl p-2.5 flex items-center justify-between text-xs">
+                      <span className="text-slate-300">
+                        Preview: <strong className="text-white">{formCurrentCount} of {formTargetCount} {formUnitName || 'items'}</strong> ({Math.min(100, Math.round(((formCurrentCount || 0) / (formTargetCount || 1)) * 100))}%)
+                      </span>
+                      <div className="w-32 bg-white/10 h-2 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-purple-500 to-emerald-400 rounded-full"
+                          style={{ width: `${Math.min(100, Math.round(((formCurrentCount || 0) / (formTargetCount || 1)) * 100))}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Form Action Buttons */}
               <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">
                 <button
@@ -2232,6 +2471,88 @@ export const TaskManagementView: React.FC<TaskManagementViewProps> = ({
                   {selectedTaskForDetails.description || 'No additional notes provided for this task.'}
                 </p>
               </div>
+
+              {/* Deliverables & Numbering Progress Tracker (Only when hasNumericTarget is active) */}
+              {selectedTaskForDetails.hasNumericTarget && (
+                <div className="p-4 rounded-2xl bg-purple-950/20 border border-purple-500/30 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Target className="w-4 h-4 text-purple-400" />
+                      <span className="text-xs font-bold text-white">Target Goal & Deliverables Progress</span>
+                    </div>
+                    <span className={`text-[11px] font-bold px-2.5 py-0.5 rounded-full ${
+                      (selectedTaskForDetails.currentCount || 0) >= (selectedTaskForDetails.targetCount || 1)
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                        : 'bg-purple-500/20 text-purple-300 border border-purple-500/30'
+                    }`}>
+                      {Math.min(100, Math.round(((selectedTaskForDetails.currentCount || 0) / Math.max(1, selectedTaskForDetails.targetCount || 1)) * 100))}% Completed
+                    </span>
+                  </div>
+
+                  {/* Progress bar */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between text-[11px] text-slate-300">
+                      <span>Completed Units: <strong className="text-white font-bold">{selectedTaskForDetails.currentCount || 0}</strong> of <strong className="text-white font-bold">{selectedTaskForDetails.targetCount || 1} {selectedTaskForDetails.unitName || 'posts'}</strong></span>
+                      <span className="text-slate-400">Remaining: {Math.max(0, (selectedTaskForDetails.targetCount || 1) - (selectedTaskForDetails.currentCount || 0))}</span>
+                    </div>
+                    <div className="w-full bg-white/[0.08] h-2.5 rounded-full overflow-hidden border border-white/5">
+                      <div
+                        className={`h-full rounded-full transition-all duration-300 ${
+                          (selectedTaskForDetails.currentCount || 0) >= (selectedTaskForDetails.targetCount || 1)
+                            ? 'bg-gradient-to-r from-emerald-500 to-teal-400'
+                            : 'bg-gradient-to-r from-purple-500 to-indigo-400'
+                        }`}
+                        style={{
+                          width: `${Math.min(100, Math.round(((selectedTaskForDetails.currentCount || 0) / Math.max(1, selectedTaskForDetails.targetCount || 1)) * 100))}%`
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Interactive Progress Log: Quick Add / Update */}
+                  <div className="pt-2 border-t border-purple-500/20 flex flex-wrap items-center justify-between gap-2">
+                    <span className="text-[11px] text-slate-400">Log Daily Work Units:</span>
+                    <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-1 bg-white/[0.06] border border-white/10 rounded-xl p-1">
+                        <button
+                          type="button"
+                          id="btn-detail-decrement-count"
+                          onClick={() => handleUpdateTaskCount(selectedTaskForDetails.id, Math.max(0, (selectedTaskForDetails.currentCount || 0) - 1))}
+                          className="w-6 h-6 rounded-lg flex items-center justify-center text-slate-300 hover:text-white hover:bg-white/10 text-xs font-bold cursor-pointer"
+                          title="Decrease"
+                        >
+                          -
+                        </button>
+                        <input
+                          type="number"
+                          min="0"
+                          value={selectedTaskForDetails.currentCount || 0}
+                          onChange={(e) => handleUpdateTaskCount(selectedTaskForDetails.id, Math.max(0, parseInt(e.target.value) || 0))}
+                          className="w-12 bg-transparent text-center text-xs font-bold text-white focus:outline-none"
+                        />
+                        <button
+                          type="button"
+                          id="btn-detail-increment-count"
+                          onClick={() => handleUpdateTaskCount(selectedTaskForDetails.id, (selectedTaskForDetails.currentCount || 0) + 1)}
+                          className="w-6 h-6 rounded-lg flex items-center justify-center text-purple-300 hover:text-emerald-400 hover:bg-white/10 text-xs font-bold cursor-pointer"
+                          title="Add 1 completed unit"
+                        >
+                          +
+                        </button>
+                      </div>
+
+                      {/* Quick +2 button for example */}
+                      <button
+                        type="button"
+                        onClick={() => handleUpdateTaskCount(selectedTaskForDetails.id, (selectedTaskForDetails.currentCount || 0) + 2)}
+                        className="px-2.5 py-1.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-200 border border-purple-500/30 text-[11px] font-semibold cursor-pointer transition-all"
+                      >
+                        +2 Today
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Assignment Information Grid */}
               <div className="grid grid-cols-2 gap-3">
@@ -2855,9 +3176,17 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
   const [status, setStatus] = useState<TaskItem['status']>(task.status || (task.completed ? 'Completed' : 'Pending'));
   const [tags, setTags] = useState((task.tags || []).join(', '));
 
+  // Numeric Target & Deliverable Tracking
+  const [hasNumericTarget, setHasNumericTarget] = useState(Boolean(task.hasNumericTarget));
+  const [targetCount, setTargetCount] = useState(task.targetCount ?? 14);
+  const [currentCount, setCurrentCount] = useState(task.currentCount ?? 0);
+  const [unitName, setUnitName] = useState(task.unitName || 'posts');
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
+
+    const isComplete = hasNumericTarget ? Number(currentCount) >= Number(targetCount) : status === 'Completed';
 
     const assignedEmp = employees.find(e => e.id === assigneeId || e.empId === assigneeId);
     const updatedTask: TaskItem = {
@@ -2867,9 +3196,13 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
       priority,
       category,
       dueDate,
-      status,
-      completed: status === 'Completed',
+      status: isComplete ? 'Completed' : status,
+      completed: isComplete,
       tags: tags.split(',').map(t => t.trim()).filter(Boolean),
+      hasNumericTarget,
+      targetCount: hasNumericTarget ? Math.max(1, Number(targetCount) || 1) : undefined,
+      currentCount: hasNumericTarget ? Math.max(0, Number(currentCount) || 0) : undefined,
+      unitName: hasNumericTarget ? (unitName.trim() || 'posts') : undefined,
       assignedTo: assignedEmp ? {
         id: assignedEmp.id,
         name: assignedEmp.name,
@@ -3010,6 +3343,78 @@ const EditTaskModal: React.FC<EditTaskModalProps> = ({
                 className="w-full bg-white/[0.04] border border-white/10 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-purple-500"
               />
             </div>
+          </div>
+
+          {/* Numeric Target & Percentage Tracking Section in Edit Modal */}
+          <div className="p-3.5 rounded-2xl border border-purple-500/30 bg-purple-950/20 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <input
+                  type="checkbox"
+                  id="edit-checkbox-enable-numeric-target"
+                  checked={hasNumericTarget}
+                  onChange={(e) => setHasNumericTarget(e.target.checked)}
+                  className="w-4 h-4 rounded border-white/20 text-purple-600 focus:ring-purple-500 cursor-pointer"
+                />
+                <label htmlFor="edit-checkbox-enable-numeric-target" className="text-xs font-bold text-white cursor-pointer select-none">
+                  Enable Numbering & Percentage Target Tracking
+                </label>
+              </div>
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 font-medium border border-purple-500/30">
+                Optional
+              </span>
+            </div>
+
+            {hasNumericTarget && (
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2 border-t border-purple-500/20 animate-in fade-in duration-200">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-slate-300">Target Goal</label>
+                  <input
+                    id="edit-input-task-target-count"
+                    type="number"
+                    min="1"
+                    value={targetCount}
+                    onChange={(e) => setTargetCount(Math.max(1, parseInt(e.target.value) || 1))}
+                    className="w-full bg-white/[0.06] border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-500 font-bold"
+                    placeholder="e.g. 14"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-slate-300">Unit / Deliverable</label>
+                  <input
+                    id="edit-input-task-unit-name"
+                    type="text"
+                    value={unitName}
+                    onChange={(e) => setUnitName(e.target.value)}
+                    className="w-full bg-white/[0.06] border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-500"
+                    placeholder="e.g. posts, designs"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-semibold text-slate-300">Current Progress</label>
+                  <input
+                    id="edit-input-task-current-count"
+                    type="number"
+                    min="0"
+                    value={currentCount}
+                    onChange={(e) => setCurrentCount(Math.max(0, parseInt(e.target.value) || 0))}
+                    className="w-full bg-white/[0.06] border border-white/10 rounded-xl px-3 py-1.5 text-xs text-white focus:outline-none focus:border-purple-500 font-bold"
+                    placeholder="e.g. 2"
+                  />
+                </div>
+                <div className="sm:col-span-3 bg-purple-900/30 border border-purple-500/20 rounded-xl p-2.5 flex items-center justify-between text-xs">
+                  <span className="text-slate-300">
+                    Status: <strong className="text-white">{currentCount} of {targetCount} {unitName || 'items'}</strong> ({Math.min(100, Math.round(((currentCount || 0) / (targetCount || 1)) * 100))}%)
+                  </span>
+                  <div className="w-32 bg-white/10 h-2 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-purple-500 to-emerald-400 rounded-full"
+                      style={{ width: `${Math.min(100, Math.round(((currentCount || 0) / (targetCount || 1)) * 100))}%` }}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="flex items-center justify-end gap-3 pt-3 border-t border-white/10">

@@ -335,6 +335,11 @@ export interface TaskItem {
   tags?: string[];
   notes?: string;
   attachments?: TaskAttachment[];
+  // Selective Numeric Target & Progress Tracking (optional, activated per task by admin/manager)
+  hasNumericTarget?: boolean;
+  targetCount?: number;
+  currentCount?: number;
+  unitName?: string;
 }
 
 export interface FeedbackItem {

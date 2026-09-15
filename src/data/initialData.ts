@@ -934,6 +934,39 @@ export const NOTIFICATIONS: NotificationItem[] = [
 
 export const INITIAL_TASKS: TaskItem[] = [
   {
+    id: 'task-social-posts',
+    title: 'Monthly Social Media Visual Posts & Creatives',
+    description: 'Create and schedule 14 monthly campaign posts for brand channels. Track real-time deliverables and percentage completion.',
+    completed: false,
+    status: 'In Progress',
+    pinned: true,
+    priority: 'high',
+    dueDate: 'End of Month',
+    category: 'Design',
+    createdAt: 'Today at 09:00 AM',
+    assignedTo: {
+      id: 'emp-2',
+      name: 'Rani',
+      role: 'UI/UX Visual Designer',
+      roleType: 'employee',
+      department: 'Design',
+      avatar: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBSANbGI_8XJwr4JerK2U_S85Z10-Lhe_dnK9SL5j7CA7A78CwnhHQHcY4OfNOr2pDaW9hgOkTqKBCWPZ9PSSR9sfz9ljGdJCaRFTtYFjjW-EeDaH4Lb7pSfNCRoyGbmvg9LYJvJf4XTU2H0-vTX1OncSoyHd9Yq1BjbrpoWB6up8qQOivnc3S9AK11f-bL5xi6YcXHd-lgU3gKTaGFvNAZXYG0H5_OaDSz4Vlg_JLyRbeFO6H7cJrv'
+    },
+    assignedBy: {
+      id: 'emp-1',
+      name: 'Raja Raza',
+      role: 'HR Director & System Admin',
+      roleType: 'admin',
+      avatar: '/raja_raza.jpg'
+    },
+    department: 'Design',
+    tags: ['Social Media', 'Visual Posts', 'Deliverables'],
+    hasNumericTarget: true,
+    targetCount: 14,
+    currentCount: 2,
+    unitName: 'posts'
+  },
+  {
     id: 'task-1',
     title: 'Design System 2.0 Governance & Guidelines',
     description: 'Establish typography tokens, spatial grids, and component libraries across web and mobile surfaces.',

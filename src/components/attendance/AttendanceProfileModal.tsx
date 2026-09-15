@@ -11,7 +11,8 @@ import {
   Edit3, 
   Trash2,
   Download,
-  Briefcase
+  Briefcase,
+  Lock
 } from 'lucide-react';
 import { Employee, AttendanceRecord, LeaveRequest, UserProfile } from '../../types';
 import { generateEmployeeMonthlyRoster, formatPKTDateDisplay } from '../../utils/attendanceUtils';
@@ -46,8 +47,8 @@ export const AttendanceProfileModal: React.FC<AttendanceProfileModalProps> = ({
   if (!isOpen || !employee) return null;
 
   const isAdmin = currentUser.roleType === 'admin';
-  const isManager = currentUser.roleType === 'manager';
-  const canModify = isAdmin || (isManager && currentUser.department === employee.department);
+  // Strictly Admin-only modification: non-admins can view attendance profiles, but only Admin can modify/add/delete records
+  const canModify = isAdmin;
 
   const monthNames = [
     'January', 'February', 'March', 'April', 'May', 'June',
@@ -117,6 +118,12 @@ export const AttendanceProfileModal: React.FC<AttendanceProfileModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {!canModify && (
+              <span className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white/[0.06] text-slate-300 border border-white/10 flex items-center gap-1.5 shadow-sm">
+                <Lock className="w-3.5 h-3.5 text-purple-400" />
+                <span>View Only</span>
+              </span>
+            )}
             <button
               onClick={handleExportCSV}
               className="p-2.5 rounded-xl bg-white/[0.05] hover:bg-white/[0.1] text-slate-300 hover:text-white border border-white/10 transition-colors flex items-center gap-1.5 text-xs font-semibold cursor-pointer"

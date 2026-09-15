@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, Calendar, UserCheck, AlertCircle, UserX, CalendarOff, Plus, Edit3, Trash2 } from 'lucide-react';
+import { X, Calendar, UserCheck, AlertCircle, UserX, CalendarOff, Plus, Edit3, Trash2, Lock } from 'lucide-react';
 import { Employee, AttendanceRecord, LeaveRequest, UserProfile } from '../../types';
 import { formatPKTDateDisplay, isDateCoveredByApprovedLeave } from '../../utils/attendanceUtils';
 
@@ -31,8 +31,8 @@ export const DayAttendanceModal: React.FC<DayAttendanceModalProps> = ({
   if (!isOpen || !dateISO) return null;
 
   const isAdmin = currentUser.roleType === 'admin';
-  const isManager = currentUser.roleType === 'manager';
-  const canModify = isAdmin || isManager;
+  // Strictly Admin-only modification: anyone can view calendar, but ONLY Admin can edit/add/delete records
+  const canModify = isAdmin;
 
   const dateObj = new Date(`${dateISO}T12:00:00`);
   const dateFormatted = formatPKTDateDisplay(dateISO);
@@ -104,6 +104,12 @@ export const DayAttendanceModal: React.FC<DayAttendanceModalProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {!canModify && (
+              <span className="px-3 py-1.5 rounded-xl text-xs font-semibold bg-white/[0.06] text-slate-300 border border-white/10 flex items-center gap-1.5 shadow-sm">
+                <Lock className="w-3.5 h-3.5 text-purple-400" />
+                <span>View Only (Admin Edit Only)</span>
+              </span>
+            )}
             {canModify && (
               <button
                 onClick={() => onAddRecord(undefined, dateISO)}
