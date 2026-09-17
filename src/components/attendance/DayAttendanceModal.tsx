@@ -1,7 +1,7 @@
 import React from 'react';
-import { X, Calendar, UserCheck, AlertCircle, UserX, CalendarOff, Plus, Edit3, Trash2, Lock } from 'lucide-react';
+import { X, Calendar, UserCheck, AlertCircle, UserX, CalendarOff, Plus, Edit3, Trash2, Lock, Briefcase } from 'lucide-react';
 import { Employee, AttendanceRecord, LeaveRequest, UserProfile } from '../../types';
-import { formatPKTDateDisplay, isDateCoveredByApprovedLeave } from '../../utils/attendanceUtils';
+import { formatPKTDateDisplay, isDateCoveredByApprovedLeave, DEFAULT_SHIFT_LABEL } from '../../utils/attendanceUtils';
 
 interface DayAttendanceModalProps {
   isOpen: boolean;
@@ -65,7 +65,7 @@ export const DayAttendanceModal: React.FC<DayAttendanceModalProps> = ({
       overtime,
       lateDuration,
       remarks,
-      shift: record?.shift || 'Regular (09:00 AM – 06:00 PM)'
+      shift: record?.shift || emp.shift || DEFAULT_SHIFT_LABEL
     };
   });
 
@@ -171,6 +171,7 @@ export const DayAttendanceModal: React.FC<DayAttendanceModalProps> = ({
                 <tr>
                   <th className="py-2.5 px-3">Employee</th>
                   <th className="py-2.5 px-3">Department</th>
+                  <th className="py-2.5 px-3">Assigned Shift</th>
                   <th className="py-2.5 px-3">Clock In</th>
                   <th className="py-2.5 px-3">Clock Out</th>
                   <th className="py-2.5 px-3">Total Hours</th>
@@ -180,7 +181,7 @@ export const DayAttendanceModal: React.FC<DayAttendanceModalProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/5 text-slate-300">
-                {roster.map(({ emp, record, status, clockIn, clockOut, totalHrs, lateDuration, remarks }) => (
+                {roster.map(({ emp, record, status, clockIn, clockOut, totalHrs, lateDuration, remarks, shift }) => (
                   <tr key={emp.empId} className="hover:bg-white/[0.02] transition-colors">
                     <td className="py-2.5 px-3">
                       <div className="flex items-center gap-2.5">
@@ -203,6 +204,9 @@ export const DayAttendanceModal: React.FC<DayAttendanceModalProps> = ({
                       </div>
                     </td>
                     <td className="py-2.5 px-3 text-slate-300">{emp.department}</td>
+                    <td className="py-2.5 px-3 text-purple-300 font-medium text-[11px] whitespace-nowrap">
+                      {shift}
+                    </td>
                     <td className="py-2.5 px-3 font-mono text-slate-200">{clockIn}</td>
                     <td className="py-2.5 px-3 font-mono text-slate-400">{clockOut}</td>
                     <td className="py-2.5 px-3 font-mono font-semibold text-purple-300">{totalHrs}</td>

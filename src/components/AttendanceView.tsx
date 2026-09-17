@@ -175,17 +175,31 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
     });
   }, [localRecords, currentUser, todayISO, todayDisplay]);
 
+  // Match logged in user with employee list to retrieve latest workforce shift from Employee Management
+  const currentEmpProfile = useMemo(() => {
+    return employees.find(e => 
+      e.empId === currentUser.empId || 
+      e.id === currentUser.id || 
+      (e.email && currentUser.email && e.email.toLowerCase() === currentUser.email.toLowerCase()) ||
+      (e.name && currentUser.name && e.name.toLowerCase().trim() === currentUser.name.toLowerCase().trim())
+    );
+  }, [employees, currentUser]);
+
+  const userProfileShift = currentEmpProfile?.shift || currentUser.shift || DEFAULT_SHIFT_LABEL;
+
   // Active shift selection for current user
   const [selectedShift, setSelectedShift] = useState<string>(() => {
-    return myTodayRecord?.shift || currentUser.shift || DEFAULT_SHIFT_LABEL;
+    return myTodayRecord?.shift || userProfileShift;
   });
 
   // Keep selectedShift synced if user profile or existing record provides it
   useEffect(() => {
     if (myTodayRecord?.shift) {
       setSelectedShift(myTodayRecord.shift);
+    } else if (userProfileShift) {
+      setSelectedShift(userProfileShift);
     }
-  }, [myTodayRecord?.shift]);
+  }, [myTodayRecord?.shift, userProfileShift]);
 
   // Is current user clocked in today?
   const isClockedIn = !!(myTodayRecord && myTodayRecord.clockIn && myTodayRecord.clockIn !== '--:--' && (!myTodayRecord.clockOut || myTodayRecord.clockOut === '--:--'));
@@ -718,17 +732,34 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
               <div className="flex items-center gap-2 flex-wrap text-xs text-slate-400 pt-0.5">
                 <span>Shift:</span>
                 {!isClockedIn && !isShiftCompleted ? (
-                  <select
-                    value={selectedShift}
-                    onChange={(e) => setSelectedShift(e.target.value)}
-                    className="px-2.5 py-1 rounded-xl bg-purple-500/15 border border-purple-500/30 text-purple-200 text-xs font-medium focus:outline-none focus:border-purple-400 cursor-pointer"
-                  >
-                    {WORKFORCE_SHIFTS.map(s => (
-                      <option key={s.id} value={s.label} className="bg-[#131b2e] text-slate-200">
-                        {s.label}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <select
+                      value={selectedShift}
+                      onChange={(e) => setSelectedShift(e.target.value)}
+                      className="px-2.5 py-1 rounded-xl bg-purple-500/15 border border-purple-500/30 text-purple-200 text-xs font-medium focus:outline-none focus:border-purple-400 cursor-pointer"
+                    >
+                      {WORKFORCE_SHIFTS.map(s => (
+                        <option key={s.id} value={s.label} className="bg-[#131b2e] text-slate-200">
+                          {s.label} {userProfileShift === s.label ? '★ (Your Profile Shift)' : ''}
+                        </option>
+                      ))}
+                    </select>
+                    {selectedShift === userProfileShift ? (
+                      <span className="text-[10px] px-2 py-0.5 rounded-md bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 font-medium flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3 text-emerald-400" />
+                        <span>Profile Shift Matched</span>
+                      </span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => setSelectedShift(userProfileShift)}
+                        className="text-[11px] text-purple-400 hover:text-purple-300 underline font-medium cursor-pointer"
+                        title="Revert to profile workforce shift"
+                      >
+                        Reset to Profile ({userProfileShift.split('(')[0].trim()})
+                      </button>
+                    )}
+                  </div>
                 ) : (
                   <span className="text-slate-200 font-medium px-2 py-0.5 rounded-lg bg-white/5 border border-white/10">
                     {myTodayRecord?.shift || selectedShift}
@@ -1184,7 +1215,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                             </button>
                           </td>
                           <td className="py-3 px-4 text-slate-300">{record.department}</td>
-                          <td className="py-3 px-4 text-slate-400 text-[11px]">{record.shift || DEFAULT_SHIFT_LABEL}</td>
+                          <td className="py-3 px-4 text-slate-400 text-[11px]">{record.shift || emp?.shift || DEFAULT_SHIFT_LABEL}</td>
                           <td className="py-3 px-4 font-mono font-medium text-slate-200">
                             {record.clockIn}
                           </td>
@@ -1378,7 +1409,7 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                             </button>
                           </td>
                           <td className="py-3 px-4 text-slate-300">{record.department}</td>
-                          <td className="py-3 px-4 text-slate-400 text-[11px]">{record.shift || 'Regular (09:00 AM – 06:00 PM)'}</td>
+                          <td className="py-3 px-4 text-slate-400 text-[11px]">{record.shift || emp?.shift || DEFAULT_SHIFT_LABEL}</td>
                           <td className="py-3 px-4 font-mono text-slate-200">{record.clockIn}</td>
                           <td className="py-3 px-4 font-mono text-slate-400">{record.clockOut}</td>
                           <td className="py-3 px-4 font-mono font-semibold text-purple-300">{record.totalHrs}</td>
@@ -1616,6 +1647,10 @@ export const AttendanceView: React.FC<AttendanceViewProps> = ({
                       <span className="text-slate-300">{selectedCalendarEmployee.department}</span>
                       <span>•</span>
                       <span className="text-purple-300 font-semibold">{monthNames[selectedMonthIndex]} {selectedYear}</span>
+                      <span>•</span>
+                      <span className="px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/30 text-[11px] font-semibold">
+                        Shift: {selectedCalendarEmployee.shift || DEFAULT_SHIFT_LABEL}
+                      </span>
                     </p>
                   </div>
                 </div>

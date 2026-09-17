@@ -132,7 +132,7 @@ class AuthService {
         this.saveAccounts();
       }
     } catch (err) {
-      console.error('Failed to sync user_accounts from Firestore:', err);
+      console.warn('[AuthService] Could not sync user_accounts from Firestore, using local accounts cache:', err);
     }
   }
 
@@ -164,7 +164,7 @@ class AuthService {
     try {
       await dbService.saveItem('user_accounts', account);
     } catch (e) {
-      console.error('Failed to persist account to Firestore:', e);
+      console.warn('[AuthService] Could not persist account to Firestore (saved locally):', e);
     }
   }
 
@@ -174,7 +174,7 @@ class AuthService {
     try {
       await dbService.deleteItem('user_accounts', accountId);
     } catch (e) {
-      console.error('Failed to delete account from Firestore:', e);
+      console.warn('[AuthService] Could not delete account from Firestore (removed locally):', e);
     }
   }
 

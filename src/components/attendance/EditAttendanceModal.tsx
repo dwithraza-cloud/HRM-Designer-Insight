@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Clock, Calendar, AlertCircle, Save, User, Briefcase, Coffee } from 'lucide-react';
+import { X, Clock, Calendar, AlertCircle, Save, User, Briefcase, Coffee, Check, RotateCcw } from 'lucide-react';
 import { AttendanceRecord, Employee, AttendanceStatus } from '../../types';
 import { 
   calculateAttendanceHours, 
@@ -8,7 +8,10 @@ import {
   formatPKTDateShort,
   getPKTDateISO,
   WORKFORCE_SHIFTS,
-  DEFAULT_SHIFT_LABEL
+  DEFAULT_SHIFT_LABEL,
+  getShiftDetails,
+  getShiftStartTime,
+  getShiftEndTime
 } from '../../utils/attendanceUtils';
 
 interface EditAttendanceModalProps {
@@ -32,24 +35,33 @@ export const EditAttendanceModal: React.FC<EditAttendanceModalProps> = ({
 }) => {
   const isEditing = !!initialRecord;
 
-  const [selectedEmpId, setSelectedEmpId] = useState<string>(() => {
-    return initialRecord?.empId || defaultEmployeeId || employees[0]?.empId || '';
-  });
+  // Helper to find employee by empId
+  const getEmployeeProfile = (empId: string): Employee | undefined => {
+    return employees.find(e => e.empId === empId || e.id === empId);
+  };
+
+  const initialEmpId = initialRecord?.empId || defaultEmployeeId || employees[0]?.empId || '';
+  const initialEmp = getEmployeeProfile(initialEmpId);
+  const initialEmpShift = initialEmp?.shift || DEFAULT_SHIFT_LABEL;
+
+  const [selectedEmpId, setSelectedEmpId] = useState<string>(() => initialEmpId);
 
   const [date, setDate] = useState<string>(() => {
     return initialRecord?.date || selectedDate || getPKTDateISO();
   });
 
   const [shift, setShift] = useState<string>(() => {
-    return initialRecord?.shift || DEFAULT_SHIFT_LABEL;
+    return initialRecord?.shift || initialEmpShift;
   });
 
   const [clockIn, setClockIn] = useState<string>(() => {
-    return initialRecord?.clockIn && initialRecord.clockIn !== '--:--' ? initialRecord.clockIn : '09:00 AM';
+    if (initialRecord?.clockIn && initialRecord.clockIn !== '--:--') return initialRecord.clockIn;
+    return getShiftStartTime(initialRecord?.shift || initialEmpShift);
   });
 
   const [clockOut, setClockOut] = useState<string>(() => {
-    return initialRecord?.clockOut && initialRecord.clockOut !== '--:--' ? initialRecord.clockOut : '06:00 PM';
+    if (initialRecord?.clockOut && initialRecord.clockOut !== '--:--') return initialRecord.clockOut;
+    return getShiftEndTime(initialRecord?.shift || initialEmpShift);
   });
 
   const [breakMinutes, setBreakMinutes] = useState<number>(() => {
@@ -67,23 +79,32 @@ export const EditAttendanceModal: React.FC<EditAttendanceModalProps> = ({
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Current selected employee object
+  const currentSelectedEmp = getEmployeeProfile(selectedEmpId);
+  const currentProfileShift = currentSelectedEmp?.shift || DEFAULT_SHIFT_LABEL;
+
   // Sync state when props change
   useEffect(() => {
     if (initialRecord) {
+      const emp = getEmployeeProfile(initialRecord.empId);
+      const effectiveShift = initialRecord.shift || emp?.shift || DEFAULT_SHIFT_LABEL;
       setSelectedEmpId(initialRecord.empId);
       setDate(initialRecord.date || getPKTDateISO());
-      setShift(initialRecord.shift || DEFAULT_SHIFT_LABEL);
-      setClockIn(initialRecord.clockIn && initialRecord.clockIn !== '--:--' ? initialRecord.clockIn : '09:00 AM');
-      setClockOut(initialRecord.clockOut && initialRecord.clockOut !== '--:--' ? initialRecord.clockOut : '06:00 PM');
+      setShift(effectiveShift);
+      setClockIn(initialRecord.clockIn && initialRecord.clockIn !== '--:--' ? initialRecord.clockIn : getShiftStartTime(effectiveShift));
+      setClockOut(initialRecord.clockOut && initialRecord.clockOut !== '--:--' ? initialRecord.clockOut : getShiftEndTime(effectiveShift));
       setBreakMinutes(initialRecord.breakMinutes !== undefined ? initialRecord.breakMinutes : 60);
       setStatus(initialRecord.status || 'Present');
       setRemarks(initialRecord.remarks || '');
     } else {
-      setSelectedEmpId(defaultEmployeeId || employees[0]?.empId || '');
+      const targetEmpId = defaultEmployeeId || employees[0]?.empId || '';
+      const emp = getEmployeeProfile(targetEmpId);
+      const targetShift = emp?.shift || DEFAULT_SHIFT_LABEL;
+      setSelectedEmpId(targetEmpId);
       setDate(selectedDate || getPKTDateISO());
-      setShift(DEFAULT_SHIFT_LABEL);
-      setClockIn('09:00 AM');
-      setClockOut('06:00 PM');
+      setShift(targetShift);
+      setClockIn(getShiftStartTime(targetShift));
+      setClockOut(getShiftEndTime(targetShift));
       setBreakMinutes(60);
       setStatus('Present');
       setRemarks('');
@@ -94,6 +115,34 @@ export const EditAttendanceModal: React.FC<EditAttendanceModalProps> = ({
   // Recalculate working hours live preview
   const hoursCalc = calculateAttendanceHours(clockIn, clockOut, breakMinutes);
   const punctuality = determinePunctuality(clockIn, shift);
+
+  // When changing employee in the dropdown, automatically pick that person's workforce shift
+  const handleEmployeeChange = (newEmpId: string) => {
+    setSelectedEmpId(newEmpId);
+    if (!isEditing) {
+      const emp = getEmployeeProfile(newEmpId);
+      const empShift = emp?.shift || DEFAULT_SHIFT_LABEL;
+      setShift(empShift);
+      const newIn = getShiftStartTime(empShift);
+      const newOut = getShiftEndTime(empShift);
+      setClockIn(newIn);
+      setClockOut(newOut);
+      const punct = determinePunctuality(newIn, empShift);
+      setStatus(punct.status);
+    }
+  };
+
+  // Reset shift to employee's profile workforce shift
+  const handleResetToProfileShift = () => {
+    const profileShift = currentProfileShift;
+    setShift(profileShift);
+    const newIn = getShiftStartTime(profileShift);
+    const newOut = getShiftEndTime(profileShift);
+    setClockIn(newIn);
+    setClockOut(newOut);
+    const punct = determinePunctuality(newIn, profileShift);
+    setStatus(punct.status);
+  };
 
   // Automatically update status if user is modifying clock-in unless set to Absent/Leave
   const handleClockInChange = (newVal: string) => {
@@ -208,18 +257,25 @@ export const EditAttendanceModal: React.FC<EditAttendanceModalProps> = ({
 
           {/* Employee Selection */}
           <div className="space-y-1.5">
-            <label className="text-slate-300 font-semibold flex items-center gap-1.5">
-              <User className="w-3.5 h-3.5 text-purple-400" /> Employee
-            </label>
+            <div className="flex items-center justify-between">
+              <label className="text-slate-300 font-semibold flex items-center gap-1.5">
+                <User className="w-3.5 h-3.5 text-purple-400" /> Employee
+              </label>
+              {currentSelectedEmp?.shift && (
+                <span className="text-[11px] text-slate-400">
+                  Assigned Shift: <strong className="text-purple-300 font-semibold">{currentSelectedEmp.shift}</strong>
+                </span>
+              )}
+            </div>
             <select
               value={selectedEmpId}
-              onChange={(e) => setSelectedEmpId(e.target.value)}
+              onChange={(e) => handleEmployeeChange(e.target.value)}
               disabled={isEditing}
               className="w-full px-3.5 py-2.5 rounded-xl bg-white/[0.04] border border-white/10 text-white focus:outline-none focus:border-purple-500/50 disabled:opacity-60"
             >
               {employees.map(emp => (
                 <option key={emp.empId} value={emp.empId} className="bg-[#131b2e] text-white">
-                  {emp.name} ({emp.empId}) — {emp.department}
+                  {emp.name} ({emp.empId}) — {emp.department} • Shift: {emp.shift || DEFAULT_SHIFT_LABEL}
                 </option>
               ))}
             </select>
@@ -241,9 +297,17 @@ export const EditAttendanceModal: React.FC<EditAttendanceModalProps> = ({
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-slate-300 font-semibold flex items-center gap-1.5">
-                <Briefcase className="w-3.5 h-3.5 text-purple-400" /> Assigned Shift
-              </label>
+              <div className="flex items-center justify-between gap-1 flex-wrap">
+                <label className="text-slate-300 font-semibold flex items-center gap-1.5">
+                  <Briefcase className="w-3.5 h-3.5 text-purple-400" /> Assigned Shift
+                </label>
+                {currentSelectedEmp?.shift && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-md bg-purple-500/15 border border-purple-500/30 text-purple-300 font-medium flex items-center gap-1">
+                    <Check className="w-3 h-3 text-emerald-400" />
+                    <span>Profile: {currentSelectedEmp.shift.split('(')[0].trim()}</span>
+                  </span>
+                )}
+              </div>
               <select
                 value={shift}
                 onChange={(e) => handleShiftChange(e.target.value)}
@@ -251,10 +315,22 @@ export const EditAttendanceModal: React.FC<EditAttendanceModalProps> = ({
               >
                 {WORKFORCE_SHIFTS.map(s => (
                   <option key={s.id} value={s.label} className="bg-[#131b2e]">
-                    {s.label}
+                    {s.label} {currentSelectedEmp?.shift === s.label ? '★ (Profile Shift)' : ''}
                   </option>
                 ))}
               </select>
+              {currentSelectedEmp?.shift && shift !== currentSelectedEmp.shift && (
+                <div className="flex items-center justify-between text-[11px] text-amber-300/90 pt-0.5">
+                  <span>Differs from profile</span>
+                  <button
+                    type="button"
+                    onClick={handleResetToProfileShift}
+                    className="text-purple-400 hover:text-purple-300 underline font-semibold flex items-center gap-1 cursor-pointer"
+                  >
+                    <RotateCcw className="w-3 h-3" /> Use Profile Shift
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 

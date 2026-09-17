@@ -60,17 +60,39 @@ export const WORKFORCE_SHIFTS: WorkforceShift[] = [
 export const DEFAULT_SHIFT_LABEL = WORKFORCE_SHIFTS[0].label;
 
 /**
+ * Get full shift definition object from shift label, ID, or partial name
+ */
+export function getShiftDetails(shiftStr?: string): WorkforceShift {
+  if (!shiftStr) return WORKFORCE_SHIFTS[0];
+  const found = WORKFORCE_SHIFTS.find(s => 
+    s.label === shiftStr || 
+    s.name.toLowerCase() === shiftStr.toLowerCase() || 
+    s.id === shiftStr
+  );
+  if (found) return found;
+  const clean = shiftStr.toLowerCase();
+  if (clean.includes('11:00') || clean.includes('11am') || clean.includes('mid')) return WORKFORCE_SHIFTS[1];
+  if (clean.includes('12:00') || clean.includes('12pm') || clean.includes('afternoon')) return WORKFORCE_SHIFTS[2];
+  if (clean.includes('05:00') || clean.includes('5:00') || clean.includes('5pm') || clean.includes('night') || clean.includes('02:00')) return WORKFORCE_SHIFTS[3];
+  return WORKFORCE_SHIFTS[0];
+}
+
+/**
  * Extract shift start time (e.g. '09:00 AM', '11:00 AM', '12:00 PM', '05:00 PM') from shift string
  */
 export function getShiftStartTime(shiftStr?: string): string {
   if (!shiftStr) return '09:00 AM';
-  const clean = shiftStr.toLowerCase();
-  if (clean.includes('11:00') || clean.includes('11am') || clean.includes('11 am')) return '11:00 AM';
-  if (clean.includes('12:00') || clean.includes('12pm') || clean.includes('12 pm')) return '12:00 PM';
-  if (clean.includes('05:00') || clean.includes('5:00') || clean.includes('5pm') || clean.includes('5 pm') || clean.includes('night') || clean.includes('02:00')) return '05:00 PM';
-  if (clean.includes('09:00') || clean.includes('9:00') || clean.includes('9am') || clean.includes('9 am') || clean.includes('regular') || clean.includes('morning')) return '09:00 AM';
-  const match = shiftStr.match(/(\d{1,2}:\d{2}\s*(?:AM|PM))/i);
-  return match ? match[1].toUpperCase() : '09:00 AM';
+  const shift = getShiftDetails(shiftStr);
+  return shift.startTime;
+}
+
+/**
+ * Extract shift end time (e.g. '06:00 PM', '08:00 PM', '09:00 PM', '02:00 AM') from shift string
+ */
+export function getShiftEndTime(shiftStr?: string): string {
+  if (!shiftStr) return '06:00 PM';
+  const shift = getShiftDetails(shiftStr);
+  return shift.endTime;
 }
 
 /**
@@ -398,7 +420,7 @@ export function generateEmployeeMonthlyRoster(
       overtime,
       status,
       lateDuration,
-      shift: record?.shift || 'Regular (09:00 AM – 06:00 PM)',
+      shift: record?.shift || employee.shift || DEFAULT_SHIFT_LABEL,
       remarks,
       recordId,
       isToday,

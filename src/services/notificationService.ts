@@ -37,7 +37,7 @@ export const notificationService = {
     try {
       await dbService.saveItem('notifications', item);
     } catch (err) {
-      console.error('Failed to dispatch notification to Firestore:', err);
+      console.warn('[NotificationService] Could not sync notification to Firestore (saved locally):', err);
     }
 
     return item;
@@ -84,7 +84,7 @@ export const notificationService = {
     try {
       await dbService.saveItem('notifications', updated);
     } catch (err) {
-      console.error('Failed to mark notification as read:', err);
+      console.warn('[NotificationService] Could not update notification in Firestore (updated locally):', err);
     }
   },
 
@@ -98,7 +98,7 @@ export const notificationService = {
       try {
         await dbService.saveItem('notifications', updated);
       } catch (err) {
-        console.error('Error marking notification as read:', err);
+        console.warn('[NotificationService] Could not update notification in Firestore (updated locally):', err);
       }
     }
   },
@@ -111,7 +111,7 @@ export const notificationService = {
       try {
         await dbService.deleteItem('notifications', notif.id);
       } catch (err) {
-        console.error('Error deleting notification:', err);
+        console.warn('[NotificationService] Could not delete notification from Firestore (deleted locally):', err);
       }
     }
   }

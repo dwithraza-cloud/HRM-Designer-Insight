@@ -134,48 +134,57 @@ export function App() {
       try {
         await dbService.loadGlobalDeletedTombstones();
 
-        const loadedEmps = await dbService.loadOrSeedCollection('employees', INITIAL_EMPLOYEES);
-        setEmployees(loadedEmps);
-        if (loadedEmps.length > 0) setSelectedEmployee(loadedEmps[0]);
+        const [
+          empsRes,
+          leavesRes,
+          jobsRes,
+          tasksRes,
+          attRes,
+          payRes,
+          assetsRes,
+          docsRes,
+          actsRes,
+          notifsRes,
+          perfRes,
+          feedRes,
+          intRes,
+          veloRes
+        ] = await Promise.allSettled([
+          dbService.loadOrSeedCollection('employees', INITIAL_EMPLOYEES),
+          dbService.loadOrSeedCollection('leave_requests', INITIAL_LEAVE_REQUESTS),
+          dbService.loadOrSeedCollection('job_openings', INITIAL_JOB_OPENINGS),
+          dbService.loadOrSeedCollection('tasks', INITIAL_TASKS),
+          dbService.loadOrSeedCollection('attendance', INITIAL_ATTENDANCE),
+          dbService.loadOrSeedCollection('payroll_records', INITIAL_PAYROLL_RECORDS),
+          dbService.loadOrSeedCollection('assets', INITIAL_ASSETS),
+          dbService.loadOrSeedCollection('documents', INITIAL_DOCUMENTS),
+          dbService.loadOrSeedCollection('activities', RECENT_ACTIVITIES),
+          dbService.loadOrSeedCollection('notifications', NOTIFICATIONS),
+          dbService.loadOrSeedCollection('top_performers', TOP_PERFORMERS),
+          dbService.loadOrSeedCollection('performance_feedback', RECENT_FEEDBACK),
+          dbService.loadOrSeedCollection('interviews', INITIAL_ACTIVE_INTERVIEWS),
+          dbService.loadOrSeedCollection('hiring_velocity', INITIAL_HIRING_VELOCITY)
+        ]);
 
-        const loadedLeaves = await dbService.loadOrSeedCollection('leave_requests', INITIAL_LEAVE_REQUESTS);
-        setLeaveRequests(loadedLeaves);
-
-        const loadedJobs = await dbService.loadOrSeedCollection('job_openings', INITIAL_JOB_OPENINGS);
-        setJobOpenings(loadedJobs);
-
-        const loadedTasks = await dbService.loadOrSeedCollection('tasks', INITIAL_TASKS);
-        setTasks(loadedTasks);
-
-        const loadedAttendance = await dbService.loadOrSeedCollection('attendance', INITIAL_ATTENDANCE);
-        setAttendanceRecords(loadedAttendance.filter(r => !dbService.isItemDeleted('attendance', r.id)));
-
-        const loadedPayroll = await dbService.loadOrSeedCollection('payroll_records', INITIAL_PAYROLL_RECORDS);
-        setPayrollRecords(loadedPayroll);
-
-        const loadedAssets = await dbService.loadOrSeedCollection('assets', INITIAL_ASSETS);
-        setAssets(loadedAssets);
-
-        const loadedDocs = await dbService.loadOrSeedCollection('documents', INITIAL_DOCUMENTS);
-        setDocuments(loadedDocs);
-
-        const loadedActs = await dbService.loadOrSeedCollection('activities', RECENT_ACTIVITIES);
-        setActivities(loadedActs);
-
-        const loadedNotifs = await dbService.loadOrSeedCollection('notifications', NOTIFICATIONS);
-        setNotifications(loadedNotifs);
-
-        const loadedPerformers = await dbService.loadOrSeedCollection('top_performers', TOP_PERFORMERS);
-        setTopPerformers(loadedPerformers);
-
-        const loadedFeedback = await dbService.loadOrSeedCollection('performance_feedback', RECENT_FEEDBACK);
-        setFeedbackList(loadedFeedback);
-
-        const loadedInterviews = await dbService.loadOrSeedCollection('interviews', INITIAL_ACTIVE_INTERVIEWS);
-        setInterviews(loadedInterviews);
-
-        const loadedVelocities = await dbService.loadOrSeedCollection('hiring_velocity', INITIAL_HIRING_VELOCITY);
-        setVelocities(loadedVelocities);
+        if (empsRes.status === 'fulfilled' && empsRes.value) {
+          setEmployees(empsRes.value);
+          if (empsRes.value.length > 0) setSelectedEmployee(empsRes.value[0]);
+        }
+        if (leavesRes.status === 'fulfilled' && leavesRes.value) setLeaveRequests(leavesRes.value);
+        if (jobsRes.status === 'fulfilled' && jobsRes.value) setJobOpenings(jobsRes.value);
+        if (tasksRes.status === 'fulfilled' && tasksRes.value) setTasks(tasksRes.value);
+        if (attRes.status === 'fulfilled' && attRes.value) {
+          setAttendanceRecords(attRes.value.filter(r => !dbService.isItemDeleted('attendance', r.id)));
+        }
+        if (payRes.status === 'fulfilled' && payRes.value) setPayrollRecords(payRes.value);
+        if (assetsRes.status === 'fulfilled' && assetsRes.value) setAssets(assetsRes.value);
+        if (docsRes.status === 'fulfilled' && docsRes.value) setDocuments(docsRes.value);
+        if (actsRes.status === 'fulfilled' && actsRes.value) setActivities(actsRes.value);
+        if (notifsRes.status === 'fulfilled' && notifsRes.value) setNotifications(notifsRes.value);
+        if (perfRes.status === 'fulfilled' && perfRes.value) setTopPerformers(perfRes.value);
+        if (feedRes.status === 'fulfilled' && feedRes.value) setFeedbackList(feedRes.value);
+        if (intRes.status === 'fulfilled' && intRes.value) setInterviews(intRes.value);
+        if (veloRes.status === 'fulfilled' && veloRes.value) setVelocities(veloRes.value);
 
         // Realtime Firestore subscriptions
         unsubscribes.push(dbService.subscribeToCollection<Employee>('employees', items => setEmployees(items)));
@@ -193,7 +202,7 @@ export function App() {
         unsubscribes.push(dbService.subscribeToCollection<ActiveInterview>('interviews', items => setInterviews(items)));
         unsubscribes.push(dbService.subscribeToCollection<HiringVelocityMetric>('hiring_velocity', items => setVelocities(items)));
       } catch (err) {
-        console.error('Error initializing Firestore database:', err);
+        console.warn('[Firestore] Initialized collections with local/fallback cache:', err);
       }
     }
 

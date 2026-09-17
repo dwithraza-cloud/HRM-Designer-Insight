@@ -232,8 +232,12 @@ export class DBService {
       }
       await this.markCollectionSeeded(collectionName);
       return seededItems;
-    } catch (error) {
-      console.error(`[Firestore Error] Failed to load/seed collection '${collectionName}':`, error);
+    } catch (error: any) {
+      if (error?.code === 'unavailable' || error?.message?.includes('offline') || error?.message?.includes('backend')) {
+        console.warn(`[Firestore Offline] Using cached/initial data for '${collectionName}'.`);
+      } else {
+        console.warn(`[Firestore Notice] Failed to load/seed '${collectionName}':`, error?.message || error);
+      }
       return initialData.filter(i => !this.isItemDeleted(collectionName, i.id));
     }
   }
@@ -254,7 +258,7 @@ export class DBService {
         localStorage.removeItem(`${LOCAL_STORAGE_DELETED_PREFIX}${collectionName}_${item.id}`);
       } catch {}
     } catch (error) {
-      console.error(`[Firestore Error] Failed to save document in '${collectionName}':`, error);
+      console.warn(`[Firestore Notice] Failed to save document in '${collectionName}':`, error);
       throw error;
     }
   }
@@ -268,7 +272,7 @@ export class DBService {
       await setDoc(docRef, fields, { merge: true });
       await this.markCollectionSeeded(collectionName);
     } catch (error) {
-      console.error(`[Firestore Error] Failed to update document '${id}' in '${collectionName}':`, error);
+      console.warn(`[Firestore Notice] Failed to update document '${id}' in '${collectionName}':`, error);
       throw error;
     }
   }
@@ -304,7 +308,7 @@ export class DBService {
         await deleteDoc(doc(db, collectionName, docSnap.id));
       }
     } catch (error) {
-      console.error(`[Firestore Error] Failed to clear collection '${collectionName}':`, error);
+      console.warn(`[Firestore Notice] Failed to clear collection '${collectionName}':`, error);
     }
   }
 
@@ -329,8 +333,12 @@ export class DBService {
         // Always emit current state (even if empty after deletions)
         onData(items);
       },
-      (error) => {
-        console.error(`[Firestore Listener Error] for '${collectionName}':`, error);
+      (error: any) => {
+        if (error?.code === 'unavailable' || error?.message?.includes('offline')) {
+          console.warn(`[Firestore Listener Offline] Waiting to reconnect for '${collectionName}'.`);
+        } else {
+          console.warn(`[Firestore Listener Notice] for '${collectionName}':`, error?.message || error);
+        }
       }
     );
   }
