@@ -222,6 +222,46 @@ export function App() {
     }
   }, [employees]);
 
+  // Employees is the canonical HR profile source. Reconcile the active login profile
+  // after Firestore/local cache loads so stale session/account data cannot overwrite
+  // the employee's latest saved profile on a later login.
+  useEffect(() => {
+    if (!isAuthenticated || employees.length === 0) return;
+
+    const employeeRecord = employees.find(emp =>
+      (currentUser.email && emp.email?.toLowerCase() === currentUser.email.toLowerCase()) ||
+      (currentUser.empId && emp.empId === currentUser.empId) ||
+      emp.name?.toLowerCase() === currentUser.name?.toLowerCase()
+    );
+
+    if (!employeeRecord) return;
+
+    setCurrentUser(prev => ({
+      ...prev,
+      name: employeeRecord.name || prev.name,
+      email: employeeRecord.email || prev.email,
+      role: employeeRecord.designation || prev.role,
+      department: employeeRecord.department || prev.department,
+      empId: employeeRecord.empId || prev.empId,
+      phone: employeeRecord.phone || '',
+      address: employeeRecord.address || '',
+      gender: employeeRecord.gender || '',
+      dob: employeeRecord.dob || '',
+      bloodGroup: employeeRecord.bloodGroup || '',
+      maritalStatus: employeeRecord.maritalStatus || '',
+      nationality: employeeRecord.nationality || '',
+      location: employeeRecord.location || '',
+      joiningDate: employeeRecord.joiningDate || prev.joiningDate,
+      status: employeeRecord.status || prev.status,
+      avatar: employeeRecord.avatar || '',
+      baseSalary: employeeRecord.baseSalary ?? prev.baseSalary,
+      reportingManager: {
+        ...prev.reportingManager,
+        name: employeeRecord.reportingManager || prev.reportingManager?.name || ''
+      }
+    }));
+  }, [employees, isAuthenticated]);
+
   useEffect(() => {
     try {
       localStorage.setItem('insight_hrm_leave_requests', JSON.stringify(leaveRequests));
@@ -1020,17 +1060,28 @@ export function App() {
           account.profile.role = updatedEmp.designation;
           account.profile.department = updatedEmp.department;
           account.profile.empId = updatedEmp.empId;
-          account.profile.phone = updatedEmp.phone;
+          account.profile.phone = updatedEmp.phone || '';
           account.profile.address = updatedEmp.address || '';
           account.profile.gender = updatedEmp.gender || '';
           account.profile.dob = updatedEmp.dob || '';
           account.profile.bloodGroup = updatedEmp.bloodGroup || '';
           account.profile.maritalStatus = updatedEmp.maritalStatus || '';
           account.profile.nationality = updatedEmp.nationality || '';
+          account.profile.location = updatedEmp.location || '';
           account.profile.joiningDate = updatedEmp.joiningDate;
           account.profile.status = updatedEmp.status;
-          if (updatedEmp.avatar) account.profile.avatar = updatedEmp.avatar;
+          account.profile.baseSalary = updatedEmp.baseSalary ?? account.profile.baseSalary;
+          account.profile.reportingManager = {
+            ...account.profile.reportingManager,
+            name: updatedEmp.reportingManager || account.profile.reportingManager?.name || ''
+          };
+          account.profile.avatar = updatedEmp.avatar || '';
         }
+
+        // Persist the full account profile after synchronizing it with the employee record.
+        // Previously these assignments only changed the in-memory object, so reload/login
+        // could restore an older profile from Firestore.
+        await authService.persistAccountToDB(account);
       }
 
       showToast(`Profile updated successfully for ${updatedEmp.name}!`);
@@ -1058,6 +1109,16 @@ export function App() {
     const roleTitle = (activeUser.roleType || 'user').toUpperCase();
     showToast(`Signed in as ${roleTitle} (${activeUser.email || activeUser.name})`);
   };
+
+  // Keep the local session snapshot synchronized with the latest canonical profile.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    try {
+      localStorage.setItem('insight_hrm_active_session_v4', JSON.stringify(currentUser));
+    } catch (e) {
+      console.warn('Could not refresh active session cache:', e);
+    }
+  }, [currentUser, isAuthenticated]);
 
   // User-Specific Theme Toggle Handler
   const handleToggleTheme = (targetTheme?: ThemeMode) => {

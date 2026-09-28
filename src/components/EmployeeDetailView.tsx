@@ -61,7 +61,7 @@ interface EmployeeDetailViewProps {
   onBack: () => void;
   onNavigate: (view: ViewMode) => void;
   onSendMessage: (employee: Employee) => void;
-  onUpdateEmployee?: (updatedEmployee: Employee) => void;
+  onUpdateEmployee?: (updatedEmployee: Employee) => Promise<void> | void;
   showToast?: (msg: string) => void;
 }
 
@@ -94,16 +94,16 @@ export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
   // Form state for editing
   const [formData, setFormData] = useState<Employee>({
     ...employee,
-    address: employee.address || 'House 42, Road 11, Block D, Banani, Dhaka-1213',
-    gender: employee.gender || 'Male',
-    dob: employee.dob || '14 Aug 1994',
-    bloodGroup: employee.bloodGroup || 'O+ Positive',
-    maritalStatus: employee.maritalStatus || 'Single',
-    nationality: employee.nationality || 'Bangladeshi',
-    location: employee.location || 'Gulshan 2, Dhaka',
-    reportingManager: employee.reportingManager || 'Sarah Jenkins',
-    baseSalary: employee.baseSalary || 145000,
-    shift: employee.shift || WORKFORCE_SHIFTS[0].label
+    address: employee.address || '',
+    gender: employee.gender || '',
+    dob: employee.dob || '',
+    bloodGroup: employee.bloodGroup || '',
+    maritalStatus: employee.maritalStatus || '',
+    nationality: employee.nationality || '',
+    location: employee.location || '',
+    reportingManager: employee.reportingManager || '',
+    baseSalary: employee.baseSalary,
+    shift: employee.shift || ''
   });
 
   const [saving, setSaving] = useState(false);
@@ -312,15 +312,16 @@ export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
   React.useEffect(() => {
     setFormData({
       ...employee,
-      address: employee.address || 'House 42, Road 11, Block D, Banani, Dhaka-1213',
-      gender: employee.gender || 'Male',
-      dob: employee.dob || '14 Aug 1994',
-      bloodGroup: employee.bloodGroup || 'O+ Positive',
-      maritalStatus: employee.maritalStatus || 'Single',
-      nationality: employee.nationality || 'Bangladeshi',
-      location: employee.location || 'Gulshan 2, Dhaka',
-      reportingManager: employee.reportingManager || 'Sarah Jenkins',
-      baseSalary: employee.baseSalary || 145000
+      address: employee.address || '',
+      gender: employee.gender || '',
+      dob: employee.dob || '',
+      bloodGroup: employee.bloodGroup || '',
+      maritalStatus: employee.maritalStatus || '',
+      nationality: employee.nationality || '',
+      location: employee.location || '',
+      reportingManager: employee.reportingManager || '',
+      baseSalary: employee.baseSalary,
+      shift: employee.shift || ''
     });
   }, [employee]);
 
@@ -332,21 +333,22 @@ export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
     setEditTab(initialTab);
     setFormData({
       ...employee,
-      address: employee.address || 'House 42, Road 11, Block D, Banani, Dhaka-1213',
-      gender: employee.gender || 'Male',
-      dob: employee.dob || '14 Aug 1994',
-      bloodGroup: employee.bloodGroup || 'O+ Positive',
-      maritalStatus: employee.maritalStatus || 'Single',
-      nationality: employee.nationality || 'Bangladeshi',
-      location: employee.location || 'Gulshan 2, Dhaka',
-      reportingManager: employee.reportingManager || 'Sarah Jenkins',
-      baseSalary: employee.baseSalary || 145000
+      address: employee.address || '',
+      gender: employee.gender || '',
+      dob: employee.dob || '',
+      bloodGroup: employee.bloodGroup || '',
+      maritalStatus: employee.maritalStatus || '',
+      nationality: employee.nationality || '',
+      location: employee.location || '',
+      reportingManager: employee.reportingManager || '',
+      baseSalary: employee.baseSalary,
+      shift: employee.shift || ''
     });
     setFormError(null);
     setIsEditModalOpen(true);
   };
 
-  const handleSaveProfile = (e: React.FormEvent) => {
+  const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError(null);
 
@@ -364,16 +366,16 @@ export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
     }
 
     setSaving(true);
-    setTimeout(() => {
+    try {
       if (onUpdateEmployee) {
-        onUpdateEmployee(formData);
+        await onUpdateEmployee(formData);
       }
-      setSaving(false);
       setIsEditModalOpen(false);
-      if (showToast) {
-        showToast('Profile information updated successfully!');
-      }
-    }, 300);
+    } catch (error: any) {
+      setFormError(error?.message || 'Could not save profile changes. Please try again.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const PRESET_AVATARS = [
@@ -497,7 +499,7 @@ export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
                 </span>
                 <span className="flex items-center gap-1.5">
                   <MapPin className="w-3.5 h-3.5 text-slate-500" />
-                  <span>{employee.location || employee.address || 'Gulshan 2, Dhaka'}</span>
+                  <span>{employee.location || employee.address || 'Not provided'}</span>
                 </span>
                 <span className="flex items-center gap-1.5">
                   <Mail className="w-3.5 h-3.5 text-slate-500" />
@@ -873,7 +875,7 @@ export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
               </div>
               {canViewSalary ? (
                 <div>
-                  <p className="text-2xl font-bold text-white font-['Sora']">Rs. {(employee.baseSalary || 145000).toLocaleString()} <span className="text-xs font-normal text-purple-300">PKR</span></p>
+                  <p className="text-2xl font-bold text-white font-['Sora']">Rs. {(employee.baseSalary ?? 0).toLocaleString()} <span className="text-xs font-normal text-purple-300">PKR</span></p>
                   <p className="text-xs text-purple-300 font-semibold mt-1">Base Monthly Salary</p>
                   {isAdmin && (
                     <button 
@@ -924,31 +926,31 @@ export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
                 </div>
                 <div>
                   <span className="text-slate-500 block mb-1">Phone Number</span>
-                  <span className="font-semibold text-white">{employee.phone || '+880 1700-000000'}</span>
+                  <span className="font-semibold text-white">{employee.phone || 'Not provided'}</span>
                 </div>
                 <div>
                   <span className="text-slate-500 block mb-1">Date of Birth</span>
-                  <span className="font-semibold text-white">{employee.dob || '14 August 1994'}</span>
+                  <span className="font-semibold text-white">{employee.dob || 'Not provided'}</span>
                 </div>
                 <div>
                   <span className="text-slate-500 block mb-1">Gender</span>
-                  <span className="font-semibold text-white">{employee.gender || 'Male'}</span>
+                  <span className="font-semibold text-white">{employee.gender || 'Not provided'}</span>
                 </div>
                 <div>
                   <span className="text-slate-500 block mb-1">Blood Group</span>
-                  <span className="font-semibold text-white">{employee.bloodGroup || 'O+ Positive'}</span>
+                  <span className="font-semibold text-white">{employee.bloodGroup || 'Not provided'}</span>
                 </div>
                 <div>
                   <span className="text-slate-500 block mb-1">Marital Status</span>
-                  <span className="font-semibold text-white">{employee.maritalStatus || 'Single'}</span>
+                  <span className="font-semibold text-white">{employee.maritalStatus || 'Not provided'}</span>
                 </div>
                 <div>
                   <span className="text-slate-500 block mb-1">Nationality</span>
-                  <span className="font-semibold text-white">{employee.nationality || 'Bangladeshi'}</span>
+                  <span className="font-semibold text-white">{employee.nationality || 'Not provided'}</span>
                 </div>
                 <div className="col-span-2">
                   <span className="text-slate-500 block mb-1">Residential Address</span>
-                  <span className="font-semibold text-white">{employee.address || 'House 42, Road 11, Block D, Banani, Dhaka-1213'}</span>
+                  <span className="font-semibold text-white">{employee.address || 'Not provided'}</span>
                 </div>
               </div>
             </div>
@@ -994,16 +996,16 @@ export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
                 </div>
                 <div>
                   <span className="text-slate-500 block mb-1">Work Location</span>
-                  <span className="font-semibold text-white">{employee.location || 'Gulshan 2, Dhaka'}</span>
+                  <span className="font-semibold text-white">{employee.location || 'Not provided'}</span>
                 </div>
                 <div className="col-span-2">
                   <span className="text-slate-500 block mb-1">Reporting Manager</span>
                   <div className="flex items-center gap-2.5 p-2 rounded-xl bg-white/[0.03] border border-white/5 mt-1">
                     <div className="w-8 h-8 rounded-full bg-purple-600/30 text-purple-200 font-bold flex items-center justify-center text-xs">
-                      {(employee.reportingManager || 'Sarah Jenkins').substring(0, 2).toUpperCase()}
+                      {(employee.reportingManager || 'NA').substring(0, 2).toUpperCase()}
                     </div>
                     <div>
-                      <p className="text-xs font-bold text-white">{employee.reportingManager || 'Sarah Jenkins'}</p>
+                      <p className="text-xs font-bold text-white">{employee.reportingManager || 'Not assigned'}</p>
                       <p className="text-[11px] text-purple-300">Department Supervisor</p>
                     </div>
                   </div>
@@ -1045,15 +1047,15 @@ export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
               </div>
               <div>
                 <span className="text-slate-500 block mb-1">Date of Birth</span>
-                <span className="font-semibold text-white">{employee.dob || '14 August 1994'}</span>
+                <span className="font-semibold text-white">{employee.dob || 'Not provided'}</span>
               </div>
               <div>
                 <span className="text-slate-500 block mb-1">Gender</span>
-                <span className="font-semibold text-white">{employee.gender || 'Male'}</span>
+                <span className="font-semibold text-white">{employee.gender || 'Not provided'}</span>
               </div>
               <div>
                 <span className="text-slate-500 block mb-1">Nationality</span>
-                <span className="font-semibold text-white">{employee.nationality || 'Bangladeshi'}</span>
+                <span className="font-semibold text-white">{employee.nationality || 'Not provided'}</span>
               </div>
             </div>
 
@@ -1065,11 +1067,11 @@ export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
               </div>
               <div>
                 <span className="text-slate-500 block mb-1">Primary Phone</span>
-                <span className="font-semibold text-white">{employee.phone || '+880 1700-000000'}</span>
+                <span className="font-semibold text-white">{employee.phone || 'Not provided'}</span>
               </div>
               <div>
                 <span className="text-slate-500 block mb-1">Emergency Contact</span>
-                <span className="font-semibold text-slate-300">+880 1911-001122 (Family)</span>
+                <span className="font-semibold text-slate-300">Not provided</span>
               </div>
             </div>
 
@@ -1077,15 +1079,15 @@ export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
               <span className="text-[11px] font-bold text-emerald-400 uppercase tracking-wider block">Demographics & Residence</span>
               <div>
                 <span className="text-slate-500 block mb-1">Blood Group</span>
-                <span className="font-semibold text-white">{employee.bloodGroup || 'O+ Positive'}</span>
+                <span className="font-semibold text-white">{employee.bloodGroup || 'Not provided'}</span>
               </div>
               <div>
                 <span className="text-slate-500 block mb-1">Marital Status</span>
-                <span className="font-semibold text-white">{employee.maritalStatus || 'Single'}</span>
+                <span className="font-semibold text-white">{employee.maritalStatus || 'Not provided'}</span>
               </div>
               <div>
                 <span className="text-slate-500 block mb-1">Residential Address</span>
-                <span className="font-semibold text-white">{employee.address || 'House 42, Road 11, Block D, Banani, Dhaka-1213'}</span>
+                <span className="font-semibold text-white">{employee.address || 'Not provided'}</span>
               </div>
             </div>
           </div>
@@ -1132,7 +1134,7 @@ export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
                 </div>
                 <div>
                   <span className="text-slate-500 block mb-1">Reporting Manager</span>
-                  <span className="font-semibold text-white">{employee.reportingManager || 'Sarah Jenkins'}</span>
+                  <span className="font-semibold text-white">{employee.reportingManager || 'Not assigned'}</span>
                 </div>
               </div>
             </div>
@@ -1150,7 +1152,7 @@ export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
                 </div>
                 <div>
                   <span className="text-slate-500 block mb-1">Work Location</span>
-                  <span className="font-semibold text-white">{employee.location || 'Gulshan 2, Dhaka'}</span>
+                  <span className="font-semibold text-white">{employee.location || 'Not provided'}</span>
                 </div>
                 <div>
                   <span className="text-slate-500 block mb-1">Workforce Shift</span>
@@ -1325,26 +1327,26 @@ export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
               Payroll & Compensation Details
             </h3>
             <span className="text-xs text-purple-300 font-mono font-bold bg-purple-500/20 px-3 py-1 rounded-full border border-purple-500/30">
-              Monthly Base: Rs. {(employee.baseSalary || 145000).toLocaleString()} PKR
+              Monthly Base: Rs. {(employee.baseSalary ?? 0).toLocaleString()} PKR
             </span>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
             <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5">
               <span className="text-slate-400 block mb-1">Basic Salary (60%)</span>
-              <p className="text-base font-bold text-white">Rs. {Math.round((employee.baseSalary || 145000) * 0.6).toLocaleString()}</p>
+              <p className="text-base font-bold text-white">Rs. {Math.round((employee.baseSalary ?? 0) * 0.6).toLocaleString()}</p>
             </div>
             <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5">
               <span className="text-slate-400 block mb-1">House Rent (25%)</span>
-              <p className="text-base font-bold text-white">Rs. {Math.round((employee.baseSalary || 145000) * 0.25).toLocaleString()}</p>
+              <p className="text-base font-bold text-white">Rs. {Math.round((employee.baseSalary ?? 0) * 0.25).toLocaleString()}</p>
             </div>
             <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5">
               <span className="text-slate-400 block mb-1">Medical Allowance (10%)</span>
-              <p className="text-base font-bold text-white">Rs. {Math.round((employee.baseSalary || 145000) * 0.1).toLocaleString()}</p>
+              <p className="text-base font-bold text-white">Rs. {Math.round((employee.baseSalary ?? 0) * 0.1).toLocaleString()}</p>
             </div>
             <div className="p-3.5 rounded-xl bg-white/[0.02] border border-white/5">
               <span className="text-slate-400 block mb-1">Conveyance (5%)</span>
-              <p className="text-base font-bold text-white">Rs. {Math.round((employee.baseSalary || 145000) * 0.05).toLocaleString()}</p>
+              <p className="text-base font-bold text-white">Rs. {Math.round((employee.baseSalary ?? 0) * 0.05).toLocaleString()}</p>
             </div>
           </div>
         </div>
@@ -1506,7 +1508,7 @@ export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
                         type="text"
                         value={formData.phone}
                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        placeholder="+880 1700-000000"
+                        placeholder="e.g. +92 300 1234567"
                         className="w-full px-3.5 py-2.5 bg-white/[0.05] border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 transition-colors"
                       />
                     </div>
@@ -1527,7 +1529,7 @@ export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
                       <label className="text-slate-300 font-semibold mb-1.5 block">Gender</label>
                       <select
                         id="select-edit-emp-gender"
-                        value={formData.gender || 'Male'}
+                        value={formData.gender || ''}
                         onChange={(e) => setFormData({ ...formData, gender: e.target.value })}
                         className="w-full px-3.5 py-2.5 bg-[#172038] border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500 transition-colors cursor-pointer"
                       >
@@ -1541,7 +1543,7 @@ export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
                       <label className="text-slate-300 font-semibold mb-1.5 block">Blood Group</label>
                       <select
                         id="select-edit-emp-blood"
-                        value={formData.bloodGroup || 'O+ Positive'}
+                        value={formData.bloodGroup || ''}
                         onChange={(e) => setFormData({ ...formData, bloodGroup: e.target.value })}
                         className="w-full px-3.5 py-2.5 bg-[#172038] border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500 transition-colors cursor-pointer"
                       >
@@ -1560,7 +1562,7 @@ export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
                       <label className="text-slate-300 font-semibold mb-1.5 block">Marital Status</label>
                       <select
                         id="select-edit-emp-marital"
-                        value={formData.maritalStatus || 'Single'}
+                        value={formData.maritalStatus || ''}
                         onChange={(e) => setFormData({ ...formData, maritalStatus: e.target.value })}
                         className="w-full px-3.5 py-2.5 bg-[#172038] border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500 transition-colors cursor-pointer"
                       >
@@ -1576,9 +1578,9 @@ export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
                       <input
                         id="input-edit-emp-nationality"
                         type="text"
-                        value={formData.nationality || 'Bangladeshi'}
+                        value={formData.nationality || ''}
                         onChange={(e) => setFormData({ ...formData, nationality: e.target.value })}
-                        placeholder="Bangladeshi"
+                        placeholder="e.g. Pakistani"
                         className="w-full px-3.5 py-2.5 bg-white/[0.05] border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 transition-colors"
                       />
                     </div>
@@ -1679,7 +1681,7 @@ export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
                         type="text"
                         value={formData.location || ''}
                         onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                        placeholder="Gulshan 2, Dhaka / Remote"
+                        placeholder="e.g. Islamabad / Remote"
                         className="w-full px-3.5 py-2.5 bg-white/[0.05] border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 transition-colors"
                       />
                     </div>
@@ -1688,7 +1690,7 @@ export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
                       <label className="text-slate-300 font-semibold mb-1.5 block">Workforce Shift (Timing)</label>
                       <select
                         id="select-edit-emp-shift"
-                        value={formData.shift || WORKFORCE_SHIFTS[0].label}
+                        value={formData.shift || ''}
                         onChange={(e) => setFormData({ ...formData, shift: e.target.value })}
                         className="w-full px-3.5 py-2.5 bg-[#172038] border border-white/10 rounded-xl text-white focus:outline-none focus:border-purple-500 transition-colors cursor-pointer"
                       >
@@ -1707,7 +1709,7 @@ export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
                         type="text"
                         value={formData.reportingManager || ''}
                         onChange={(e) => setFormData({ ...formData, reportingManager: e.target.value })}
-                        placeholder="e.g. Sarah Jenkins / Raja Raza"
+                        placeholder="e.g. Raja Raza"
                         className="w-full px-3.5 py-2.5 bg-white/[0.05] border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 transition-colors"
                       />
                     </div>
@@ -1722,7 +1724,7 @@ export const EmployeeDetailView: React.FC<EmployeeDetailViewProps> = ({
                         id="input-edit-emp-salary"
                         type="number"
                         disabled={!isAdmin}
-                        value={formData.baseSalary || 145000}
+                        value={formData.baseSalary ?? ''}
                         onChange={(e) => setFormData({ ...formData, baseSalary: Number(e.target.value) })}
                         placeholder="145000"
                         className="w-full px-3.5 py-2.5 bg-white/[0.05] border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 disabled:opacity-60 transition-colors"

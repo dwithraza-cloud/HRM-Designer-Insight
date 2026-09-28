@@ -6,7 +6,9 @@ import {
   setDoc, 
   updateDoc, 
   deleteDoc, 
-  onSnapshot 
+  onSnapshot,
+  arrayUnion,
+  arrayRemove
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 
@@ -59,13 +61,12 @@ export class DBService {
   isItemDeleted(collectionName: string, id: string): boolean {
     if (!id) return false;
     const compoundKey = `${collectionName}_${id}`;
-    if (this.deletedCache.has(compoundKey) || this.deletedCache.has(id)) {
+    if (this.deletedCache.has(compoundKey)) {
       return true;
     }
     try {
       if (localStorage.getItem(`${LOCAL_STORAGE_DELETED_PREFIX}${collectionName}_${id}`) === 'true') {
         this.deletedCache.add(compoundKey);
-        this.deletedCache.add(id);
         return true;
       }
     } catch {
@@ -81,7 +82,6 @@ export class DBService {
     if (!id) return;
     const compoundKey = `${collectionName}_${id}`;
     this.deletedCache.add(compoundKey);
-    this.deletedCache.add(id);
 
     try {
       localStorage.setItem(`${LOCAL_STORAGE_DELETED_PREFIX}${collectionName}_${id}`, 'true');
@@ -94,7 +94,7 @@ export class DBService {
     try {
       const metaRef = doc(db, SYSTEM_METADATA_COLLECTION, 'deleted_records');
       setDoc(metaRef, {
-        deletedKeys: Array.from(this.deletedCache),
+        deletedKeys: arrayUnion(compoundKey),
         updatedAt: new Date().toISOString()
       }, { merge: true }).catch(() => {});
     } catch {
@@ -112,8 +112,9 @@ export class DBService {
       if (snap.exists()) {
         const data = snap.data();
         if (Array.isArray(data.deletedKeys)) {
+          // Ignore legacy raw-ID tombstones. Only collection-scoped keys are valid.
           data.deletedKeys.forEach((k: string) => {
-            if (k) this.deletedCache.add(k);
+            if (k && k.includes('_')) this.deletedCache.add(k);
           });
           try {
             localStorage.setItem('insight_hrm_deleted_items_all', JSON.stringify(Array.from(this.deletedCache)));
@@ -234,11 +235,35 @@ export class DBService {
       return seededItems;
     } catch (error: any) {
       if (error?.code === 'unavailable' || error?.message?.includes('offline') || error?.message?.includes('backend')) {
-        console.warn(`[Firestore Offline] Using cached/initial data for '${collectionName}'.`);
+        console.warn(`[Firestore Offline] Keeping the existing local cache for '${collectionName}' until the database reconnects.`);
       } else {
         console.warn(`[Firestore Notice] Failed to load/seed '${collectionName}':`, error?.message || error);
       }
-      return initialData.filter(i => !this.isItemDeleted(collectionName, i.id));
+      // Never replace real/cached production data with bundled demo data after a database failure.
+      throw error;
+    }
+  }
+
+  /**
+   * Remove a deletion tombstone when an item is intentionally recreated.
+   */
+  private async unmarkItemDeleted(collectionName: string, id: string): Promise<void> {
+    if (!id) return;
+    const compoundKey = `${collectionName}_${id}`;
+    this.deletedCache.delete(compoundKey);
+    try {
+      localStorage.removeItem(`${LOCAL_STORAGE_DELETED_PREFIX}${collectionName}_${id}`);
+      localStorage.setItem('insight_hrm_deleted_items_all', JSON.stringify(Array.from(this.deletedCache)));
+    } catch {}
+
+    try {
+      const metaRef = doc(db, SYSTEM_METADATA_COLLECTION, 'deleted_records');
+      await setDoc(metaRef, {
+        deletedKeys: arrayRemove(compoundKey),
+        updatedAt: new Date().toISOString()
+      }, { merge: true });
+    } catch (e) {
+      console.warn('[Firestore] Could not clear deletion tombstone:', e);
     }
   }
 
@@ -253,10 +278,7 @@ export class DBService {
       const docRef = doc(db, collectionName, item.id);
       await setDoc(docRef, item, { merge: true });
       await this.markCollectionSeeded(collectionName);
-      // Remove from tombstone if it was previously deleted and recreated
-      try {
-        localStorage.removeItem(`${LOCAL_STORAGE_DELETED_PREFIX}${collectionName}_${item.id}`);
-      } catch {}
+      await this.unmarkItemDeleted(collectionName, item.id);
     } catch (error) {
       console.warn(`[Firestore Notice] Failed to save document in '${collectionName}':`, error);
       throw error;
