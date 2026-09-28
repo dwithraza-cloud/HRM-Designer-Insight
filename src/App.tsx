@@ -1020,17 +1020,28 @@ export function App() {
           account.profile.role = updatedEmp.designation;
           account.profile.department = updatedEmp.department;
           account.profile.empId = updatedEmp.empId;
-          account.profile.phone = updatedEmp.phone;
+          account.profile.phone = updatedEmp.phone || '';
           account.profile.address = updatedEmp.address || '';
           account.profile.gender = updatedEmp.gender || '';
           account.profile.dob = updatedEmp.dob || '';
           account.profile.bloodGroup = updatedEmp.bloodGroup || '';
           account.profile.maritalStatus = updatedEmp.maritalStatus || '';
           account.profile.nationality = updatedEmp.nationality || '';
+          account.profile.location = updatedEmp.location || '';
           account.profile.joiningDate = updatedEmp.joiningDate;
           account.profile.status = updatedEmp.status;
-          if (updatedEmp.avatar) account.profile.avatar = updatedEmp.avatar;
+          account.profile.baseSalary = updatedEmp.baseSalary ?? account.profile.baseSalary;
+          account.profile.reportingManager = {
+            ...account.profile.reportingManager,
+            name: updatedEmp.reportingManager || account.profile.reportingManager?.name || ''
+          };
+          account.profile.avatar = updatedEmp.avatar || '';
         }
+
+        // Persist the full account profile after synchronizing it with the employee record.
+        // Previously these assignments only changed the in-memory object, so reload/login
+        // could restore an older profile from Firestore.
+        await authService.persistAccountToDB(account);
       }
 
       showToast(`Profile updated successfully for ${updatedEmp.name}!`);
