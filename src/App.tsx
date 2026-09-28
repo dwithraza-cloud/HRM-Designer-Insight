@@ -1110,6 +1110,16 @@ export function App() {
     showToast(`Signed in as ${roleTitle} (${activeUser.email || activeUser.name})`);
   };
 
+  // Keep the local session snapshot synchronized with the latest canonical profile.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    try {
+      localStorage.setItem('insight_hrm_active_session_v4', JSON.stringify(currentUser));
+    } catch (e) {
+      console.warn('Could not refresh active session cache:', e);
+    }
+  }, [currentUser, isAuthenticated]);
+
   // User-Specific Theme Toggle Handler
   const handleToggleTheme = (targetTheme?: ThemeMode) => {
     const current = currentUser.themePreference || 'dark';
