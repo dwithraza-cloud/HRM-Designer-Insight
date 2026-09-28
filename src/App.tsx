@@ -222,6 +222,46 @@ export function App() {
     }
   }, [employees]);
 
+  // Employees is the canonical HR profile source. Reconcile the active login profile
+  // after Firestore/local cache loads so stale session/account data cannot overwrite
+  // the employee's latest saved profile on a later login.
+  useEffect(() => {
+    if (!isAuthenticated || employees.length === 0) return;
+
+    const employeeRecord = employees.find(emp =>
+      (currentUser.email && emp.email?.toLowerCase() === currentUser.email.toLowerCase()) ||
+      (currentUser.empId && emp.empId === currentUser.empId) ||
+      emp.name?.toLowerCase() === currentUser.name?.toLowerCase()
+    );
+
+    if (!employeeRecord) return;
+
+    setCurrentUser(prev => ({
+      ...prev,
+      name: employeeRecord.name || prev.name,
+      email: employeeRecord.email || prev.email,
+      role: employeeRecord.designation || prev.role,
+      department: employeeRecord.department || prev.department,
+      empId: employeeRecord.empId || prev.empId,
+      phone: employeeRecord.phone || '',
+      address: employeeRecord.address || '',
+      gender: employeeRecord.gender || '',
+      dob: employeeRecord.dob || '',
+      bloodGroup: employeeRecord.bloodGroup || '',
+      maritalStatus: employeeRecord.maritalStatus || '',
+      nationality: employeeRecord.nationality || '',
+      location: employeeRecord.location || '',
+      joiningDate: employeeRecord.joiningDate || prev.joiningDate,
+      status: employeeRecord.status || prev.status,
+      avatar: employeeRecord.avatar || '',
+      baseSalary: employeeRecord.baseSalary ?? prev.baseSalary,
+      reportingManager: {
+        ...prev.reportingManager,
+        name: employeeRecord.reportingManager || prev.reportingManager?.name || ''
+      }
+    }));
+  }, [employees, isAuthenticated]);
+
   useEffect(() => {
     try {
       localStorage.setItem('insight_hrm_leave_requests', JSON.stringify(leaveRequests));
