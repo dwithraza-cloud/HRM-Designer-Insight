@@ -18,7 +18,7 @@ export default async function handler(req,res) {
   catch { return res.status(503).json({error:'Invalid service account configuration'}); }
   try {
     if(!getApps().length) initializeApp({credential:cert(account),projectId:account.project_id});
-    const db=getFirestore();
+    const db=getFirestore(getApps()[0], 'ai-studio-aurahr-909b5d04-dddb-4f79-9437-e1d6627131c5');
     const auth=new GoogleAuth({credentials:account,scopes:['https://www.googleapis.com/auth/spreadsheets.readonly']});
     const client=await auth.getClient();
     const tokenObj=await client.getAccessToken();
