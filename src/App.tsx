@@ -73,9 +73,12 @@ import {
   determinePunctuality 
 } from './utils/attendanceUtils';
 
+function storageKey(key: string): string {
+  return key + ':firebase:' + (authService.getActiveSession()?.id || 'guest');
+}
 function loadStoredData<T>(key: string, fallback: T): T {
   try {
-    const item = localStorage.getItem(key);
+    const item = localStorage.getItem(storageKey(key));
     if (item) {
       const parsed = JSON.parse(item);
       if (key === 'insight_hrm_attendance' && Array.isArray(parsed)) {
@@ -86,7 +89,7 @@ function loadStoredData<T>(key: string, fallback: T): T {
   } catch (error) {
     console.error(`Error loading ${key} from localStorage:`, error);
   }
-  return fallback;
+  return Array.isArray(fallback) ? [] as T : fallback;
 }
 
 export function App() {
@@ -129,6 +132,7 @@ export function App() {
   // Sync state to Firestore Production Database & Realtime Listeners
   useEffect(() => {
     let unsubscribes: (() => void)[] = [];
+    let disposed = false;
 
     async function initDatabase() {
       try {
@@ -166,6 +170,7 @@ export function App() {
           dbService.loadOrSeedCollection('hiring_velocity', INITIAL_HIRING_VELOCITY)
         ]);
 
+        if (disposed) return;
         if (empsRes.status === 'fulfilled' && empsRes.value) {
           setEmployees(empsRes.value);
           if (empsRes.value.length > 0) setSelectedEmployee(empsRes.value[0]);
@@ -186,6 +191,7 @@ export function App() {
         if (intRes.status === 'fulfilled' && intRes.value) setInterviews(intRes.value);
         if (veloRes.status === 'fulfilled' && veloRes.value) setVelocities(veloRes.value);
 
+        if (disposed) return;
         // Realtime Firestore subscriptions
         unsubscribes.push(dbService.subscribeToCollection<Employee>('employees', items => setEmployees(items)));
         unsubscribes.push(dbService.subscribeToCollection<LeaveRequest>('leave_requests', items => setLeaveRequests(items)));
@@ -206,17 +212,18 @@ export function App() {
       }
     }
 
-    initDatabase();
+    if (isAuthenticated) initDatabase();
 
     return () => {
+      disposed = true;
       unsubscribes.forEach(unsub => unsub());
     };
-  }, []);
+  }, [isAuthenticated, currentUser.id]);
 
   // Also maintain local storage backup
   useEffect(() => {
     try {
-      localStorage.setItem('insight_hrm_employees', JSON.stringify(employees));
+      localStorage.setItem(storageKey('insight_hrm_employees'), JSON.stringify(employees));
     } catch (e) {
       console.error(e);
     }
@@ -224,7 +231,7 @@ export function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('insight_hrm_leave_requests', JSON.stringify(leaveRequests));
+      localStorage.setItem(storageKey('insight_hrm_leave_requests'), JSON.stringify(leaveRequests));
     } catch (e) {
       console.error(e);
     }
@@ -232,7 +239,7 @@ export function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('insight_hrm_job_openings', JSON.stringify(jobOpenings));
+      localStorage.setItem(storageKey('insight_hrm_job_openings'), JSON.stringify(jobOpenings));
     } catch (e) {
       console.error(e);
     }
@@ -240,7 +247,7 @@ export function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('insight_hrm_tasks', JSON.stringify(tasks));
+      localStorage.setItem(storageKey('insight_hrm_tasks'), JSON.stringify(tasks));
     } catch (e) {
       console.error(e);
     }
@@ -248,7 +255,7 @@ export function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('insight_hrm_attendance', JSON.stringify(attendanceRecords));
+      localStorage.setItem(storageKey('insight_hrm_attendance'), JSON.stringify(attendanceRecords));
     } catch (e) {
       console.error(e);
     }
@@ -256,7 +263,7 @@ export function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('insight_hrm_payroll_records', JSON.stringify(payrollRecords));
+      localStorage.setItem(storageKey('insight_hrm_payroll_records'), JSON.stringify(payrollRecords));
     } catch (e) {
       console.error(e);
     }
@@ -264,7 +271,7 @@ export function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('insight_hrm_assets', JSON.stringify(assets));
+      localStorage.setItem(storageKey('insight_hrm_assets'), JSON.stringify(assets));
     } catch (e) {
       console.error(e);
     }
@@ -272,7 +279,7 @@ export function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('insight_hrm_documents', JSON.stringify(documents));
+      localStorage.setItem(storageKey('insight_hrm_documents'), JSON.stringify(documents));
     } catch (e) {
       console.error(e);
     }
@@ -280,7 +287,7 @@ export function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('insight_hrm_activities', JSON.stringify(activities));
+      localStorage.setItem(storageKey('insight_hrm_activities'), JSON.stringify(activities));
     } catch (e) {
       console.error(e);
     }
@@ -288,7 +295,7 @@ export function App() {
 
   useEffect(() => {
     try {
-      localStorage.setItem('insight_hrm_notifications', JSON.stringify(notifications));
+      localStorage.setItem(storageKey('insight_hrm_notifications'), JSON.stringify(notifications));
     } catch (e) {
       console.error(e);
     }
@@ -914,7 +921,7 @@ export function App() {
       await dbService.clearCollection('tasks');
       setTasks([]);
       try {
-        localStorage.setItem('insight_hrm_tasks', JSON.stringify([]));
+        localStorage.setItem(storageKey('insight_hrm_tasks'), JSON.stringify([]));
       } catch (e) {
         console.error(e);
       }
@@ -1082,6 +1089,9 @@ export function App() {
 
   const handleSignOut = () => {
     authService.signOut();
+    setEmployees([]); setTasks([]); setAttendanceRecords([]); setPayrollRecords([]);
+    setLeaveRequests([]); setAssets([]); setDocuments([]); setActivities([]);
+    setNotifications([]); setFeedbackList([]); setInterviews([]);
     setIsAuthenticated(false);
     setCurrentView('auth-login');
   };

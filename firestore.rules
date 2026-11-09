@@ -1,8 +1,64 @@
 rules_version = '2';
+// Records retain legacy string IDs. _access/{Auth UID} is server-owned and stores
+// role, department, name and ids (account/employee aliases). Password hashes live
+// only in _credentials, never client profiles. Attendance/payroll/leave use empId;
+// task ownership uses assignedTo.id. Administrative writes validate required data.
 service cloud.firestore {
-  match /databases/{database}/documents {
-    match /{document=**} {
-      allow read, write: if true;
-    }
+ match /databases/{database}/documents {
+  function member(){return request.auth!=null && exists(/databases/$(database)/documents/_access/$(request.auth.uid));}
+  function scope(){return get(/databases/$(database)/documents/_access/$(request.auth.uid)).data;}
+  function admin(){return member() && scope().role=='admin';}
+  function manager(){return member() && scope().role=='manager';}
+  function own(id){return member() && id in scope().ids;}
+  function team(d){return manager() && d.get('department','')==scope().department;}
+  function text(d,k){return !(k in d) || (d[k] is string && d[k].size()<=30000);}
+  function positive(d,k){return !(k in d) || (d[k] is number && d[k]>=0);}
+  function valid(d,id){return d.keys().hasAll(['id']) && d.id is string && d.id==id && d.keys().size()<=100 && text(d,'name') && text(d,'title') && text(d,'email') && text(d,'department') && text(d,'empId') && text(d,'description') && text(d,'notes') && positive(d,'baseSalary') && positive(d,'targetCount') && positive(d,'currentCount');}
+  function employee(d,id){return valid(d,id) && d.keys().hasAll(['name','email','department','empId']) && d.name.size()>0 && d.email.size()>3;}
+  function task(d,id){return valid(d,id) && d.keys().hasAll(['title','completed','pinned']) && d.title.size()>0 && d.completed is bool && d.pinned is bool && (!('status' in d)||d.status in ['Pending','In Progress','Under Review','Completed','Blocked']) && (!('priority' in d)||d.priority in ['low','medium','high','urgent']) && (!('assignedTo' in d)||(d.assignedTo is map && d.assignedTo.id is string));}
+  function taskOwned(d){return member() && 'assignedTo' in d && own(d.assignedTo.id);}
+  function teamAssignment(d){return !('assignedTo' in d) || (exists(/databases/$(database)/documents/_task_assignees/$(d.assignedTo.id)) && get(/databases/$(database)/documents/_task_assignees/$(d.assignedTo.id)).data.department==scope().department);}
+  function attendance(d,id){return valid(d,id) && d.keys().hasAll(['empId','date','status','employeeName','department']) && d.date is string && d.status is string;}
+  function leave(d,id){return valid(d,id) && d.keys().hasAll(['empId','status','department','employeeName','reason']) && d.reason is string && d.status in ['Pending','Approved','Rejected'];}
+  function payroll(d,id){return valid(d,id) && d.keys().hasAll(['empId','netSalary','month']) && d.netSalary is number && d.netSalary>=0 && d.month is string;}
+  function document(d,id){return valid(d,id) && d.keys().hasAll(['name','restrictedTo']) && d.restrictedTo in ['all','admin-manager','admin-only'];}
+  match /_access/{id}{allow read:if request.auth!=null && request.auth.uid==id;allow write:if false;}
+  match /_credentials/{id}{allow read,write:if false;}
+  match /_auth_limits/{id}{allow read,write:if false;}
+  match /_task_assignees/{id}{allow read,write:if false;}
+  match /user_accounts/{id}{allow read:if admin()||(member()&&request.auth.uid==id);allow write:if false;}
+  match /_system_metadata/{id}{
+   allow read:if member();
+   allow create,update:if admin() && id=='deleted_records' && request.resource.data.keys().hasOnly(['deletedKeys','updatedAt']) && request.resource.data.deletedKeys is list && request.resource.data.deletedKeys.size()<=10000 && request.resource.data.updatedAt is string;
+   allow delete:if false;
   }
+  match /employees/{id}{allow read:if admin()||team(resource.data)||own(id);allow create,update:if admin()&&employee(request.resource.data,id);allow delete:if admin();}
+  match /tasks/{id}{
+   allow read:if admin()||team(resource.data)||taskOwned(resource.data);
+   allow create:if task(request.resource.data,id)&&(admin()||(team(request.resource.data)&&teamAssignment(request.resource.data)&&!('source' in request.resource.data)));
+   allow update:if task(request.resource.data,id)&&(admin()||(team(resource.data)&&team(request.resource.data)&&teamAssignment(request.resource.data)&&!request.resource.data.diff(resource.data).affectedKeys().hasAny(['source','sheetId','sheetMonth','sheetRow','createdAt']))||(taskOwned(resource.data)&&request.resource.data.diff(resource.data).affectedKeys().hasOnly(['status','completed','currentCount','notes','pinned','attachments'])));
+   allow delete:if false; // task deletion API preserves synchronization tombstones atomically
+  }
+  match /attendance/{id}{
+   allow read:if admin()||team(resource.data)||own(resource.data.empId);
+   allow create:if attendance(request.resource.data,id)&&(admin()||(own(request.resource.data.empId)&&request.resource.data.department==scope().department));
+   allow update:if attendance(request.resource.data,id)&&(admin()||((team(resource.data)||own(resource.data.empId))&&request.resource.data.empId==resource.data.empId&&request.resource.data.department==resource.data.department));
+   allow delete:if admin();
+  }
+  match /leave_requests/{id}{
+   allow read:if admin()||team(resource.data)||own(resource.data.empId);
+   allow create:if leave(request.resource.data,id)&&(admin()||(own(request.resource.data.empId)&&request.resource.data.status=='Pending'&&request.resource.data.department==scope().department));
+   allow update:if leave(request.resource.data,id)&&(admin()||(request.resource.data.empId==resource.data.empId&&request.resource.data.department==resource.data.department&&((team(resource.data)&&!own(resource.data.empId))||(own(resource.data.empId)&&resource.data.status=='Pending'&&request.resource.data.status=='Pending'))));
+   allow delete:if admin()||(own(resource.data.empId)&&resource.data.status=='Pending');
+  }
+  match /payroll_records/{id}{allow read:if admin()||own(resource.data.empId);allow create,update:if admin()&&payroll(request.resource.data,id);allow delete:if admin();}
+  match /assets/{id}{allow read:if admin()||(member()&&'assignedTo' in resource.data&&own(resource.data.assignedTo.empId));allow create,update:if admin()&&valid(request.resource.data,id)&&request.resource.data.name is string;allow delete:if admin();}
+  match /documents/{id}{allow read:if admin()||(member()&&resource.data.restrictedTo=='all')||(manager()&&resource.data.restrictedTo=='admin-manager');allow create,update:if admin()&&document(request.resource.data,id);allow delete:if admin();}
+  match /{col}/{id}{
+   allow read:if (member()&&col in ['notifications','top_performers','job_openings'])||((admin()||manager())&&col in ['activities','interviews','hiring_velocity','performance_feedback']);
+   allow create,update:if valid(request.resource.data,id)&&col in ['activities','notifications','top_performers','job_openings','interviews','hiring_velocity','performance_feedback']&&(admin()||(manager()&&col in ['activities','notifications','job_openings','interviews']));
+   allow delete:if admin()&&col in ['activities','notifications','top_performers','job_openings','interviews','hiring_velocity','performance_feedback'];
+  }
+  match /{path=**}{allow read,write:if false;}
+ }
 }

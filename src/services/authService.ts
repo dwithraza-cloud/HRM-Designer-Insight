@@ -1,3 +1,5 @@
+import { auth } from '../lib/firebase';
+import { signInWithCustomToken, signOut as firebaseSignOut } from 'firebase/auth';
 import { UserProfile, UserRole, ThemeMode } from '../types';
 import { ADMIN_USER, MANAGER_USER, EMPLOYEE_USER } from '../data/initialData';
 import { dbService } from './dbService';
@@ -14,104 +16,7 @@ export interface UserAccount {
   lastUpdated?: string;
 }
 
-export const INITIAL_USER_ACCOUNTS: UserAccount[] = [
-  {
-    id: 'usr-admin-01',
-    name: 'Raja Raza',
-    email: 'rajaraza300@gmail.com',
-    passwordHash: 'raza12345',
-    roleType: 'admin',
-    profile: { ...ADMIN_USER, themePreference: 'dark' },
-    themePreference: 'dark',
-    createdAt: '2021-01-15T08:00:00.000Z'
-  },
-  {
-    id: 'usr-mgr-01',
-    name: 'Aqsa',
-    email: 'aqsa@designerinsight.online',
-    passwordHash: 'aqsa12345',
-    roleType: 'manager',
-    profile: { ...MANAGER_USER, themePreference: 'dark' },
-    themePreference: 'dark',
-    createdAt: '2019-03-12T08:00:00.000Z'
-  },
-  {
-    id: 'usr-emp-01',
-    name: 'Rani',
-    email: 'Rani@designerinsight.online',
-    passwordHash: 'rani12345',
-    roleType: 'employee',
-    profile: { ...EMPLOYEE_USER, themePreference: 'dark' },
-    themePreference: 'dark',
-    createdAt: '2020-02-10T08:00:00.000Z'
-  },
-  {
-    id: 'usr-emp-02',
-    name: 'Iqra Pervaiz',
-    email: 'iqrapervaiz123@gmail.com',
-    passwordHash: 'iqra12345',
-    roleType: 'employee',
-    profile: {
-      ...EMPLOYEE_USER,
-      id: 'usr-emp-02',
-      name: 'Iqra Pervaiz',
-      email: 'iqrapervaiz123@gmail.com',
-      role: 'Full Stack Engineer',
-      roleType: 'employee',
-      department: 'Engineering',
-      empId: 'EMP-0143',
-      avatar: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=256&q=80',
-      avatarInitials: 'IP',
-      themePreference: 'dark'
-    },
-    themePreference: 'dark',
-    createdAt: '2021-06-18T08:00:00.000Z'
-  },
-  {
-    id: 'usr-emp-03',
-    name: 'Asim Khan',
-    email: 'asim.khan@aurahrms.io',
-    passwordHash: 'asim12345',
-    roleType: 'employee',
-    profile: {
-      ...EMPLOYEE_USER,
-      id: 'usr-emp-03',
-      name: 'Asim Khan',
-      email: 'asim.khan@aurahrms.io',
-      role: 'Growth Marketing Lead',
-      roleType: 'employee',
-      department: 'Marketing',
-      empId: 'EMP-0144',
-      avatar: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=256&q=80',
-      avatarInitials: 'AK',
-      themePreference: 'dark'
-    },
-    themePreference: 'dark',
-    createdAt: '2022-01-10T08:00:00.000Z'
-  },
-  {
-    id: 'usr-emp-04',
-    name: 'Saba',
-    email: 'saba@aurahrms.io',
-    passwordHash: 'saba12345',
-    roleType: 'employee',
-    profile: {
-      ...EMPLOYEE_USER,
-      id: 'usr-emp-04',
-      name: 'Saba',
-      email: 'saba@aurahrms.io',
-      role: 'Performance Marketing Specialist',
-      roleType: 'employee',
-      department: 'Marketing',
-      empId: 'EMP-0145',
-      avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=256&q=80',
-      avatarInitials: 'SB',
-      themePreference: 'dark'
-    },
-    themePreference: 'dark',
-    createdAt: '2022-04-15T08:00:00.000Z'
-  }
-];
+export const INITIAL_USER_ACCOUNTS: UserAccount[] = [];
 
 const STORAGE_KEY_ACCOUNTS = 'insight_hrm_accounts_db_v4';
 const STORAGE_KEY_SESSION = 'insight_hrm_active_session_v4';
@@ -119,144 +24,70 @@ const STORAGE_KEY_SESSION = 'insight_hrm_active_session_v4';
 class AuthService {
   private accounts: UserAccount[];
 
+  public ready: Promise<void>;
   constructor() {
-    this.accounts = this.loadAccounts();
-    this.syncFromFirestore();
+    this.accounts = [];
+    this.ready = this.restore();
   }
-
+  private async restore(): Promise<void> {
+    await auth.authStateReady();
+    if (auth.currentUser) await this.syncFromFirestore();
+  }
+  private async accountRequest(body: Record<string, unknown>): Promise<any> {
+    if (!auth.currentUser) throw new Error('Please sign in first.');
+    const token = await auth.currentUser.getIdToken();
+    const response = await fetch('/api/accounts', {method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify(body)});
+    const result = await response.json();
+    if (!response.ok || !result.success) throw new Error(result.error || 'Account operation failed.');
+    return result;
+  }
   public async syncFromFirestore(): Promise<void> {
-    try {
-      const dbAccounts = await dbService.loadOrSeedCollection<UserAccount>('user_accounts', INITIAL_USER_ACCOUNTS);
-      if (dbAccounts && Array.isArray(dbAccounts) && dbAccounts.length > 0) {
-        this.accounts = dbAccounts;
-        this.saveAccounts();
-      }
-    } catch (err) {
-      console.warn('[AuthService] Could not sync user_accounts from Firestore, using local accounts cache:', err);
-    }
+    if (!auth.currentUser) { this.accounts = []; return; }
+    this.accounts = await dbService.loadOrSeedCollection<UserAccount>('user_accounts', []);
+    this.saveAccounts();
   }
-
-  private loadAccounts(): UserAccount[] {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY_ACCOUNTS);
-      if (stored) {
-        const parsed: UserAccount[] = JSON.parse(stored);
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          return parsed;
-        }
-      }
-    } catch {
-      // Fallback
-    }
-    return INITIAL_USER_ACCOUNTS;
-  }
-
   private saveAccounts(): void {
     try {
-      localStorage.setItem(STORAGE_KEY_ACCOUNTS, JSON.stringify(this.accounts));
+      localStorage.setItem(STORAGE_KEY_ACCOUNTS, JSON.stringify(this.accounts.map(a => ({...a, passwordHash: ''}))));
     } catch {
       // Ignore
     }
   }
 
   public async persistAccountToDB(account: UserAccount): Promise<void> {
+    const result = await this.accountRequest({action:'save',account});
+    const index = this.accounts.findIndex(a=>a.id===account.id);
+    if(index>=0) this.accounts[index]=result.account; else this.accounts.push(result.account);
     this.saveAccounts();
-    try {
-      await dbService.saveItem('user_accounts', account);
-    } catch (e) {
-      console.warn('[AuthService] Could not persist account to Firestore (saved locally):', e);
-    }
   }
-
   public async removeAccountFromDB(accountId: string): Promise<void> {
-    this.accounts = this.accounts.filter(a => a.id !== accountId);
+    await this.accountRequest({action:'delete',id:accountId});
+    this.accounts = this.accounts.filter(a=>a.id!==accountId);
     this.saveAccounts();
-    try {
-      await dbService.deleteItem('user_accounts', accountId);
-    } catch (e) {
-      console.warn('[AuthService] Could not delete account from Firestore (removed locally):', e);
-    }
   }
-
   /**
    * Authenticate a user by email and password.
    */
-  public authenticate(email: string, password?: string): { success: boolean; user?: UserProfile; error?: string } {
-    const normalizedEmail = email.trim().toLowerCase();
-    
-    // Look up user in permanent accounts database
-    const account = this.accounts.find(a => a.email.toLowerCase() === normalizedEmail);
-
-    if (!account) {
-      // Fallback for special quick demo prefixes if needed
-      if (normalizedEmail.includes('admin')) {
-        return { success: true, user: { ...ADMIN_USER, themePreference: 'dark' } };
-      }
-      if (normalizedEmail.includes('manager') || normalizedEmail.includes('lead')) {
-        return { success: true, user: { ...MANAGER_USER, themePreference: 'dark' } };
-      }
-      return {
-        success: false,
-        error: 'Invalid credentials. User account not found in organization directory.'
-      };
-    }
-
-    // Password verification
-    if (password && password.length > 0 && password !== '••••••••••••') {
-      if (account.passwordHash && account.passwordHash !== password && password !== 'password' && password !== 'admin123' && password !== 'manager123' && password !== 'employee123') {
-        return {
-          success: false,
-          error: 'Incorrect password for this organization account.'
-        };
-      }
-    }
-
-    const userTheme = account.themePreference || account.profile.themePreference || 'dark';
-    account.themePreference = userTheme;
-    account.profile.themePreference = userTheme;
-
+  public async authenticate(email: string, password?: string): Promise<{success:boolean;user?:UserProfile;error?:string}> {
     try {
-      localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(account.profile));
-    } catch {
-      // Ignore
-    }
-
-    return {
-      success: true,
-      user: account.profile
-    };
+      const response=await fetch('/api/login',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({email,password})});
+      const result=await response.json();
+      if(!response.ok||!result.success)return {success:false,error:result.error||'Sign-in failed.'};
+      await signInWithCustomToken(auth,result.token);
+      await this.syncFromFirestore();
+      const account=this.accounts.find(a=>a.id===auth.currentUser?.uid);
+      if(!account){await firebaseSignOut(auth);return {success:false,error:'Your organization profile is unavailable.'};}
+      localStorage.setItem(STORAGE_KEY_SESSION,JSON.stringify(account.profile));
+      return {success:true,user:account.profile};
+    } catch { return {success:false,error:'Unable to sign in. Please try again.'}; }
   }
-
   /**
    * Retrieve active authenticated session if present.
    */
   public getActiveSession(): UserProfile | null {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY_SESSION);
-      if (stored) {
-        const user: UserProfile = JSON.parse(stored);
-        const exists = this.accounts.find(a => a.id === user.id || a.email.toLowerCase() === (user.email || '').toLowerCase());
-        if (exists) {
-          const userTheme = exists.themePreference || exists.profile?.themePreference || user.themePreference || 'dark';
-          return {
-            ...user,
-            email: exists.email,
-            name: exists.name || user.name,
-            roleType: exists.roleType,
-            themePreference: userTheme
-          };
-        }
-        return {
-          ...user,
-          themePreference: user.themePreference || 'dark'
-        };
-      }
-    } catch {
-      // Fallback
-    }
-    return null;
+    if(!auth.currentUser)return null;
+    return this.accounts.find(a=>a.id===auth.currentUser?.uid)?.profile || null;
   }
-
   /**
    * Update theme preference for a specific user account.
    */
@@ -286,7 +117,7 @@ class AuthService {
     account.profile.themePreference = theme;
     account.lastUpdated = new Date().toISOString();
     this.accounts[accountIndex] = account;
-    this.persistAccountToDB(account);
+    void this.accountRequest({action:'theme',theme}).catch(()=>{});
 
     const active = this.getActiveSession();
     if (active && (active.id === account.id || active.email.toLowerCase() === account.email.toLowerCase())) {
@@ -303,98 +134,29 @@ class AuthService {
   }
 
   public signOut(): void {
-    try {
-      localStorage.removeItem(STORAGE_KEY_SESSION);
-    } catch {
-      // Ignore
-    }
+    this.accounts=[];
+    localStorage.removeItem(STORAGE_KEY_SESSION);
+    localStorage.removeItem(STORAGE_KEY_ACCOUNTS);
+    void firebaseSignOut(auth);
   }
-
   /**
    * Update current user's own email and/or password
    */
-  public updateSelfCredentials(
-    userIdOrEmail: string,
-    data: {
-      newEmail?: string;
-      newPassword?: string;
-      currentPassword?: string;
-    }
-  ): { success: boolean; error?: string; updatedProfile?: UserProfile } {
-    const searchKey = userIdOrEmail.trim().toLowerCase();
-    const accountIndex = this.accounts.findIndex(
-      a => a.id.toLowerCase() === searchKey || a.email.toLowerCase() === searchKey
-    );
-
-    if (accountIndex === -1) {
-      return { success: false, error: 'User account not found.' };
-    }
-
-    const account = this.accounts[accountIndex];
-
-    if (data.newPassword && data.currentPassword) {
-      const validPass =
-        account.passwordHash === data.currentPassword ||
-        data.currentPassword === 'password' ||
-        data.currentPassword === 'admin123' ||
-        data.currentPassword === 'manager123' ||
-        data.currentPassword === 'employee123';
-
-      if (!validPass) {
-        return { success: false, error: 'Current password does not match our records.' };
-      }
-    }
-
-    if (data.newEmail && data.newEmail.trim().toLowerCase() !== account.email.toLowerCase()) {
-      const normalizedNewEmail = data.newEmail.trim().toLowerCase();
-      
-      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedNewEmail)) {
-        return { success: false, error: 'Please enter a valid email address.' };
-      }
-
-      const duplicate = this.accounts.find(
-        (a, idx) => idx !== accountIndex && a.email.toLowerCase() === normalizedNewEmail
-      );
-      if (duplicate) {
-        return { success: false, error: 'This email is already in use by another account.' };
-      }
-
-      account.email = normalizedNewEmail;
-      account.profile.email = normalizedNewEmail;
-    }
-
-    if (data.newPassword && data.newPassword.trim().length > 0) {
-      if (data.newPassword.trim().length < 4) {
-        return { success: false, error: 'Password must be at least 4 characters long.' };
-      }
-      account.passwordHash = data.newPassword.trim();
-    }
-
-    account.lastUpdated = new Date().toISOString();
-    this.accounts[accountIndex] = account;
-    this.persistAccountToDB(account);
-
-    const updatedProfile: UserProfile = {
-      ...account.profile,
-      email: account.email
-    };
-
+  public async updateSelfCredentials(userIdOrEmail:string,data:{newEmail?:string;newPassword?:string;currentPassword?:string}):Promise<{success:boolean;error?:string;updatedProfile?:UserProfile}> {
     try {
-      localStorage.setItem(STORAGE_KEY_SESSION, JSON.stringify(updatedProfile));
-    } catch {
-      // Ignore
-    }
-
-    return {
-      success: true,
-      updatedProfile
-    };
+      const old=this.accounts.find(a=>a.id===auth.currentUser?.uid);
+      const result=await this.accountRequest({action:'self',...data});
+      if(data.newPassword) {
+        const login=await this.authenticate(result.account.email,data.newPassword);
+        if(!login.success)return {success:false,error:login.error};
+      } else await this.syncFromFirestore();
+      return {success:true,updatedProfile:result.updatedProfile};
+    } catch(error:any){return {success:false,error:error.message};}
   }
-
   /**
    * Admin-Only: Change email, password, or role of ANY user
    */
-  public adminUpdateUserCredentials(
+  public async adminUpdateUserCredentials(
     adminRole: UserRole,
     targetAccountId: string,
     data: {
@@ -403,7 +165,7 @@ class AuthService {
       newRole?: UserRole;
       newName?: string;
     }
-  ): { success: boolean; error?: string; updatedAccount?: UserAccount } {
+  ): Promise<{ success: boolean; error?: string; updatedAccount?: UserAccount }> {
     if (adminRole !== 'admin') {
       return {
         success: false,
@@ -439,8 +201,8 @@ class AuthService {
     }
 
     if (data.newPassword && data.newPassword.trim().length > 0) {
-      if (data.newPassword.trim().length < 4) {
-        return { success: false, error: 'Password must be at least 4 characters long.' };
+      if (data.newPassword.trim().length < 8) {
+        return { success: false, error: 'Password must be at least 8 characters long.' };
       }
       account.passwordHash = data.newPassword.trim();
     }
@@ -457,7 +219,7 @@ class AuthService {
 
     account.lastUpdated = new Date().toISOString();
     this.accounts[accountIndex] = account;
-    this.persistAccountToDB(account);
+    try { await this.persistAccountToDB(account); } catch(error:any) { await this.syncFromFirestore(); return {success:false,error:error.message}; }
 
     const currentSession = this.getActiveSession();
     if (currentSession && (currentSession.id === account.id || currentSession.email.toLowerCase() === account.email.toLowerCase())) {
@@ -477,7 +239,7 @@ class AuthService {
   /**
    * Admin-Only: Register new user account with permanent role
    */
-  public createAccount(
+  public async createAccount(
     creatorRole: UserRole,
     newAccount: {
       name: string;
@@ -488,7 +250,7 @@ class AuthService {
       department: string;
       baseSalary?: number;
     }
-  ): { success: boolean; error?: string; account?: UserAccount } {
+  ): Promise<{ success: boolean; error?: string; account?: UserAccount }> {
     if (creatorRole !== 'admin') {
       return {
         success: false,
@@ -535,14 +297,14 @@ class AuthService {
       id: newUserProfile.id,
       name: newAccount.name,
       email: newAccount.email,
-      passwordHash: newAccount.password || 'password',
+      passwordHash: newAccount.password || crypto.randomUUID()+'Aa1!',
       roleType: newAccount.roleType,
       profile: newUserProfile,
       createdAt: new Date().toISOString()
     };
 
     this.accounts.unshift(created);
-    this.persistAccountToDB(created);
+    try { await this.persistAccountToDB(created); } catch(error:any) { await this.syncFromFirestore(); return {success:false,error:error.message}; }
 
     return {
       success: true,
@@ -553,7 +315,7 @@ class AuthService {
   /**
    * Helper to retrieve or provision a UserAccount instance for an existing Employee record
    */
-  public getOrCreateAccountForEmployee(emp: {
+  public async getOrCreateAccountForEmployee(emp: {
     id: string;
     name: string;
     email: string;
@@ -565,7 +327,7 @@ class AuthService {
     joiningDate?: string;
     salary?: number;
     status?: 'Active' | 'On Leave' | 'Inactive';
-  }): UserAccount {
+  }): Promise<UserAccount> {
     const existing = this.accounts.find(
       a => (a.id && a.id === emp.id) || a.email.toLowerCase() === emp.email.toLowerCase()
     );
@@ -585,7 +347,7 @@ class AuthService {
       id: emp.id,
       name: emp.name,
       email: emp.email,
-      passwordHash: 'password',
+      passwordHash: crypto.randomUUID()+'Aa1!',
       roleType: roleType,
       profile: {
         id: emp.id,
@@ -617,7 +379,7 @@ class AuthService {
     };
 
     this.accounts.push(newAccount);
-    this.persistAccountToDB(newAccount);
+    await this.persistAccountToDB(newAccount);
     return newAccount;
   }
 

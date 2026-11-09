@@ -99,7 +99,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   }, []);
 
   // Handler: Update Self Email
-  const handleUpdateSelfEmail = (e: React.FormEvent) => {
+  const handleUpdateSelfEmail = async (e: React.FormEvent) => {
     e.preventDefault();
     setEmailMessage(null);
 
@@ -115,8 +115,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
     setEmailLoading(true);
 
-    setTimeout(() => {
-      const result = authService.updateSelfCredentials(currentUser.id || currentUser.email, {
+    setTimeout(async () => {
+      const result = await authService.updateSelfCredentials(currentUser.id || currentUser.email, {
         newEmail: newEmail.trim(),
         currentPassword: emailCurrentPassword.trim() || undefined
       });
@@ -140,7 +140,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   // Handler: Update Self Password
-  const handleUpdateSelfPassword = (e: React.FormEvent) => {
+  const handleUpdateSelfPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setPasswordMessage(null);
 
@@ -154,8 +154,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       return;
     }
 
-    if (newPassword.trim().length < 4) {
-      setPasswordMessage({ type: 'error', text: 'New password must be at least 4 characters long.' });
+    if (newPassword.trim().length < 8) {
+      setPasswordMessage({ type: 'error', text: 'New password must be at least 8 characters long.' });
       return;
     }
 
@@ -166,8 +166,8 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
     setPasswordLoading(true);
 
-    setTimeout(() => {
-      const result = authService.updateSelfCredentials(currentUser.id || currentUser.email, {
+    setTimeout(async () => {
+      const result = await authService.updateSelfCredentials(currentUser.id || currentUser.email, {
         newPassword: newPassword.trim(),
         currentPassword: currentPassword.trim()
       });
@@ -210,7 +210,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   };
 
   // Handler: Save Admin Edit for a User's Credentials
-  const handleSaveAdminEdit = (e: React.FormEvent) => {
+  const handleSaveAdminEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!editingAccount) return;
     setAdminEditError(null);
@@ -220,15 +220,15 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       return;
     }
 
-    if (adminEditPassword && adminEditPassword.trim().length < 4) {
-      setAdminEditError('Password must be at least 4 characters long.');
+    if (adminEditPassword && adminEditPassword.trim().length < 8) {
+      setAdminEditError('Password must be at least 8 characters long.');
       return;
     }
 
     setAdminEditLoading(true);
 
-    setTimeout(() => {
-      const result = authService.adminUpdateUserCredentials(roleType, editingAccount.id, {
+    setTimeout(async () => {
+      const result = await authService.adminUpdateUserCredentials(roleType, editingAccount.id, {
         newEmail: adminEditEmail.trim(),
         newPassword: adminEditPassword.trim() || undefined,
         newRole: adminEditRole
@@ -726,7 +726,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
                         <td className="py-3.5 px-4 font-mono text-slate-400">
                           <span className="bg-black/30 px-2 py-1 rounded border border-white/5 text-[11px]">
-                            {acc.passwordHash || 'password'}
+                            {'Hidden — reset to change'}
                           </span>
                         </td>
 

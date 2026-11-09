@@ -1,14 +1,15 @@
 import { 
-  collection, 
+  collection, query, where, documentId, type Query, type DocumentData,
   doc, 
   getDoc,
   getDocs, 
   setDoc, 
+  arrayUnion,
   updateDoc, 
   deleteDoc, 
   onSnapshot 
 } from 'firebase/firestore';
-import { db } from '../lib/firebase';
+import { db, auth } from '../lib/firebase';
 
 const SYSTEM_METADATA_COLLECTION = '_system_metadata';
 const SYSTEM_METADATA_DOC = 'seed_state';
@@ -21,6 +22,24 @@ interface SeedState {
 }
 
 export class DBService {
+  private async scopedCollection(name: string): Promise<Query<DocumentData> | null> {
+    const user=auth.currentUser;
+    if(!user)return null;
+    const snap=await getDoc(doc(db,'_access',user.uid));
+    if(!snap.exists())return null;
+    const access=snap.data(),base=collection(db,name),admin=access.role==='admin',manager=access.role==='manager';
+    if(admin)return base;
+    const ids=access.ids as string[];
+    if(name==='user_accounts')return query(base,where(documentId(),'==',user.uid));
+    if(name==='employees')return manager?query(base,where('department','==',access.department)):query(base,where(documentId(),'in',ids));
+    if(name==='tasks')return manager?query(base,where('department','==',access.department)):query(base,where('assignedTo.id','in',ids));
+    if(['attendance','leave_requests','payroll_records'].includes(name))return manager&&name!=='payroll_records'?query(base,where('department','==',access.department)):query(base,where('empId','in',ids));
+    if(name==='assets')return query(base,where('assignedTo.empId','in',ids));
+    if(name==='documents')return query(base,where('restrictedTo','in',manager?['all','admin-manager']:['all']));
+    if(['activities','interviews','hiring_velocity','performance_feedback'].includes(name))return manager?base:null;
+    if(['notifications','top_performers','job_openings'].includes(name))return base;
+    return null;
+  }
   private seededCache: Set<string> = new Set();
   private deletedCache: Set<string> = new Set();
   private metaLoaded = false;
@@ -92,9 +111,10 @@ export class DBService {
 
     // Persist tombstones to Firestore asynchronously so all accounts and reloads respect it
     try {
+      if(!auth.currentUser)return;
       const metaRef = doc(db, SYSTEM_METADATA_COLLECTION, 'deleted_records');
       setDoc(metaRef, {
-        deletedKeys: Array.from(this.deletedCache),
+        deletedKeys: arrayUnion(id, compoundKey),
         updatedAt: new Date().toISOString()
       }, { merge: true }).catch(() => {});
     } catch {
@@ -193,53 +213,13 @@ export class DBService {
     collectionName: string, 
     initialData: T[]
   ): Promise<T[]> {
+    // Migration owns initialization; browsers never seed fallback/demo records.
     try {
-      const colRef = collection(db, collectionName);
-      const snapshot = await getDocs(colRef);
-      
-      if (!snapshot.empty) {
-        const items: T[] = [];
-        snapshot.forEach((docSnap) => {
-          const item = { ...docSnap.data(), id: docSnap.id } as T;
-          // Filter out tombstones if any
-          if (!this.isItemDeleted(collectionName, item.id)) {
-            items.push(item);
-          }
-        });
-        // Collection has data, ensure it's marked as seeded
-        await this.markCollectionSeeded(collectionName);
-        return items;
-      }
-
-      // Check if collection was already seeded in the past (e.g. user deleted all records)
-      const isLocallySeeded = localStorage.getItem(`${LOCAL_STORAGE_SEEDED_PREFIX}${collectionName}`) === 'true';
-      const seededSet = await this.getSeededCollections();
-
-      if (isLocallySeeded || seededSet.has(collectionName)) {
-        // User intentionally deleted all items or collection is empty, DO NOT re-seed!
-        console.log(`[Firestore] Collection '${collectionName}' is empty (user deleted/cleared), skipping re-seed.`);
-        return [];
-      }
-
-      // First-time launch: Collection has never been seeded before, seed it now
-      console.log(`[Firestore] Initializing fresh collection '${collectionName}' with ${initialData.length} records...`);
-      const seededItems: T[] = [];
-      for (const item of initialData) {
-        if (item.id && !this.isItemDeleted(collectionName, item.id)) {
-          await setDoc(doc(db, collectionName, item.id), item, { merge: true });
-          seededItems.push(item);
-        }
-      }
-      await this.markCollectionSeeded(collectionName);
-      return seededItems;
-    } catch (error: any) {
-      if (error?.code === 'unavailable' || error?.message?.includes('offline') || error?.message?.includes('backend')) {
-        console.warn(`[Firestore Offline] Using cached/initial data for '${collectionName}'.`);
-      } else {
-        console.warn(`[Firestore Notice] Failed to load/seed '${collectionName}':`, error?.message || error);
-      }
-      return initialData.filter(i => !this.isItemDeleted(collectionName, i.id));
-    }
+      const target=await this.scopedCollection(collectionName);
+      if(!target)return [];
+      const snapshot=await getDocs(target);
+      return snapshot.docs.map(d=>({...d.data() as object,id:d.id}) as T).filter(item=>!this.isItemDeleted(collectionName,item.id));
+    } catch(error) { console.warn('Unable to load '+collectionName); return []; }
   }
 
   /**
@@ -252,7 +232,7 @@ export class DBService {
       }
       const docRef = doc(db, collectionName, item.id);
       await setDoc(docRef, item, { merge: true });
-      await this.markCollectionSeeded(collectionName);
+
       // Remove from tombstone if it was previously deleted and recreated
       try {
         localStorage.removeItem(`${LOCAL_STORAGE_DELETED_PREFIX}${collectionName}_${item.id}`);
@@ -270,7 +250,7 @@ export class DBService {
     try {
       const docRef = doc(db, collectionName, id);
       await setDoc(docRef, fields, { merge: true });
-      await this.markCollectionSeeded(collectionName);
+
     } catch (error) {
       console.warn(`[Firestore Notice] Failed to update document '${id}' in '${collectionName}':`, error);
       throw error;
@@ -282,11 +262,19 @@ export class DBService {
    */
   async deleteItem(collectionName: string, id: string): Promise<void> {
     if (!id) return;
+    if(collectionName==='tasks') {
+      const token=await auth.currentUser?.getIdToken();
+      if(!token)throw new Error('Please sign in first.');
+      const response=await fetch('/api/delete-task',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({id})});
+      if(!response.ok)throw new Error('Unable to delete this task.');
+      this.markItemDeleted(collectionName,id);
+      return;
+    }
     // 1. Immediately mark tombstone locally and in cache
     this.markItemDeleted(collectionName, id);
 
     try {
-      await this.markCollectionSeeded(collectionName);
+
       const docRef = doc(db, collectionName, id);
       await deleteDoc(docRef);
     } catch (error) {
@@ -300,12 +288,11 @@ export class DBService {
    */
   async clearCollection(collectionName: string): Promise<void> {
     try {
-      await this.markCollectionSeeded(collectionName);
+
       const colRef = collection(db, collectionName);
       const snap = await getDocs(colRef);
       for (const docSnap of snap.docs) {
-        this.markItemDeleted(collectionName, docSnap.id);
-        await deleteDoc(doc(db, collectionName, docSnap.id));
+        await this.deleteItem(collectionName, docSnap.id);
       }
     } catch (error) {
       console.warn(`[Firestore Notice] Failed to clear collection '${collectionName}':`, error);
@@ -319,29 +306,17 @@ export class DBService {
     collectionName: string, 
     onData: (items: T[]) => void
   ): () => void {
-    const colRef = collection(db, collectionName);
-    return onSnapshot(
-      colRef, 
-      (snapshot) => {
-        const items: T[] = [];
-        snapshot.forEach((docSnap) => {
-          const item = { ...docSnap.data(), id: docSnap.id } as T;
-          if (!this.isItemDeleted(collectionName, item.id)) {
-            items.push(item);
-          }
-        });
-        // Always emit current state (even if empty after deletions)
+    let stopped=false;
+    let unsubscribe: (()=>void)|undefined;
+    void this.scopedCollection(collectionName).then(target=>{
+      if(stopped)return;
+      if(!target){onData([]);return;}
+      unsubscribe=onSnapshot(target,(snapshot)=>{
+        const items=snapshot.docs.map(docSnap=>({...docSnap.data() as object,id:docSnap.id}) as T).filter(item=>!this.isItemDeleted(collectionName,item.id));
         onData(items);
-      },
-      (error: any) => {
-        if (error?.code === 'unavailable' || error?.message?.includes('offline')) {
-          console.warn(`[Firestore Listener Offline] Waiting to reconnect for '${collectionName}'.`);
-        } else {
-          console.warn(`[Firestore Listener Notice] for '${collectionName}':`, error?.message || error);
-        }
-      }
-    );
+      },()=>{console.warn('Unable to subscribe to '+collectionName);onData([]);});
+    }).catch(()=>{if(!stopped)onData([]);});
+    return ()=>{stopped=true;unsubscribe?.();};
   }
 }
-
 export const dbService = new DBService();

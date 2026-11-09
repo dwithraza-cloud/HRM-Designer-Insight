@@ -76,12 +76,12 @@ export const EmployeeManagementView: React.FC<EmployeeManagementViewProps> = ({
   const [savingCredentials, setSavingCredentials] = useState(false);
   const [credentialError, setCredentialError] = useState<string | null>(null);
 
-  const handleOpenCredentialsModal = (emp: Employee) => {
-    const acc = authService.getOrCreateAccountForEmployee(emp);
+  const handleOpenCredentialsModal = async (emp: Employee) => {
+    const acc = await authService.getOrCreateAccountForEmployee(emp);
     setCredentialModalEmployee(emp);
     setTargetAccount(acc);
     setAdminEmailInput(acc.email || emp.email);
-    setAdminPasswordInput(acc.passwordHash || 'password');
+    setAdminPasswordInput('');
     setAdminRoleInput(acc.roleType || 'employee');
     setCredentialError(null);
     setShowAdminPassword(false);
@@ -107,15 +107,15 @@ export const EmployeeManagementView: React.FC<EmployeeManagementViewProps> = ({
       return;
     }
 
-    if (adminPasswordInput && adminPasswordInput.trim().length < 4) {
-      setCredentialError('Password must be at least 4 characters long.');
+    if (adminPasswordInput && adminPasswordInput.trim().length < 8) {
+      setCredentialError('Password must be at least 8 characters long.');
       return;
     }
 
     setSavingCredentials(true);
 
-    setTimeout(() => {
-      const result = authService.adminUpdateUserCredentials(roleType, targetAccount.id, {
+    setTimeout(async () => {
+      const result = await authService.adminUpdateUserCredentials(roleType, targetAccount.id, {
         newEmail: adminEmailInput.trim(),
         newPassword: adminPasswordInput.trim() || undefined,
         newRole: adminRoleInput
@@ -625,7 +625,7 @@ export const EmployeeManagementView: React.FC<EmployeeManagementViewProps> = ({
                   <input
                     id="input-admin-emp-password"
                     type={showAdminPassword ? 'text' : 'password'}
-                    placeholder="Enter new password (min 4 characters)"
+                    placeholder="Enter new password (min 8 characters)"
                     value={adminPasswordInput}
                     onChange={(e) => setAdminPasswordInput(e.target.value)}
                     className="w-full pl-9 pr-10 py-2.5 bg-white/[0.05] border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 font-mono transition-colors"

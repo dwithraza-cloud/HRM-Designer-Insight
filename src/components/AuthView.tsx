@@ -37,13 +37,13 @@ export const AuthView: React.FC<AuthViewProps> = ({
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
     setIsLoading(true);
 
     if (mode === 'login') {
-      const authResult = authService.authenticate(email, password);
+      const authResult = await authService.authenticate(email, password);
       setIsLoading(false);
       if (authResult.success && authResult.user) {
         onLoginSuccess(authResult.user);
@@ -58,7 +58,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
         return;
       }
       
-      const creationResult = authService.createAccount('admin', {
+      const creationResult = await authService.createAccount('admin', {
         name,
         email,
         roleTitle: roleTitle || 'Administrator',
@@ -162,7 +162,7 @@ export const AuthView: React.FC<AuthViewProps> = ({
               {mode === 'login' && (
                 <button
                   type="button"
-                  onClick={() => alert('Password reset instructions sent to your email.')}
+                  onClick={() => alert('Contact your HRM administrator to reset your password.')}
                   className="text-purple-400 hover:text-purple-300 text-[11px] font-medium"
                 >
                   Forgot password?
